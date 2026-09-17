@@ -1299,4 +1299,102 @@ export const campusStore = {
       attendeesCount: issuedCount,
     };
   },
+
+  toggleEventCertificateRelease(eventId: string, forceRelease?: boolean): { success: boolean; message: string; released: boolean } {
+    const state = campusStore.getState();
+    const event = state.events.find((e) => e.id === eventId);
+    if (!event) return { success: false, message: "Event not found", released: false };
+
+    const nextReleased = forceRelease !== undefined ? forceRelease : !event.certificatesReleased;
+    const now = new Date().toISOString();
+
+    const updatedEvents = state.events.map((e) =>
+      e.id === eventId ? { ...e, certificatesReleased: nextReleased } : e
+    );
+
+    const updatedRegs = state.registrations.map((r) =>
+      r.eventId === eventId ? { ...r, certificateUnlocked: nextReleased } : r
+    );
+
+    const updatedAtt = state.attendanceRecords.map((a) =>
+      a.eventId === eventId ? { ...a, certificateUnlocked: nextReleased } : a
+    );
+
+    const notif: NotificationItem = {
+      id: `notif-cert-rel-${Date.now()}`,
+      title: nextReleased ? `🎓 Certificate Access Granted: ${event.title}` : `🔒 Certificate Access Locked: ${event.title}`,
+      message: nextReleased
+        ? `The Administration has unlocked official participation certificates for ${event.title}. Download your PDF now from My Events.`
+        : `Certificate download access for ${event.title} has been paused by the Administration.`,
+      type: "achievement",
+      timestamp: "Just now",
+      read: false,
+      eventId: event.id,
+    };
+
+    const audit: AuditLogEntry = {
+      id: `aud-cert-rel-${Date.now()}`,
+      action: nextReleased ? "Certificate Access Granted (Admin Release)" : "Certificate Access Locked (Admin)",
+      performedBy: `${state.currentUser.name} (${state.currentUser.role})`,
+      target: event.title,
+      timestamp: now.replace("T", " ").slice(0, 19),
+      details: nextReleased
+        ? "Unlocked official PDF participation certificates for all verified attendees."
+        : "Locked PDF certificate downloads for this event.",
+    };
+
+    campusStore.setState((prev) => ({
+      events: updatedEvents,
+      registrations: updatedRegs,
+      attendanceRecords: updatedAtt,
+      notifications: [notif, ...prev.notifications],
+      auditLogs: [audit, ...prev.auditLogs],
+    }));
+
+    return {
+      success: true,
+      message: nextReleased
+        ? `Certificate download access successfully granted & unlocked for ${event.title}!`
+        : `Certificate download access locked for ${event.title}.`,
+      released: nextReleased,
+    };
+  },
+
+  toggleStudentCertificateAccess(eventId: string, userId: string): { success: boolean; unlocked: boolean } {
+    const state = campusStore.getState();
+    const reg = state.registrations.find((r) => r.eventId === eventId && r.userId === userId);
+    if (!reg) return { success: false, unlocked: false };
+
+    const event = state.events.find((e) => e.id === eventId);
+    const nextUnlocked = !reg.certificateUnlocked;
+    const now = new Date().toISOString();
+
+    const updatedRegs = state.registrations.map((r) =>
+      r.eventId === eventId && r.userId === userId ? { ...r, certificateUnlocked: nextUnlocked } : r
+    );
+
+    const updatedAtt = state.attendanceRecords.map((a) =>
+      a.eventId === eventId && a.userId === userId ? { ...a, certificateUnlocked: nextUnlocked } : a
+    );
+
+    const audit: AuditLogEntry = {
+      id: `aud-stu-cert-${Date.now()}`,
+      action: nextUnlocked ? "Student Certificate Access Granted" : "Student Certificate Access Revoked",
+      performedBy: `${state.currentUser.name} (${state.currentUser.role})`,
+      target: `${reg.userName} (${reg.userRollNo})`,
+      timestamp: now.replace("T", " ").slice(0, 19),
+      details: `Event: ${event?.title || eventId} · Status: ${nextUnlocked ? "Access Granted" : "Access Revoked"}`,
+    };
+
+    campusStore.setState((prev) => ({
+      registrations: updatedRegs,
+      attendanceRecords: updatedAtt,
+      auditLogs: [audit, ...prev.auditLogs],
+    }));
+
+    return {
+      success: true,
+      unlocked: nextUnlocked,
+    };
+  },
 };

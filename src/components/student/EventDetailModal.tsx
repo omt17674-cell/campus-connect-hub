@@ -5,8 +5,10 @@ import {
   CalendarPlus,
   Check,
   Clock,
+  Download,
   ExternalLink,
   HeartHandshake,
+  Lock,
   MapPin,
   Share2,
   Star,
@@ -20,9 +22,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { CampusEvent } from "@/lib/types";
+import { CampusEvent, AttendanceRecord } from "@/lib/types";
 import { campusStore } from "@/lib/campus-store";
 import { generateIcsFile, getGoogleCalendarUrl } from "@/lib/calendar-export";
+import { generateCertificatePdf } from "@/lib/certificate-generator";
 import { TeamRegisterModal } from "./TeamRegisterModal";
 import { FeedbackModal } from "./FeedbackModal";
 import { cn } from "@/lib/utils";
@@ -43,6 +46,7 @@ export function EventDetailModal({
   const state = campusStore.getState();
   const [showTeamModal, setShowTeamModal] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [downloadingCert, setDownloadingCert] = useState(false);
 
   const registration = state.registrations.find(
     (r) => r.eventId === event.id && r.userId === state.currentUser.id
@@ -54,6 +58,35 @@ export function EventDetailModal({
   const isFull = event.registeredCount >= event.capacity;
   const isRegistered = Boolean(registration);
   const isAttended = Boolean(attendanceRecord) || registration?.status === "attended";
+  const isCertUnlocked = Boolean(
+    event.certificatesReleased || registration?.certificateUnlocked || attendanceRecord?.certificateUnlocked
+  );
+
+  const handleDownloadCertificate = async () => {
+    const record: AttendanceRecord = attendanceRecord || {
+      id: `att-gen-${Date.now()}`,
+      eventId: event.id,
+      eventTitle: event.title,
+      userId: state.currentUser.id,
+      userName: state.currentUser.name,
+      userRollNo: state.currentUser.rollNo,
+      department: state.currentUser.department,
+      timestamp: new Date().toISOString(),
+      verifiedMethod: "qr_scan",
+      tokenUsed: "GSFC-VERIFIED",
+      synced: true,
+      certificateId: `GSFC-CERT-${event.id.replace(/[^a-zA-Z0-9]/g, "").toUpperCase()}-${state.currentUser.rollNo.slice(-4)}-98A4`,
+    };
+
+    setDownloadingCert(true);
+    try {
+      await generateCertificatePdf(record, event, state.currentUser);
+    } catch (err) {
+      console.error("Certificate download error", err);
+    } finally {
+      setDownloadingCert(false);
+    }
+  };
 
   const handleRegisterSingle = () => {
     campusStore.registerForEvent(event.id, false);
@@ -264,10 +297,29 @@ export function EventDetailModal({
               {/* Registration & Check-in Controls */}
               <div className="flex items-center gap-2">
                 {isAttended ? (
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className="flex items-center gap-1 rounded-xl bg-emerald-500/15 px-3 py-2 text-xs font-bold text-emerald-600 dark:text-emerald-400">
                       <Check className="size-4" /> Attendance Verified
                     </span>
+                    {isCertUnlocked ? (
+                      <Button
+                        size="sm"
+                        onClick={handleDownloadCertificate}
+                        disabled={downloadingCert}
+                        className="rounded-xl bg-[#1A3C6E] text-xs font-bold text-white hover:bg-[#1A3C6E]/90 dark:bg-[#F2A93B] dark:text-slate-950"
+                      >
+                        <Download className="mr-1.5 size-3.5" />
+                        {downloadingCert ? "Generating PDF..." : "Download Certificate"}
+                      </Button>
+                    ) : (
+                      <span
+                        className="flex items-center gap-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-bold text-amber-600 dark:text-amber-400"
+                        title="Certificate release pending administration approval"
+                      >
+                        <Lock className="size-3.5" />
+                        <span>Cert Pending Release</span>
+                      </span>
+                    )}
                     <Button
                       variant="outline"
                       size="sm"

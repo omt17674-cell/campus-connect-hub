@@ -6,6 +6,7 @@ import {
   Clock,
   Download,
   FileCheck,
+  Lock,
   MapPin,
   Search,
   Star,
@@ -180,8 +181,14 @@ export function MyEventsView({ state, onSelectEvent, onOpenPunchModal }: MyEvent
         ) : (
           filteredList.map((event) => {
             const reg = userRegistrations.find((r) => r.eventId === event.id);
-            const isAttended = activeTab === "attended" || reg?.status === "attended";
+            const att = state.attendanceRecords.find(
+              (a) => a.eventId === event.id && a.userId === state.currentUser.id
+            );
+            const isAttended = activeTab === "attended" || reg?.status === "attended" || Boolean(att);
             const isPunchedIn = reg?.status === "punched_in" || Boolean(reg?.punchInTime);
+            const isCertUnlocked = Boolean(
+              event.certificatesReleased || reg?.certificateUnlocked || att?.certificateUnlocked
+            );
 
             return (
               <div
@@ -241,16 +248,26 @@ export function MyEventsView({ state, onSelectEvent, onOpenPunchModal }: MyEvent
                 <div className="flex shrink-0 flex-wrap items-center gap-2">
                   {isAttended ? (
                     <>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleDownloadCertificate(event)}
-                        disabled={downloadingCertId === event.id}
-                        className="h-9 gap-1.5 rounded-xl border-[#1A3C6E]/30 bg-[#1A3C6E]/5 text-xs font-bold text-[#1A3C6E] hover:bg-[#1A3C6E]/15 dark:border-[#F2A93B]/30 dark:bg-[#F2A93B]/10 dark:text-[#F2A93B]"
-                      >
-                        <Download className="size-3.5" />
-                        <span>{downloadingCertId === event.id ? "Generating..." : "PDF Certificate"}</span>
-                      </Button>
+                      {isCertUnlocked ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleDownloadCertificate(event)}
+                          disabled={downloadingCertId === event.id}
+                          className="h-9 gap-1.5 rounded-xl border-[#1A3C6E]/30 bg-[#1A3C6E]/5 text-xs font-bold text-[#1A3C6E] hover:bg-[#1A3C6E]/15 dark:border-[#F2A93B]/30 dark:bg-[#F2A93B]/10 dark:text-[#F2A93B]"
+                        >
+                          <Download className="size-3.5" />
+                          <span>{downloadingCertId === event.id ? "Generating..." : "PDF Certificate"}</span>
+                        </Button>
+                      ) : (
+                        <span
+                          className="flex items-center gap-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-bold text-amber-600 dark:text-amber-400"
+                          title="Administration / Faculty Coordinator is finalizing roster verification before issuing certificates"
+                        >
+                          <Lock className="size-3.5" />
+                          <span>Cert Pending Admin Release</span>
+                        </span>
+                      )}
                       <Button
                         size="sm"
                         variant="ghost"

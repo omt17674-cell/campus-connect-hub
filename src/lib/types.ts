@@ -59,6 +59,7 @@ export interface CampusEvent {
   venueLatitude?: number; // GSFC University coordinates e.g. 22.3685
   venueLongitude?: number; // e.g. 73.1895
   allowedRadiusMeters?: number; // default 350m
+  certificatesReleased?: boolean; // Admin release grant
 }
 
 export interface TeamMember {
@@ -83,6 +84,7 @@ export interface Registration {
   punchOutTime?: string;
   punchInLocation?: { latitude: number; longitude: number; distanceMeters: number; verified: boolean };
   punchOutLocation?: { latitude: number; longitude: number; distanceMeters: number; verified: boolean };
+  certificateUnlocked?: boolean;
 }
 
 export interface AttendanceRecord {
@@ -99,7 +101,8 @@ export interface AttendanceRecord {
   verifiedMethod: "qr_scan" | "manual_admin" | "offline_sync" | "live_punch";
   tokenUsed: string;
   synced: boolean;
-  certificateId: string;
+  certificateId?: string;
+  certificateUnlocked?: boolean;
   userLatitude?: number;
   userLongitude?: number;
   distanceFromVenueMeters?: number;

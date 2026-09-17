@@ -50,6 +50,7 @@ export function EventAttendanceViewer({
     }
   }, [selectedEventId]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [departmentFilter, setDepartmentFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<"all" | "punched_in" | "attended" | "pending">("all");
   const [downloadingCertUserId, setDownloadingCertUserId] = useState<string | null>(null);
 
@@ -58,6 +59,17 @@ export function EventAttendanceViewer({
   // Get registrations for this specific event
   const eventRegistrations = state.registrations.filter((r) => r.eventId === activeEvent?.id);
   const eventAttendanceRecords = state.attendanceRecords.filter((a) => a.eventId === activeEvent?.id);
+
+  // Compute distinct departments
+  const availableDepartments = Array.from(
+    new Set([
+      "B.Tech Computer Science & Engineering",
+      "Chemical Engineering",
+      "Management & Business Studies",
+      "School of Science & Biotechnology",
+      ...eventRegistrations.map((r) => r.department).filter(Boolean),
+    ])
+  );
 
   // Compute live event stats
   const totalRegistered = eventRegistrations.length;
@@ -69,7 +81,7 @@ export function EventAttendanceViewer({
   ).length;
   const attendanceRate = totalRegistered > 0 ? Math.round((punchedInCount / totalRegistered) * 100) : 0;
 
-  // Filter roster
+  // Filter roster by search, department, and status
   const filteredRoster = eventRegistrations.filter((reg) => {
     const matchesSearch =
       reg.userName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -77,6 +89,10 @@ export function EventAttendanceViewer({
       reg.department.toLowerCase().includes(searchQuery.toLowerCase());
 
     if (!matchesSearch) return false;
+
+    if (departmentFilter !== "all" && reg.department !== departmentFilter) {
+      return false;
+    }
 
     if (statusFilter === "punched_in") {
       return reg.status === "punched_in" || (Boolean(reg.punchInTime) && !reg.punchOutTime);
@@ -105,11 +121,13 @@ export function EventAttendanceViewer({
       "Punch In GPS Distance",
       "Punch Out Time",
       "Status",
+      "Certificate Access",
       "Verification Method",
     ];
 
     const rows = eventRegistrations.map((reg) => {
       const att = eventAttendanceRecords.find((a) => a.userId === reg.userId);
+      const isCertAccessGranted = Boolean(activeEvent.certificatesReleased || reg.certificateUnlocked || att?.certificateUnlocked);
       return [
         reg.userRollNo,
         reg.userName,
@@ -120,6 +138,7 @@ export function EventAttendanceViewer({
         reg.punchInLocation ? `${reg.punchInLocation.distanceMeters}m (Verified)` : att?.distanceFromVenueMeters ? `${att.distanceFromVenueMeters}m` : "On Campus",
         reg.punchOutTime || att?.punchOutTime || "N/A",
         reg.status === "attended" ? "Attendance Verified (Completed)" : reg.status === "punched_in" ? "Punched In (Active)" : "Pending Check-In",
+        isCertAccessGranted ? "Granted (Unlocked in Student Portal)" : "Locked",
         att?.verifiedMethod || "live_punch",
       ];
     });
@@ -137,7 +156,7 @@ export function EventAttendanceViewer({
   // Export PDF Institutional Roster
   const handleExportPdf = () => {
     if (!activeEvent) return;
-    generateEventAttendanceRosterPdf(activeEvent, eventRegistrations, eventAttendanceRecords);
+    generateEventAttendanceRosterPdf(activeEvent, filteredRoster, eventAttendanceRecords);
   };
 
   // Download Individual Student Certificate PDF
@@ -191,6 +210,8 @@ export function EventAttendanceViewer({
     campusStore.updateRegistrationStatus(reg.id, nextStatus);
   };
 
+  const isGlobalCertReleased = Boolean(activeEvent?.certificatesReleased);
+
   return (
     <div className="rounded-3xl border border-border/80 bg-card p-5 shadow-xl space-y-5">
       {/* Header & Event Selector */}
@@ -209,7 +230,7 @@ export function EventAttendanceViewer({
           </h2>
         </div>
 
-        {/* Event Select Dropdown & Export & Conclude Event */}
+        {/* Event Select Dropdown & Export & Release Controls */}
         <div className="flex flex-wrap items-center gap-2">
           <select
             value={currentEventId}
@@ -227,7 +248,28 @@ export function EventAttendanceViewer({
             ))}
           </select>
 
-          {activeEvent && activeEvent.status !== "completed" ? (
+          {/* Admin Certificate Release Button */}
+          {activeEvent && (
+            <Button
+              size="sm"
+              onClick={() => {
+                const res = campusStore.toggleEventCertificateRelease(activeEvent.id);
+                alert(`🎓 ${res.message}`);
+              }}
+              className={cn(
+                "h-9 gap-1.5 rounded-xl text-xs font-bold shadow-md transition-all",
+                isGlobalCertReleased
+                  ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                  : "bg-gradient-to-r from-[#F2A93B] to-amber-600 text-slate-950 hover:opacity-90 font-black"
+              )}
+              title="Toggle certificate download visibility for students in their portal"
+            >
+              <Award className="size-3.5" />
+              {isGlobalCertReleased ? "Certificates Released (Unlocked)" : "Grant All Certificate Access"}
+            </Button>
+          )}
+
+          {activeEvent && activeEvent.status !== "completed" && (
             <Button
               size="sm"
               onClick={() => {
@@ -236,13 +278,9 @@ export function EventAttendanceViewer({
               }}
               className="h-9 gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-[#1A3C6E] text-xs font-bold text-white shadow-md hover:opacity-95"
             >
-              <Award className="size-3.5 text-[#F2A93B]" />
-              Conclude Event & Issue Certificates
+              <Check className="size-3.5 text-[#F2A93B]" />
+              Conclude Event
             </Button>
-          ) : (
-            <span className="flex items-center gap-1.5 rounded-xl bg-emerald-500/15 px-3 py-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">
-              <ShieldCheck className="size-4" /> Completed & Certified
-            </span>
           )}
 
           <Button
@@ -318,19 +356,36 @@ export function EventAttendanceViewer({
       )}
 
       {/* Roster Search & Filter Controls */}
-      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-2.5 size-3.5 text-muted-foreground" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search attendee by name, roll no, department..."
-            className="h-9 w-full rounded-xl border border-border/80 bg-background pl-8 pr-3 text-xs font-medium text-foreground placeholder:text-muted-foreground focus:border-[#1A3C6E] focus:outline-none"
-          />
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-1 flex-wrap items-center gap-2">
+          {/* Search Input */}
+          <div className="relative min-w-[220px] flex-1">
+            <Search className="absolute left-3 top-2.5 size-3.5 text-muted-foreground" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search by student name, roll no..."
+              className="h-9 w-full rounded-xl border border-border/80 bg-background pl-8 pr-3 text-xs font-medium text-foreground placeholder:text-muted-foreground focus:border-[#1A3C6E] focus:outline-none"
+            />
+          </div>
+
+          {/* Department Filter Dropdown */}
+          <select
+            value={departmentFilter}
+            onChange={(e) => setDepartmentFilter(e.target.value)}
+            className="h-9 rounded-xl border border-border/80 bg-background px-3 text-xs font-bold text-foreground focus:border-[#1A3C6E] focus:outline-none"
+          >
+            <option value="all">🏢 All Departments</option>
+            {availableDepartments.map((dept) => (
+              <option key={dept} value={dept}>
+                {dept}
+              </option>
+            ))}
+          </select>
         </div>
 
-        {/* Filter Pills */}
+        {/* Status Filter Pills */}
         <div className="flex items-center gap-1.5 overflow-x-auto text-xs">
           <button
             type="button"
@@ -393,14 +448,15 @@ export function EventAttendanceViewer({
               <th className="px-3 py-3">Punch In (Entry)</th>
               <th className="px-3 py-3">Punch Out (Exit)</th>
               <th className="px-3 py-3">Verification Method</th>
-              <th className="px-3 py-3 text-right">Status / Action</th>
+              <th className="px-3 py-3 text-center">Certificate Release</th>
+              <th className="px-3 py-3 text-right">Status / PDF</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border/60">
             {filteredRoster.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground text-xs">
-                  No attendees found matching the query.
+                <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground text-xs">
+                  No attendees found matching the department & search criteria.
                 </td>
               </tr>
             ) : (
@@ -409,6 +465,9 @@ export function EventAttendanceViewer({
                 const hasPunchIn = Boolean(reg.punchInTime || att?.punchInTime || att?.timestamp);
                 const hasPunchOut = Boolean(reg.punchOutTime || att?.punchOutTime);
                 const isCompleted = reg.status === "attended" || hasPunchOut;
+                const isCertAccessGranted = Boolean(
+                  activeEvent.certificatesReleased || reg.certificateUnlocked || att?.certificateUnlocked
+                );
 
                 return (
                   <tr key={reg.id} className="hover:bg-card/40 transition-colors">
@@ -470,6 +529,32 @@ export function EventAttendanceViewer({
                       <span className="text-[10px] text-emerald-600 font-bold">Geo-Verified</span>
                     </td>
 
+                    {/* Certificate Access Release Control */}
+                    <td className="px-3 py-3 text-center">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          const res = campusStore.toggleStudentCertificateAccess(activeEvent.id, reg.userId);
+                          alert(
+                            res.unlocked
+                              ? `🎓 Certificate download access granted to ${reg.userName}!`
+                              : `🔒 Certificate download access revoked for ${reg.userName}.`
+                          );
+                        }}
+                        className={cn(
+                          "h-7 gap-1 rounded-lg text-[10px] font-bold transition-all",
+                          isCertAccessGranted
+                            ? "border-emerald-500/50 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+                            : "border-amber-500/50 bg-amber-500/15 text-amber-700 dark:text-amber-300 hover:bg-emerald-500/20"
+                        )}
+                        title="Click to grant/revoke this student's certificate download in their portal"
+                      >
+                        <Award className="size-3" />
+                        <span>{isCertAccessGranted ? "🔓 Access Granted" : "🔒 Grant Access"}</span>
+                      </Button>
+                    </td>
+
                     {/* Status & Manual Action */}
                     <td className="px-3 py-3 text-right">
                       <div className="flex items-center justify-end gap-1.5">
@@ -498,7 +583,7 @@ export function EventAttendanceViewer({
                           )}
                           title="Click to toggle attendance status"
                         >
-                          {isCompleted ? "✓ Verified Present" : hasPunchIn ? "⚡ In Session" : "Mark Present"}
+                          {isCompleted ? "✓ Verified" : hasPunchIn ? "⚡ In Session" : "Mark Present"}
                         </button>
                       </div>
                     </td>
