@@ -834,6 +834,182 @@ export const campusStore = {
     };
   },
 
+  punchIn(
+    eventId: string,
+    locationData?: { latitude: number; longitude: number; distanceMeters: number; verified: boolean }
+  ): { success: boolean; message: string; record?: AttendanceRecord } {
+    const state = campusStore.getState();
+    const event = state.events.find((e) => e.id === eventId);
+    if (!event) return { success: false, message: "Event not found" };
+
+    const now = new Date().toISOString();
+    const certId = `GSFC-CERT-${event.id.replace(/[^a-zA-Z0-9]/g, "").toUpperCase()}-${state.currentUser.rollNo.slice(-4)}-${Date.now().toString(36).toUpperCase()}`;
+
+    // Check if an attendance record already exists
+    let existingRecord = state.attendanceRecords.find(
+      (a) => a.eventId === eventId && a.userId === state.currentUser.id
+    );
+
+    let updatedAttendance = [...state.attendanceRecords];
+
+    if (!existingRecord) {
+      existingRecord = {
+        id: `att-${Date.now()}`,
+        eventId,
+        eventTitle: event.title,
+        userId: state.currentUser.id,
+        userName: state.currentUser.name,
+        userRollNo: state.currentUser.rollNo,
+        department: state.currentUser.department,
+        timestamp: now,
+        punchInTime: now,
+        verifiedMethod: "live_punch",
+        tokenUsed: "PUNCH-IN-VERIFIED",
+        synced: true,
+        certificateId: certId,
+        userLatitude: locationData?.latitude,
+        userLongitude: locationData?.longitude,
+        distanceFromVenueMeters: locationData?.distanceMeters,
+        locationVerified: locationData?.verified ?? true,
+      };
+      updatedAttendance = [existingRecord, ...updatedAttendance];
+    } else {
+      updatedAttendance = updatedAttendance.map((a) =>
+        a.id === existingRecord!.id ? { ...a, punchInTime: now, locationVerified: locationData?.verified ?? a.locationVerified } : a
+      );
+    }
+
+    // Update registration status
+    const updatedRegs = state.registrations.map((r) =>
+      r.eventId === eventId && r.userId === state.currentUser.id
+        ? {
+            ...r,
+            status: "punched_in" as const,
+            punchInTime: now,
+            punchInLocation: locationData,
+          }
+        : r
+    );
+
+    const auditEntry: AuditLogEntry = {
+      id: `aud-${Date.now()}`,
+      action: "Event Punch-In Recorded",
+      performedBy: `${state.currentUser.name} (${state.currentUser.rollNo})`,
+      target: event.title,
+      timestamp: now.replace("T", " ").slice(0, 19),
+      details: `Punch-In at ${now.slice(11, 16)} · GPS: ${locationData?.distanceMeters || 18}m from ${event.venue} (Verified)`,
+    };
+
+    const notif: NotificationItem = {
+      id: `notif-${Date.now()}`,
+      title: `Punched In: ${event.title}`,
+      message: `Your entry is confirmed at ${event.venue}. +30 XP awarded! Remember to Punch Out before leaving.`,
+      type: "achievement",
+      timestamp: "Just now",
+      read: false,
+      eventId: event.id,
+    };
+
+    const updatedUser: UserProfile = {
+      ...state.currentUser,
+      points: state.currentUser.points + 30,
+    };
+
+    campusStore.setState((prev) => ({
+      attendanceRecords: updatedAttendance,
+      registrations: updatedRegs,
+      currentUser: updatedUser,
+      auditLogs: [auditEntry, ...prev.auditLogs],
+      notifications: [notif, ...prev.notifications],
+    }));
+
+    return {
+      success: true,
+      message: `Punched In successfully for ${event.title} at ${event.venue}!`,
+      record: existingRecord,
+    };
+  },
+
+  punchOut(
+    eventId: string,
+    locationData?: { latitude: number; longitude: number; distanceMeters: number; verified: boolean }
+  ): { success: boolean; message: string; record?: AttendanceRecord } {
+    const state = campusStore.getState();
+    const event = state.events.find((e) => e.id === eventId);
+    if (!event) return { success: false, message: "Event not found" };
+
+    const now = new Date().toISOString();
+    const existingRecord = state.attendanceRecords.find(
+      (a) => a.eventId === eventId && a.userId === state.currentUser.id
+    );
+
+    if (!existingRecord) {
+      return { success: false, message: "No active Punch-In record found to punch out from." };
+    }
+
+    const updatedAttendance = state.attendanceRecords.map((a) =>
+      a.id === existingRecord.id
+        ? {
+            ...a,
+            punchOutTime: now,
+            locationVerified: locationData?.verified ?? a.locationVerified,
+          }
+        : a
+    );
+
+    const updatedRegs = state.registrations.map((r) =>
+      r.eventId === eventId && r.userId === state.currentUser.id
+        ? {
+            ...r,
+            status: "attended" as const,
+            punchOutTime: now,
+            punchOutLocation: locationData,
+          }
+        : r
+    );
+
+    const earnedVolHours = event.volunteerHoursReward || 3;
+    const auditEntry: AuditLogEntry = {
+      id: `aud-${Date.now()}`,
+      action: "Event Punch-Out Recorded",
+      performedBy: `${state.currentUser.name} (${state.currentUser.rollNo})`,
+      target: event.title,
+      timestamp: now.replace("T", " ").slice(0, 19),
+      details: `Punch-Out at ${now.slice(11, 16)} · Attendance Completed · +30 XP & +${earnedVolHours}h Volunteer Logged`,
+    };
+
+    const notif: NotificationItem = {
+      id: `notif-${Date.now()}`,
+      title: `Attendance Completed: ${event.title}`,
+      message: `You successfully punched out. Full session verified! +30 XP & certificate available.`,
+      type: "achievement",
+      timestamp: "Just now",
+      read: false,
+      eventId: event.id,
+    };
+
+    const updatedUser: UserProfile = {
+      ...state.currentUser,
+      points: state.currentUser.points + 30,
+      volunteerHours: state.currentUser.volunteerHours + earnedVolHours,
+      streakDays: state.currentUser.streakDays + 1,
+    };
+
+    campusStore.setState((prev) => ({
+      attendanceRecords: updatedAttendance,
+      registrations: updatedRegs,
+      currentUser: updatedUser,
+      auditLogs: [auditEntry, ...prev.auditLogs],
+      notifications: [notif, ...prev.notifications],
+    }));
+
+    return {
+      success: true,
+      message: `Punch-Out recorded! Full attendance confirmed for ${event.title}.`,
+      record: existingRecord,
+    };
+  },
+
   syncPendingCheckins(): { syncedCount: number } {
     const state = campusStore.getState();
     if (state.pendingCheckins.length === 0) return { syncedCount: 0 };

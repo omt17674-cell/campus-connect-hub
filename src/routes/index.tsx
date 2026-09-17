@@ -20,6 +20,7 @@ import { GamificationView } from "@/components/student/GamificationView";
 import { ProfileView } from "@/components/student/ProfileView";
 import { EventDetailModal } from "@/components/student/EventDetailModal";
 import { QRScannerModal } from "@/components/student/QRScannerModal";
+import { PunchAttendanceModal } from "@/components/student/PunchAttendanceModal";
 import { NotificationsModal } from "@/components/student/NotificationsModal";
 import { MobileInstallModal } from "@/components/mobile/MobileInstallModal";
 import { OrganizerDashboard } from "@/components/organizer/OrganizerDashboard";
@@ -50,6 +51,7 @@ function CampusConnectApp() {
   const [state, setState] = useState<CampusState>(campusStore.getState());
   const [studentView, setStudentView] = useState<StudentNavView>("home");
   const [selectedEvent, setSelectedEvent] = useState<CampusEvent | null>(null);
+  const [punchModalEvent, setPunchModalEvent] = useState<CampusEvent | null>(null);
   const [showScanner, setShowScanner] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showMobileModal, setShowMobileModal] = useState(false);
@@ -177,6 +179,7 @@ function CampusConnectApp() {
                     state={state}
                     onSelectEvent={setSelectedEvent}
                     onOpenScanner={() => setShowScanner(true)}
+                    onOpenPunchModal={(evt) => setPunchModalEvent(evt)}
                   />
                   <AttendanceHub
                     state={state}
@@ -190,6 +193,7 @@ function CampusConnectApp() {
                 <MyEventsView
                   state={state}
                   onSelectEvent={setSelectedEvent}
+                  onOpenPunchModal={(evt) => setPunchModalEvent(evt)}
                 />
               )}
 
@@ -232,6 +236,17 @@ function CampusConnectApp() {
             setSelectedEvent(null);
             setShowScanner(true);
           }}
+          onOpenPunchModal={(evt) => {
+            setPunchModalEvent(evt);
+          }}
+        />
+      )}
+
+      {punchModalEvent && (
+        <PunchAttendanceModal
+          event={punchModalEvent}
+          onClose={() => setPunchModalEvent(null)}
+          onSuccess={() => setPunchModalEvent(null)}
         />
       )}
 

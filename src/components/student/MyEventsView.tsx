@@ -22,9 +22,10 @@ import { cn } from "@/lib/utils";
 interface MyEventsViewProps {
   state: CampusState;
   onSelectEvent: (event: CampusEvent) => void;
+  onOpenPunchModal?: (event: CampusEvent) => void;
 }
 
-export function MyEventsView({ state, onSelectEvent }: MyEventsViewProps) {
+export function MyEventsView({ state, onSelectEvent, onOpenPunchModal }: MyEventsViewProps) {
   const [activeTab, setActiveTab] = useState<"registered" | "attended" | "past">("registered");
   const [searchQuery, setSearchQuery] = useState("");
   const [feedbackEvent, setFeedbackEvent] = useState<CampusEvent | null>(null);
@@ -36,7 +37,7 @@ export function MyEventsView({ state, onSelectEvent }: MyEventsViewProps) {
 
   const registeredEvents = state.events.filter((e) =>
     userRegistrations.some(
-      (r) => r.eventId === e.id && (r.status === "confirmed" || r.status === "waitlisted" || r.status === "pending_approval")
+      (r) => r.eventId === e.id && (r.status === "confirmed" || r.status === "waitlisted" || r.status === "pending_approval" || r.status === "punched_in")
     )
   );
 
@@ -173,13 +174,14 @@ export function MyEventsView({ state, onSelectEvent }: MyEventsViewProps) {
             <p className="mt-1 text-xs text-muted-foreground">
               {activeTab === "registered"
                 ? "Browse upcoming events in the Home tab and register with one click."
-                : "Attend campus sessions and check in with your QR scanner to earn verified certificates."}
+                : "Attend campus sessions and check in with your live punch or QR scanner to earn verified certificates."}
             </p>
           </div>
         ) : (
           filteredList.map((event) => {
             const reg = userRegistrations.find((r) => r.eventId === event.id);
             const isAttended = activeTab === "attended" || reg?.status === "attended";
+            const isPunchedIn = reg?.status === "punched_in" || Boolean(reg?.punchInTime);
 
             return (
               <div
@@ -205,6 +207,11 @@ export function MyEventsView({ state, onSelectEvent }: MyEventsViewProps) {
                       {reg?.isTeam && (
                         <span className="flex items-center gap-1 rounded-md bg-brand/10 px-2 py-0.5 text-[10px] font-semibold text-brand">
                           <Users className="size-3" /> {reg.teamName || "Team"}
+                        </span>
+                      )}
+                      {isPunchedIn && !isAttended && (
+                        <span className="rounded-md bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 animate-pulse">
+                          🟢 Punched In (Active)
                         </span>
                       )}
                       {reg?.status === "waitlisted" && (
@@ -255,14 +262,31 @@ export function MyEventsView({ state, onSelectEvent }: MyEventsViewProps) {
                       </Button>
                     </>
                   ) : (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => onSelectEvent(event)}
-                      className="h-9 rounded-xl text-xs font-semibold"
-                    >
-                      View Pass & Details
-                    </Button>
+                    <>
+                      {onOpenPunchModal && (
+                        <Button
+                          size="sm"
+                          onClick={() => onOpenPunchModal(event)}
+                          className={cn(
+                            "h-9 gap-1.5 rounded-xl text-xs font-bold shadow-md",
+                            isPunchedIn
+                              ? "bg-gradient-to-r from-amber-600 to-rose-600 text-white"
+                              : "bg-gradient-to-r from-emerald-600 to-[#1A3C6E] text-white"
+                          )}
+                        >
+                          <MapPin className="size-3.5 text-[#F2A93B]" />
+                          {isPunchedIn ? "Punch Out (Exit Attendance)" : "Punch In (Mark Attendance)"}
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => onSelectEvent(event)}
+                        className="h-9 rounded-xl text-xs font-semibold"
+                      >
+                        View Pass & Details
+                      </Button>
+                    </>
                   )}
                 </div>
               </div>

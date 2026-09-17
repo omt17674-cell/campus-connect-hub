@@ -21,6 +21,7 @@ interface HomeFeedProps {
   state: CampusState;
   onSelectEvent: (event: CampusEvent) => void;
   onOpenScanner: () => void;
+  onOpenPunchModal?: (event: CampusEvent) => void;
 }
 
 const CATEGORIES: Array<"All" | EventCategory> = [
@@ -33,7 +34,12 @@ const CATEGORIES: Array<"All" | EventCategory> = [
   "Workshop",
 ];
 
-export function HomeFeed({ state, onSelectEvent, onOpenScanner }: HomeFeedProps) {
+export function HomeFeed({
+  state,
+  onSelectEvent,
+  onOpenScanner,
+  onOpenPunchModal,
+}: HomeFeedProps) {
   const t = translations[state.language];
   const [selectedCategory, setSelectedCategory] = useState<"All" | EventCategory>("All");
   const [searchQuery, setSearchQuery] = useState("");
@@ -241,14 +247,26 @@ export function HomeFeed({ state, onSelectEvent, onOpenScanner }: HomeFeedProps)
                     </Button>
 
                     {isRegistered ? (
-                      <Button
-                        size="sm"
-                        disabled
-                        className="h-9 gap-1 rounded-xl bg-emerald-500/15 text-xs font-bold text-emerald-600 dark:text-emerald-400"
-                      >
-                        <Check className="size-3.5" />
-                        {isWaitlisted ? "Waitlisted" : "Registered"}
-                      </Button>
+                      <div className="flex items-center gap-1.5">
+                        {onOpenPunchModal && (
+                          <Button
+                            size="sm"
+                            onClick={() => onOpenPunchModal(event)}
+                            className="h-9 gap-1 rounded-xl bg-gradient-to-r from-emerald-600 to-[#1A3C6E] text-xs font-bold text-white shadow-sm hover:opacity-95"
+                          >
+                            <MapPin className="size-3.5 text-[#F2A93B]" />
+                            Punch In / Out
+                          </Button>
+                        )}
+                        <Button
+                          size="sm"
+                          disabled
+                          className="h-9 gap-1 rounded-xl bg-emerald-500/15 text-xs font-bold text-emerald-600 dark:text-emerald-400"
+                        >
+                          <Check className="size-3.5" />
+                          {isWaitlisted ? "Waitlisted" : "Registered"}
+                        </Button>
+                      </div>
                     ) : (
                       <Button
                         size="sm"
@@ -257,6 +275,9 @@ export function HomeFeed({ state, onSelectEvent, onOpenScanner }: HomeFeedProps)
                             onSelectEvent(event);
                           } else {
                             campusStore.registerForEvent(event.id, false);
+                            if (onOpenPunchModal) {
+                              onOpenPunchModal(event);
+                            }
                           }
                         }}
                         className={cn(

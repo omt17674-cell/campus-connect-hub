@@ -75,10 +75,14 @@ export interface Registration {
   userName: string;
   department: string;
   registeredAt: string;
-  status: "confirmed" | "waitlisted" | "pending_approval" | "rejected" | "attended";
+  status: "confirmed" | "waitlisted" | "pending_approval" | "rejected" | "attended" | "punched_in" | "punched_out";
   isTeam: boolean;
   teamName?: string;
   teamMembers?: TeamMember[];
+  punchInTime?: string;
+  punchOutTime?: string;
+  punchInLocation?: { latitude: number; longitude: number; distanceMeters: number; verified: boolean };
+  punchOutLocation?: { latitude: number; longitude: number; distanceMeters: number; verified: boolean };
 }
 
 export interface AttendanceRecord {
@@ -90,7 +94,9 @@ export interface AttendanceRecord {
   userRollNo: string;
   department: string;
   timestamp: string;
-  verifiedMethod: "qr_scan" | "manual_admin" | "offline_sync";
+  punchInTime?: string;
+  punchOutTime?: string;
+  verifiedMethod: "qr_scan" | "manual_admin" | "offline_sync" | "live_punch";
   tokenUsed: string;
   synced: boolean;
   certificateId: string;

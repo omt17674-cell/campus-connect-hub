@@ -31,12 +31,14 @@ interface EventDetailModalProps {
   event: CampusEvent;
   onClose: () => void;
   onOpenScanner?: () => void;
+  onOpenPunchModal?: (event: CampusEvent) => void;
 }
 
 export function EventDetailModal({
   event,
   onClose,
   onOpenScanner,
+  onOpenPunchModal,
 }: EventDetailModalProps) {
   const state = campusStore.getState();
   const [showTeamModal, setShowTeamModal] = useState(false);
@@ -55,6 +57,10 @@ export function EventDetailModal({
 
   const handleRegisterSingle = () => {
     campusStore.registerForEvent(event.id, false);
+    if (onOpenPunchModal) {
+      onClose();
+      onOpenPunchModal(event);
+    }
   };
 
   const handleShare = () => {
@@ -272,10 +278,22 @@ export function EventDetailModal({
                     </Button>
                   </div>
                 ) : isRegistered ? (
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className="rounded-xl bg-brand/10 px-3 py-2 text-xs font-bold text-brand">
                       {registration?.status === "waitlisted" ? "Waitlisted (#1)" : "Registered (Confirmed)"}
                     </span>
+                    {onOpenPunchModal && (
+                      <Button
+                        onClick={() => {
+                          onClose();
+                          onOpenPunchModal(event);
+                        }}
+                        className="rounded-xl bg-gradient-to-r from-emerald-600 to-[#1A3C6E] text-xs font-bold text-white shadow-md hover:opacity-90"
+                      >
+                        <MapPin className="mr-1.5 size-3.5 text-[#F2A93B]" />
+                        Mark Attendance (Punch In / Out)
+                      </Button>
+                    )}
                     {event.status === "live" && onOpenScanner && (
                       <Button
                         onClick={() => {
@@ -330,6 +348,10 @@ export function EventDetailModal({
           onClose={() => setShowTeamModal(false)}
           onSuccess={() => {
             setShowTeamModal(false);
+            if (onOpenPunchModal) {
+              onClose();
+              onOpenPunchModal(event);
+            }
           }}
         />
       )}

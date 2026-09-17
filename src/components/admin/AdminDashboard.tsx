@@ -12,6 +12,7 @@ import {
   ShieldAlert,
   ShieldCheck,
   TrendingUp,
+  UserCheck,
   Users,
   XCircle,
 } from "lucide-react";
@@ -29,6 +30,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { CampusState, campusStore } from "@/lib/campus-store";
 import { translations } from "@/lib/i18n";
+import { EventAttendanceViewer } from "@/components/organizer/EventAttendanceViewer";
 import { cn } from "@/lib/utils";
 
 interface AdminDashboardProps {
@@ -37,7 +39,7 @@ interface AdminDashboardProps {
 
 export function AdminDashboard({ state }: AdminDashboardProps) {
   const t = translations[state.language];
-  const [adminTab, setAdminTab] = useState<"overview" | "approvals" | "alerts" | "audit">("overview");
+  const [adminTab, setAdminTab] = useState<"overview" | "roster" | "approvals" | "alerts" | "audit">("overview");
 
   const pendingApprovals = state.events.filter((e) => e.status === "pending_approval");
 
@@ -109,13 +111,13 @@ export function AdminDashboard({ state }: AdminDashboardProps) {
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand/70">
-            Dean of Student Affairs & Academic Records
+            University Administration & TPC Governance
           </p>
           <h2 className="mt-1 font-display text-2xl font-black text-foreground sm:text-3xl">
             Campus Activity & Governance Dashboard
           </h2>
           <p className="mt-1 text-xs text-muted-foreground">
-            Cross-department analytics, event approval queue, and automated attendance flagging
+            Cross-department analytics, event-by-event attendance inspection, event approval queue, and automated attendance flagging
           </p>
         </div>
 
@@ -143,6 +145,21 @@ export function AdminDashboard({ state }: AdminDashboardProps) {
           )}
         >
           <BarChart3 className="mr-1.5 size-3.5" /> Analytics Overview
+        </Button>
+
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setAdminTab("roster")}
+          className={cn(
+            "rounded-xl text-xs font-bold",
+            adminTab === "roster"
+              ? "bg-[#1A3C6E] text-white"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <UserCheck className="mr-1.5 size-3.5 text-[#F2A93B]" />
+          Event-by-Event Roster
         </Button>
 
         <Button
@@ -190,6 +207,14 @@ export function AdminDashboard({ state }: AdminDashboardProps) {
           Immutable Audit Log
         </Button>
       </div>
+
+      {/* Event Attendance Roster View */}
+      {adminTab === "roster" && (
+        <EventAttendanceViewer
+          state={state}
+          titlePrefix="TPC Admin & University Governance Roster"
+        />
+      )}
 
       {/* Overview Analytics View */}
       {adminTab === "overview" && (
