@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   Award,
   Calendar,
@@ -34,29 +35,45 @@ export function MyEventsView({ state, onSelectEvent, onOpenPunchModal }: MyEvent
   const [feedbackEvent, setFeedbackEvent] = useState<CampusEvent | null>(null);
   const [downloadingCertId, setDownloadingCertId] = useState<string | null>(null);
 
-  const currentRollNo = state.currentUser.rollNo?.toLowerCase() || "";
-  const currentUserId = state.currentUser.id;
-  const currentUserName = state.currentUser.name?.toLowerCase() || "";
+  const currentUser = state?.currentUser || {
+    id: "u-om",
+    name: "Om Thakkar",
+    rollNo: "24BT04171",
+    department: "B.Tech CSE",
+  };
 
-  const userRegistrations = state.registrations.filter(
+  const currentRollNo = currentUser.rollNo?.toLowerCase() || "";
+  const currentUserId = currentUser.id || "";
+  const currentUserName = currentUser.name?.toLowerCase() || "";
+
+  const registrations = state?.registrations || [];
+  const events = state?.events || [];
+  const attendanceRecords = state?.attendanceRecords || [];
+
+  const userRegistrations = registrations.filter(
     (r) =>
-      r.userId === currentUserId ||
-      (r.userRollNo && r.userRollNo.toLowerCase() === currentRollNo) ||
-      (r.userName && r.userName.toLowerCase() === currentUserName)
+      r &&
+      (r.userId === currentUserId ||
+        (r.userRollNo && r.userRollNo.toLowerCase() === currentRollNo) ||
+        (r.userName && r.userName.toLowerCase() === currentUserName))
   );
 
-  const attendedEvents = state.events.filter((e) =>
-    state.attendanceRecords.some(
+  const attendedEvents = events.filter((e) =>
+    e &&
+    (attendanceRecords.some(
       (a) =>
+        a &&
         a.eventId === e.id &&
         (a.userId === currentUserId || (a.userRollNo && a.userRollNo.toLowerCase() === currentRollNo))
     ) ||
-    userRegistrations.some((r) => r.eventId === e.id && r.status === "attended")
+      userRegistrations.some((r) => r.eventId === e.id && r.status === "attended"))
   );
 
-  const registeredEvents = state.events.filter((e) =>
+  const registeredEvents = events.filter((e) =>
+    e &&
     userRegistrations.some(
       (r) =>
+        r &&
         r.eventId === e.id &&
         (r.status === "confirmed" ||
           r.status === "waitlisted" ||
@@ -65,8 +82,8 @@ export function MyEventsView({ state, onSelectEvent, onOpenPunchModal }: MyEvent
     )
   );
 
-  const pastEvents = state.events.filter(
-    (e) => e.status === "completed" && !attendedEvents.some((ae) => ae.id === e.id)
+  const pastEvents = events.filter(
+    (e) => e && e.status === "completed" && !attendedEvents.some((ae) => ae && ae.id === e.id)
   );
 
   const currentList =
@@ -78,32 +95,34 @@ export function MyEventsView({ state, onSelectEvent, onOpenPunchModal }: MyEvent
 
   const filteredList = currentList.filter(
     (e) =>
-      e.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      e.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      e.department.toLowerCase().includes(searchQuery.toLowerCase())
+      e &&
+      ((e.title || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (e.category || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (e.department || "").toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   const handleDownloadCertificate = async (event: CampusEvent) => {
-    const record = state.attendanceRecords.find(
-      (a) => a.eventId === event.id && a.userId === state.currentUser.id
+    if (!event) return;
+    const record = attendanceRecords.find(
+      (a) => a && a.eventId === event.id && a.userId === currentUser.id
     ) || {
       id: `att-gen-${Date.now()}`,
       eventId: event.id,
       eventTitle: event.title,
-      userId: state.currentUser.id,
-      userName: state.currentUser.name,
-      userRollNo: state.currentUser.rollNo,
-      department: state.currentUser.department,
+      userId: currentUser.id,
+      userName: currentUser.name || "Om Thakkar",
+      userRollNo: currentUser.rollNo || "24BT04171",
+      department: currentUser.department || "Computer Science",
       timestamp: new Date().toISOString(),
       verifiedMethod: "qr_scan" as const,
       tokenUsed: "GSFC-VERIFIED",
       synced: true,
-      certificateId: `GSFC-CERT-${event.id.replace(/[^a-zA-Z0-9]/g, "").toUpperCase()}-${state.currentUser.rollNo.slice(-4)}-98A4`,
+      certificateId: `GSFC-CERT-${(event.id || "EVT").replace(/[^a-zA-Z0-9]/g, "").toUpperCase()}-${(currentUser.rollNo || "4171").slice(-4)}-98A4`,
     };
 
     setDownloadingCertId(event.id);
     try {
-      await generateCertificatePdf(record, event, state.currentUser);
+      await generateCertificatePdf(record, event, currentUser);
     } catch (err) {
       console.error("Certificate download error", err);
     } finally {
@@ -201,15 +220,20 @@ export function MyEventsView({ state, onSelectEvent, onOpenPunchModal }: MyEvent
           </div>
         ) : (
           filteredList.map((event) => {
-            const reg = userRegistrations.find((r) => r.eventId === event.id);
-            const att = state.attendanceRecords.find(
-              (a) => a.eventId === event.id && a.userId === state.currentUser.id
+            if (!event) return null;
+            const reg = userRegistrations.find((r) => r && r.eventId === event.id);
+            const att = attendanceRecords.find(
+              (a) => a && a.eventId === event.id && a.userId === currentUser.id
             );
             const isAttended = activeTab === "attended" || reg?.status === "attended" || Boolean(att);
             const isPunchedIn = reg?.status === "punched_in" || Boolean(reg?.punchInTime);
             const isCertUnlocked = Boolean(
               event.certificatesReleased || reg?.certificateUnlocked || att?.certificateUnlocked
             );
+
+            const dateParts = (event.date || "2026-06-12").split("-");
+            const monthStr = dateParts[1] === "06" ? "JUN" : dateParts[1] === "05" ? "MAY" : "JUL";
+            const dayStr = dateParts[2] || "12";
 
             return (
               <div
@@ -221,10 +245,10 @@ export function MyEventsView({ state, onSelectEvent, onOpenPunchModal }: MyEvent
                   <div className="flex items-start gap-3.5">
                     <div className="flex size-14 shrink-0 flex-col items-center justify-center rounded-xl bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20">
                       <span className="text-[10px] font-bold uppercase tracking-wider text-[#F2A93B]">
-                        {event.date.split("-")[1] === "06" ? "JUN" : "MAY"}
+                        {monthStr}
                       </span>
                       <span className="font-display text-base font-black leading-none">
-                        {event.date.split("-")[2] || "12"}
+                        {dayStr}
                       </span>
                     </div>
 
@@ -358,7 +382,7 @@ export function MyEventsView({ state, onSelectEvent, onOpenPunchModal }: MyEvent
                         <Users className="size-3 text-muted-foreground" />
                         <span>Teammates:</span>
                         <span className="font-bold text-foreground">
-                          {reg.teamMembers.map((m) => m.name.split(" ")[0]).join(", ")}
+                          {reg.teamMembers.map((m) => (m?.name || "Member").split(" ")[0]).join(", ")}
                         </span>
                       </div>
                     )}
