@@ -1,0 +1,497 @@
+import { useState } from "react";
+import {
+  Building2,
+  Check,
+  ChevronDown,
+  Eye,
+  EyeOff,
+  GraduationCap,
+  KeyRound,
+  LayoutGrid,
+  Lock,
+  LogIn,
+  Mail,
+  School,
+  ShieldCheck,
+  Sparkles,
+  User,
+  UserCheck,
+  Users,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  CAMPUS_ACCOUNTS,
+  CampusAccount,
+  STUDENT_ACCOUNT,
+  ADMIN_ACCOUNT,
+  TPC_ADMIN_ACCOUNT,
+  campusStore,
+} from "@/lib/campus-store";
+import { UserRole } from "@/lib/types";
+import { cn } from "@/lib/utils";
+
+interface LoginPageProps {
+  onLoginSuccess?: () => void;
+}
+
+export function LoginPage({ onLoginSuccess }: LoginPageProps) {
+  const [activeTab, setActiveTab] = useState<"signin" | "register">("signin");
+  const [selectedRole, setSelectedRole] = useState<UserRole>("student");
+  const [identifier, setIdentifier] = useState(STUDENT_ACCOUNT.email);
+  const [password, setPassword] = useState(STUDENT_ACCOUNT.password);
+  const [showPassword, setShowPassword] = useState(false);
+  const [autoAppendDomain, setAutoAppendDomain] = useState(true);
+  const [showCredentialsSheet, setShowCredentialsSheet] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
+
+  // Handle role change from dropdown
+  const handleRoleChange = (role: UserRole) => {
+    setSelectedRole(role);
+    const targetAccount = CAMPUS_ACCOUNTS.find((a) => a.role === role) || STUDENT_ACCOUNT;
+    setIdentifier(targetAccount.email);
+    setPassword(targetAccount.password);
+    setStatusMessage(null);
+  };
+
+  // 1-Click Fast Role Sign-in
+  const handleFastSignIn = (account: CampusAccount) => {
+    setSelectedRole(account.role);
+    setIdentifier(account.email);
+    setPassword(account.password);
+    campusStore.loginWithAccount(account);
+    setStatusMessage({ text: `Logged in as ${account.name}`, type: "success" });
+    if (onLoginSuccess) {
+      setTimeout(onLoginSuccess, 300);
+    }
+  };
+
+  // Standard Form Submit
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!identifier.trim()) {
+      setStatusMessage({ text: "Please enter your GSFC University ID or Email.", type: "error" });
+      return;
+    }
+
+    const res = campusStore.loginWithCredentials(identifier, selectedRole);
+    if (res.success) {
+      setStatusMessage({ text: res.message, type: "success" });
+      if (onLoginSuccess) {
+        setTimeout(onLoginSuccess, 300);
+      }
+    } else {
+      setStatusMessage({ text: res.message, type: "error" });
+    }
+  };
+
+  // Guest preview
+  const handleGuestPreview = () => {
+    campusStore.loginWithAccount(STUDENT_ACCOUNT);
+    if (onLoginSuccess) onLoginSuccess();
+  };
+
+  const currentRoleAccount = CAMPUS_ACCOUNTS.find((a) => a.role === selectedRole) || STUDENT_ACCOUNT;
+
+  return (
+    <div className="relative flex min-h-screen flex-col justify-between overflow-x-hidden bg-gradient-to-b from-[#F8FAFC] via-[#F1F5F9] to-[#E2E8F0] font-sans text-slate-800">
+      {/* Top Header Bar */}
+      <header className="sticky top-0 z-30 flex items-center justify-between border-b border-slate-200 bg-white/95 px-4 py-2.5 shadow-sm backdrop-blur-md sm:px-8">
+        {/* Logo & Portal Branding */}
+        <div className="flex items-center gap-3">
+          {/* GSFC University Tree Logo */}
+          <div className="flex size-11 items-center justify-center rounded-full bg-gradient-to-tr from-amber-500 to-amber-600 p-2 text-white shadow-md shadow-amber-500/20">
+            <School className="size-6 text-white" />
+          </div>
+
+          <div className="flex flex-col">
+            <div className="flex items-baseline gap-1.5">
+              <span className="font-display text-lg font-black tracking-tight text-[#1A3C6E] sm:text-xl">
+                CAMPUS CONNECT
+              </span>
+              <span className="font-display text-lg font-black tracking-tight text-[#F2A93B] sm:text-xl">
+                HUB
+              </span>
+            </div>
+            <span className="text-[9px] font-bold uppercase tracking-[0.18em] text-[#1A3C6E]/70 sm:text-[10px]">
+              GSFC UNIVERSITY · EVENT MANAGEMENT & ATTENDANCE GOVERNANCE PORTAL
+            </span>
+          </div>
+        </div>
+
+        {/* Header Right Actions */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setShowCredentialsSheet(true)}
+            className="hidden h-8 gap-1.5 rounded-lg border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 md:flex"
+          >
+            <KeyRound className="size-3.5 text-amber-500" />
+            <span>View All Passwords</span>
+          </Button>
+
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleGuestPreview}
+            className="h-8 gap-1.5 rounded-lg border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+          >
+            <LayoutGrid className="size-3.5 text-[#1A3C6E]" />
+            <span className="hidden sm:inline">Preview Portal as Guest ↗</span>
+            <span className="sm:hidden">Guest</span>
+          </Button>
+
+          <span className="hidden rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-black text-[#1A3C6E] lg:inline-flex">
+            CampusConnect Live • v2.6
+          </span>
+        </div>
+      </header>
+
+      {/* Main Content Area */}
+      <main className="relative flex flex-1 flex-col items-center justify-center px-4 py-8 sm:px-6">
+        {/* Sanskrit Motto */}
+        <div className="mb-6 text-center">
+          <h2 className="font-serif text-2xl font-black tracking-wide text-[#1A3C6E] sm:text-3xl">
+            ॥ बुद्धिर्ज्ञानेन शुध्यति ॥
+          </h2>
+          <p className="mt-1 font-sans text-xs font-bold uppercase tracking-wider text-[#D97706] sm:text-sm">
+            Purification of Mind and Intellect through Knowledge
+          </p>
+        </div>
+
+        {/* Background Architectural Sketch / Illustration Overlay */}
+        <div className="pointer-events-none absolute inset-x-0 bottom-12 top-20 flex items-center justify-between opacity-15 overflow-hidden">
+          {/* Left Campus Sketch */}
+          <div className="hidden lg:block w-1/3 pl-8">
+            <svg viewBox="0 0 500 300" className="w-full text-[#1A3C6E]" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <rect x="50" y="80" width="380" height="180" rx="4" />
+              <line x1="50" y1="120" x2="430" y2="120" />
+              <line x1="50" y1="180" x2="430" y2="180" />
+              <rect x="190" y="180" width="100" height="80" />
+              <line x1="240" y1="180" x2="240" y2="260" />
+              {/* Pillars */}
+              <line x1="100" y1="80" x2="100" y2="260" />
+              <line x1="150" y1="80" x2="150" y2="260" />
+              <line x1="330" y1="80" x2="330" y2="260" />
+              <line x1="380" y1="80" x2="380" y2="260" />
+              <text x="140" y="60" fill="currentColor" fontSize="14" fontWeight="bold">GSFC SCHOOL OF SCIENCE</text>
+            </svg>
+          </div>
+
+          {/* Right Campus Entrance Arch */}
+          <div className="hidden lg:block w-1/3 pr-8 text-right">
+            <svg viewBox="0 0 500 300" className="w-full text-[#1A3C6E]" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <rect x="80" y="50" width="340" height="210" rx="6" />
+              <rect x="130" y="90" width="240" height="170" rx="4" />
+              <text x="170" y="160" fill="currentColor" fontSize="22" fontWeight="900">GSFC</text>
+              <text x="145" y="185" fill="currentColor" fontSize="14" fontWeight="600">UNIVERSITY</text>
+              <text x="80" y="285" fill="currentColor" fontSize="12" fontWeight="bold">GSFC UNIVERSITY CAMPUS - VADODARA, INDIA</text>
+            </svg>
+          </div>
+        </div>
+
+        {/* Central Floating Login Card */}
+        <div className="relative z-10 w-full max-w-[460px] rounded-3xl border border-slate-200/90 bg-white p-6 shadow-2xl shadow-slate-400/20 sm:p-8">
+          {/* Top Tabs: Sign In / Registration */}
+          <div className="mb-6 grid grid-cols-2 gap-2 rounded-2xl bg-slate-100 p-1.5">
+            <button
+              type="button"
+              onClick={() => setActiveTab("signin")}
+              className={cn(
+                "flex items-center justify-center gap-2 rounded-xl py-2 text-xs font-bold transition-all",
+                activeTab === "signin"
+                  ? "bg-white text-[#1A3C6E] shadow-sm shadow-slate-300"
+                  : "text-slate-500 hover:text-slate-800"
+              )}
+            >
+              <LogIn className="size-3.5 text-[#1A3C6E]" />
+              <span>Sign In</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("register")}
+              className={cn(
+                "flex items-center justify-center gap-2 rounded-xl py-2 text-xs font-bold transition-all",
+                activeTab === "register"
+                  ? "bg-white text-[#1A3C6E] shadow-sm shadow-slate-300"
+                  : "text-slate-500 hover:text-slate-800"
+              )}
+            >
+              <GraduationCap className="size-3.5 text-amber-500" />
+              <span>New Registration</span>
+            </button>
+          </div>
+
+          {/* Role Selector Header */}
+          <div className="mb-2 flex items-center justify-between text-[11px]">
+            <span className="font-bold uppercase tracking-wider text-slate-500">
+              SELECT PORTAL ROLE TO SIGN IN
+            </span>
+            <span className="font-bold uppercase text-[#1A3C6E]">
+              {selectedRole.toUpperCase()} PORTAL
+            </span>
+          </div>
+
+          {/* Role Dropdown Selector */}
+          <div className="relative mb-4">
+            <select
+              value={selectedRole}
+              onChange={(e) => handleRoleChange(e.target.value as UserRole)}
+              className="w-full appearance-none rounded-xl border border-slate-300 bg-slate-50/50 px-4 py-2.5 pr-10 text-xs font-bold text-slate-800 shadow-sm focus:border-[#1A3C6E] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1A3C6E]/20"
+            >
+              <option value="student">🎓 GSFC Student (Campus Candidate)</option>
+              <option value="admin">🏛️ Administration (Dean & Academic Affairs)</option>
+              <option value="organizer">💼 TPC Admin (Training & Placement / Organizer)</option>
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-3.5 top-3 size-4 text-slate-400" />
+          </div>
+
+          {/* Status Message */}
+          {statusMessage && (
+            <div
+              className={cn(
+                "mb-4 rounded-xl p-2.5 text-center text-xs font-bold animate-in fade-in",
+                statusMessage.type === "success"
+                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                  : "bg-rose-50 text-rose-700 border border-rose-200"
+              )}
+            >
+              {statusMessage.text}
+            </div>
+          )}
+
+          {/* Login Form */}
+          <form onSubmit={handleFormSubmit} className="space-y-3.5">
+            {/* Username / Email Input */}
+            <div className="relative flex items-stretch rounded-xl border border-slate-300 bg-white shadow-sm focus-within:border-[#1A3C6E] focus-within:ring-2 focus-within:ring-[#1A3C6E]/20">
+              <div className="flex w-11 items-center justify-center rounded-l-xl bg-[#1A3C6E] text-white">
+                <User className="size-4" />
+              </div>
+              <input
+                type="text"
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
+                placeholder={selectedRole === "student" ? "omthakkar168@gmail.com / 24BT04171" : "official.id@gsfcuniversity.ac.in"}
+                className="w-full bg-transparent px-3 py-2.5 text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none"
+              />
+              {selectedRole === "student" && (
+                <button
+                  type="button"
+                  onClick={() => setAutoAppendDomain(!autoAppendDomain)}
+                  className="mr-2 self-center rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-semibold text-slate-600 hover:bg-slate-100"
+                  title="Click to toggle official domain suffix"
+                >
+                  @gsfcuniversity.ac.in
+                </button>
+              )}
+            </div>
+
+            {/* Password Input */}
+            <div className="relative flex items-stretch rounded-xl border border-slate-300 bg-white shadow-sm focus-within:border-[#1A3C6E] focus-within:ring-2 focus-within:ring-[#1A3C6E]/20">
+              <div className="flex w-11 items-center justify-center rounded-l-xl bg-[#1A3C6E] text-white">
+                <Lock className="size-4" />
+              </div>
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter password"
+                className="w-full bg-transparent px-3 py-2.5 text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="px-3 text-slate-400 hover:text-slate-600"
+              >
+                {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+              </button>
+            </div>
+
+            {/* Submit Button */}
+            <Button
+              type="submit"
+              className="h-10 w-full rounded-xl bg-gradient-to-r from-[#1A3C6E] to-[#0E2342] font-display text-sm font-black text-white shadow-lg shadow-[#1A3C6E]/20 hover:from-[#1A3C6E]/90 hover:to-[#0E2342]/90"
+            >
+              Login
+            </Button>
+          </form>
+
+          {/* Forgot Password */}
+          <div className="mt-3 text-center">
+            <button
+              type="button"
+              onClick={() => alert("Password reset link has been dispatched to your official GSFC University email.")}
+              className="text-xs font-bold text-[#1A3C6E] hover:underline"
+            >
+              Forgot Password ?
+            </button>
+          </div>
+
+          {/* 1-Click Fast Role Sign-in Section */}
+          <div className="mt-5 border-t border-slate-200 pt-4">
+            <div className="flex items-center justify-between text-[11px]">
+              <span className="flex items-center gap-1 font-bold text-slate-700">
+                <Sparkles className="size-3 text-amber-500" />
+                <span>1-CLICK FAST ROLE SIGN-IN</span>
+              </span>
+              <span className="text-[10px] font-semibold text-amber-600">
+                Stored Passwords Auto-Filled
+              </span>
+            </div>
+
+            {/* 3 Dedicated Role Buttons */}
+            <div className="mt-2.5 grid grid-cols-3 gap-2">
+              {/* Student */}
+              <button
+                type="button"
+                onClick={() => handleFastSignIn(STUDENT_ACCOUNT)}
+                className={cn(
+                  "flex flex-col items-center justify-center rounded-xl border p-2 text-center transition-all hover:scale-105",
+                  selectedRole === "student"
+                    ? "border-[#1A3C6E] bg-blue-50/70 text-[#1A3C6E] shadow-sm ring-1 ring-[#1A3C6E]/30"
+                    : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                )}
+              >
+                <div className="flex size-7 items-center justify-center rounded-lg bg-[#1A3C6E]/10 text-[#1A3C6E]">
+                  <GraduationCap className="size-4" />
+                </div>
+                <span className="mt-1 text-[11px] font-black">24BT04171</span>
+                <span className="text-[9px] font-bold text-slate-500">Student</span>
+              </button>
+
+              {/* Administration */}
+              <button
+                type="button"
+                onClick={() => handleFastSignIn(ADMIN_ACCOUNT)}
+                className={cn(
+                  "flex flex-col items-center justify-center rounded-xl border p-2 text-center transition-all hover:scale-105",
+                  selectedRole === "admin"
+                    ? "border-[#1A3C6E] bg-blue-50/70 text-[#1A3C6E] shadow-sm ring-1 ring-[#1A3C6E]/30"
+                    : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                )}
+              >
+                <div className="flex size-7 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600">
+                  <ShieldCheck className="size-4" />
+                </div>
+                <span className="mt-1 text-[11px] font-black">Administration</span>
+                <span className="text-[9px] font-bold text-slate-500">Dean Office</span>
+              </button>
+
+              {/* TPC Admin */}
+              <button
+                type="button"
+                onClick={() => handleFastSignIn(TPC_ADMIN_ACCOUNT)}
+                className={cn(
+                  "flex flex-col items-center justify-center rounded-xl border p-2 text-center transition-all hover:scale-105",
+                  selectedRole === "organizer"
+                    ? "border-[#1A3C6E] bg-blue-50/70 text-[#1A3C6E] shadow-sm ring-1 ring-[#1A3C6E]/30"
+                    : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                )}
+              >
+                <div className="flex size-7 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600">
+                  <UserCheck className="size-4" />
+                </div>
+                <span className="mt-1 text-[11px] font-black">TPC Admin</span>
+                <span className="text-[9px] font-bold text-slate-500">Placement</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Google Sign-in Buttons */}
+          <div className="mt-4 space-y-2">
+            <button
+              type="button"
+              onClick={() => handleFastSignIn(STUDENT_ACCOUNT)}
+              className="flex h-9 w-full items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50"
+            >
+              <svg className="size-4" viewBox="0 0 24 24">
+                <path
+                  fill="#4285F4"
+                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                />
+                <path
+                  fill="#34A853"
+                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                />
+                <path
+                  fill="#FBBC05"
+                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                />
+                <path
+                  fill="#EA4335"
+                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                />
+              </svg>
+              <span>Sign in with Google</span>
+            </button>
+          </div>
+        </div>
+      </main>
+
+      {/* Credential Modal Sheet */}
+      {showCredentialsSheet && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+          <div className="relative w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl">
+            <div className="flex items-center justify-between border-b pb-3">
+              <div className="flex items-center gap-2 font-display text-base font-black text-[#1A3C6E]">
+                <KeyRound className="size-5 text-amber-500" />
+                <span>All Login Accounts & Passwords</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCredentialsSheet(false)}
+                className="rounded-full bg-slate-100 p-1.5 text-slate-500 hover:bg-slate-200"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-3">
+              {CAMPUS_ACCOUNTS.map((acc) => (
+                <div
+                  key={acc.idOrRoll}
+                  className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-xs"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-[#1A3C6E]">{acc.roleTitle}</span>
+                    <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-black text-[#1A3C6E]">
+                      {acc.roleBadge}
+                    </span>
+                  </div>
+                  <div className="mt-2 grid grid-cols-[80px_1fr] gap-1 text-slate-600">
+                    <span className="font-semibold text-slate-400">Name:</span>
+                    <span className="font-bold text-slate-800">{acc.name}</span>
+                    <span className="font-semibold text-slate-400">ID / Email:</span>
+                    <span className="font-mono text-slate-800">{acc.email}</span>
+                    <span className="font-semibold text-slate-400">Password:</span>
+                    <span className="font-mono font-bold text-emerald-600">{acc.password}</span>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setShowCredentialsSheet(false);
+                      handleFastSignIn(acc);
+                    }}
+                    className="mt-2.5 h-7 w-full rounded-lg bg-[#1A3C6E] text-[11px] font-bold text-white hover:bg-[#1A3C6E]/90"
+                  >
+                    Auto-Fill & Sign In as {acc.role.toUpperCase()}
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bottom Footer Banner (Matching Screenshot) */}
+      <footer className="relative z-20 flex flex-wrap items-center justify-between gap-2 bg-[#0284C7] px-6 py-2.5 text-xs font-bold text-white sm:px-8">
+        <div>All Rights Reserved ©2026</div>
+        <div className="tracking-wide">
+          Developed & Managed By : <span className="font-black text-amber-300">OM THAKKAR</span>
+        </div>
+      </footer>
+    </div>
+  );
+}

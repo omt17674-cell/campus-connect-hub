@@ -76,16 +76,23 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "viewport", content: "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" },
       { title: "Campus Connect — GSFC University" },
-      { name: "description", content: "GSFC University's event and attendance hub." },
+      { name: "description", content: "GSFC University's official event and attendance ecosystem for Android, iOS, and Web." },
       { name: "author", content: "GSFC University" },
+      { name: "theme-color", content: "#1A3C6E" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
+      { name: "apple-mobile-web-app-title", content: "Campus Connect" },
+      { name: "mobile-web-app-capable", content: "yes" },
       { property: "og:title", content: "Campus Connect — GSFC University" },
-      { property: "og:description", content: "Discover campus events, manage registrations, and check in with confidence." },
+      { property: "og:description", content: "Discover campus events, manage registrations, and check in with confidence on Android & Apple iOS." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [
+      { rel: "manifest", href: "/manifest.json" },
+      { rel: "apple-touch-icon", href: "/pwa-512.svg" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" },
@@ -118,6 +125,16 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && "serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/sw.js").catch((err) => {
+          console.log("ServiceWorker registration notice:", err);
+        });
+      });
+    }
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>

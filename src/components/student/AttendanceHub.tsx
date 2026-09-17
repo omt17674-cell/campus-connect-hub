@@ -1,0 +1,222 @@
+import {
+  AlertTriangle,
+  Award,
+  Calendar,
+  Flame,
+  QrCode,
+  ScanLine,
+  Sparkles,
+  TrendingUp,
+  WifiOff,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { CampusEvent } from "@/lib/types";
+import { CampusState } from "@/lib/campus-store";
+import { translations } from "@/lib/i18n";
+import { cn } from "@/lib/utils";
+
+interface AttendanceHubProps {
+  state: CampusState;
+  onOpenScanner: () => void;
+  onSelectEvent: (event: CampusEvent) => void;
+}
+
+export function AttendanceHub({
+  state,
+  onOpenScanner,
+  onSelectEvent,
+}: AttendanceHubProps) {
+  const t = translations[state.language];
+  const user = state.currentUser;
+  const isLowAttendance = user.attendanceRate < 75;
+
+  // Smart Recommendations based on user's department and interests
+  const recommendedEvents = state.events.filter(
+    (e) =>
+      e.status === "upcoming" || e.status === "live"
+  ).slice(0, 3);
+
+  return (
+    <div className="flex flex-col gap-5">
+      {/* Attendance Percentage Gauge Card */}
+      <div className="rounded-3xl border border-border/80 bg-card/60 p-6 shadow-xl shadow-brand/5 backdrop-blur-2xl">
+        <div className="flex items-center justify-between">
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-brand/70">
+              Semester 6 Official Record
+            </span>
+            <h3 className="font-display text-lg font-black text-foreground">
+              {t.common.attendanceRate}
+            </h3>
+          </div>
+          <span
+            className={cn(
+              "rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide",
+              isLowAttendance
+                ? "bg-rose-500/15 text-rose-600 dark:text-rose-400"
+                : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+            )}
+          >
+            {isLowAttendance ? "Attention Needed (<75%)" : "Good Standing (>75%)"}
+          </span>
+        </div>
+
+        {/* Low Attendance Notice Banner if < 75% */}
+        {isLowAttendance && (
+          <div className="mt-4 flex items-start gap-2.5 rounded-2xl border border-rose-500/30 bg-rose-500/10 p-3.5 text-xs text-rose-700 dark:text-rose-300">
+            <AlertTriangle className="size-4 shrink-0 text-rose-500" />
+            <div>
+              <p className="font-bold">Low Attendance Alert</p>
+              <p className="mt-0.5 text-[11px] opacity-90">
+                Your semester attendance is below 75%. Please attend upcoming workshops to avoid exam debarment.
+              </p>
+            </div>
+          </div>
+        )}
+
+        <div className="mt-5 flex flex-col items-center gap-6 sm:flex-row sm:items-center">
+          {/* Radial Dial Indicator */}
+          <div className="relative flex size-28 shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-[#1A3C6E] to-[#F2A93B] p-1 shadow-lg shadow-[#1A3C6E]/20">
+            <div className="flex size-full flex-col items-center justify-center rounded-full bg-card backdrop-blur-xl">
+              <span className="font-display text-3xl font-black text-foreground">
+                {user.attendanceRate}%
+              </span>
+              <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+                Verified
+              </span>
+            </div>
+          </div>
+
+          {/* Detailed Statistics */}
+          <div className="grid w-full grid-cols-2 gap-3 sm:grid-cols-3">
+            <div className="rounded-2xl border border-border/70 bg-card/50 p-3">
+              <div className="flex items-center gap-1.5 text-xs text-orange-500">
+                <Flame className="size-3.5 fill-current" />
+                <span className="font-semibold text-muted-foreground">Streak</span>
+              </div>
+              <p className="mt-1 font-display text-xl font-black text-foreground">
+                {user.streakDays} Days
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-border/70 bg-card/50 p-3">
+              <div className="flex items-center gap-1.5 text-xs text-[#F2A93B]">
+                <Award className="size-3.5" />
+                <span className="font-semibold text-muted-foreground">Volunteer</span>
+              </div>
+              <p className="mt-1 font-display text-xl font-black text-foreground">
+                {user.volunteerHours}h Logged
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-border/70 bg-card/50 p-3">
+              <div className="flex items-center gap-1.5 text-xs text-emerald-500">
+                <TrendingUp className="size-3.5" />
+                <span className="font-semibold text-muted-foreground">Attended</span>
+              </div>
+              <p className="mt-1 font-display text-xl font-black text-foreground">
+                {state.attendanceRecords.length + 5} Events
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Quick QR Check-in Box */}
+      <div className="relative overflow-hidden rounded-3xl border border-border/80 bg-gradient-to-br from-[#1A3C6E] to-[#0E2342] p-6 text-white shadow-xl shadow-[#1A3C6E]/20">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="flex size-2 rounded-full bg-emerald-400" />
+            <span className="text-xs font-bold uppercase tracking-wider text-[#F2A93B]">
+              Rotating QR Check-in
+            </span>
+          </div>
+          <span className="text-[10px] font-semibold text-slate-300">
+            Cryptographic Tokens
+          </span>
+        </div>
+
+        <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center">
+          <div className="flex size-16 shrink-0 items-center justify-center rounded-2xl bg-white/10 p-2 text-[#F2A93B] backdrop-blur-md">
+            <QrCode className="size-10" />
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <h4 className="font-display text-base font-bold">
+              Mark Event Presence
+            </h4>
+            <p className="mt-0.5 text-xs text-slate-300">
+              Rotates every 45 seconds to prevent proxy attendance. Works offline with automatic sync.
+            </p>
+          </div>
+
+          <Button
+            onClick={onOpenScanner}
+            className="rounded-2xl bg-[#F2A93B] font-display font-black text-[#1A3C6E] shadow-lg shadow-[#F2A93B]/30 hover:bg-[#F2A93B]/90"
+          >
+            <ScanLine className="mr-1.5 size-4" />
+            Open Scanner
+          </Button>
+        </div>
+
+        {state.isOffline && (
+          <div className="mt-4 flex items-center gap-2 rounded-xl bg-amber-500/20 px-3 py-2 text-xs font-semibold text-amber-300">
+            <WifiOff className="size-3.5" />
+            <span>Offline mode: Scans are saved locally and synced once reconnected.</span>
+          </div>
+        )}
+      </div>
+
+      {/* Smart Recommendations Section */}
+      <div className="rounded-3xl border border-border/80 bg-card/60 p-5 shadow-xl shadow-brand/5 backdrop-blur-2xl">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="flex size-7 items-center justify-center rounded-lg bg-[#F2A93B]/20 text-[#F2A93B]">
+              <Sparkles className="size-4" />
+            </div>
+            <div>
+              <h4 className="font-display text-sm font-black text-foreground">
+                Recommended For You
+              </h4>
+              <p className="text-[10px] text-muted-foreground">
+                Tailored for {user.department} students
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-4 space-y-2.5">
+          {recommendedEvents.map((evt) => (
+            <div
+              key={evt.id}
+              onClick={() => onSelectEvent(evt)}
+              className="group flex cursor-pointer items-center justify-between rounded-2xl border border-border/60 bg-card/40 p-3 transition-all hover:border-brand/40 hover:bg-card/80"
+            >
+              <div className="min-w-0 pr-2">
+                <div className="flex items-center gap-1.5">
+                  <span className="rounded-md bg-brand/10 px-1.5 py-0.2 text-[9px] font-bold uppercase text-brand">
+                    {evt.category}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">
+                    {evt.date}
+                  </span>
+                </div>
+                <h5 className="mt-1 truncate text-xs font-bold text-foreground group-hover:text-brand">
+                  {evt.title}
+                </h5>
+              </div>
+
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 shrink-0 rounded-lg text-xs font-bold text-brand hover:bg-brand/10"
+              >
+                View
+              </Button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -1,0 +1,282 @@
+import { useState } from "react";
+import {
+  Award,
+  Calendar,
+  Check,
+  Clock,
+  Download,
+  FileCheck,
+  MapPin,
+  Search,
+  Star,
+  Users,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { CampusEvent, Registration } from "@/lib/types";
+import { campusStore, CampusState } from "@/lib/campus-store";
+import { generateCertificatePdf } from "@/lib/certificate-generator";
+import { FeedbackModal } from "./FeedbackModal";
+import { cn } from "@/lib/utils";
+
+interface MyEventsViewProps {
+  state: CampusState;
+  onSelectEvent: (event: CampusEvent) => void;
+}
+
+export function MyEventsView({ state, onSelectEvent }: MyEventsViewProps) {
+  const [activeTab, setActiveTab] = useState<"registered" | "attended" | "past">("registered");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [feedbackEvent, setFeedbackEvent] = useState<CampusEvent | null>(null);
+  const [downloadingCertId, setDownloadingCertId] = useState<string | null>(null);
+
+  const userRegistrations = state.registrations.filter(
+    (r) => r.userId === state.currentUser.id
+  );
+
+  const registeredEvents = state.events.filter((e) =>
+    userRegistrations.some(
+      (r) => r.eventId === e.id && (r.status === "confirmed" || r.status === "waitlisted" || r.status === "pending_approval")
+    )
+  );
+
+  const attendedEvents = state.events.filter((e) =>
+    state.attendanceRecords.some((a) => a.eventId === e.id && a.userId === state.currentUser.id) ||
+    userRegistrations.some((r) => r.eventId === e.id && r.status === "attended")
+  );
+
+  const pastEvents = state.events.filter(
+    (e) => e.status === "completed" && !attendedEvents.some((ae) => ae.id === e.id)
+  );
+
+  const currentList =
+    activeTab === "registered"
+      ? registeredEvents
+      : activeTab === "attended"
+      ? attendedEvents
+      : pastEvents;
+
+  const filteredList = currentList.filter(
+    (e) =>
+      e.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      e.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      e.department.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const handleDownloadCertificate = async (event: CampusEvent) => {
+    const record = state.attendanceRecords.find(
+      (a) => a.eventId === event.id && a.userId === state.currentUser.id
+    ) || {
+      id: `att-gen-${Date.now()}`,
+      eventId: event.id,
+      eventTitle: event.title,
+      userId: state.currentUser.id,
+      userName: state.currentUser.name,
+      userRollNo: state.currentUser.rollNo,
+      department: state.currentUser.department,
+      timestamp: new Date().toISOString(),
+      verifiedMethod: "qr_scan" as const,
+      tokenUsed: "GSFC-VERIFIED",
+      synced: true,
+      certificateId: `GSFC-CERT-${event.id.replace(/[^a-zA-Z0-9]/g, "").toUpperCase()}-${state.currentUser.rollNo.slice(-4)}-98A4`,
+    };
+
+    setDownloadingCertId(event.id);
+    try {
+      await generateCertificatePdf(record, event, state.currentUser);
+    } catch (err) {
+      console.error("Certificate download error", err);
+    } finally {
+      setDownloadingCertId(null);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-5">
+      {/* Header Banner */}
+      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand/70">
+            Student Academic Log
+          </p>
+          <h2 className="mt-1 font-display text-2xl font-black text-foreground sm:text-3xl">
+            My Events & Certificates
+          </h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {attendedEvents.length} Verified Attendances · {registeredEvents.length} Upcoming Reservations
+          </p>
+        </div>
+
+        {/* Tab Switcher */}
+        <div className="flex items-center gap-1 rounded-2xl border border-border/70 bg-card/60 p-1 backdrop-blur-xl">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setActiveTab("registered")}
+            className={cn(
+              "rounded-xl text-xs font-bold",
+              activeTab === "registered"
+                ? "bg-[#1A3C6E] text-white"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            Registered ({registeredEvents.length})
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setActiveTab("attended")}
+            className={cn(
+              "rounded-xl text-xs font-bold",
+              activeTab === "attended"
+                ? "bg-[#1A3C6E] text-white"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            Attended ({attendedEvents.length})
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setActiveTab("past")}
+            className={cn(
+              "rounded-xl text-xs font-bold",
+              activeTab === "past"
+                ? "bg-[#1A3C6E] text-white"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            Past Archive
+          </Button>
+        </div>
+      </div>
+
+      {/* Search Input */}
+      <div className="relative">
+        <Search className="absolute left-3.5 top-3 size-4 text-muted-foreground" />
+        <Input
+          placeholder="Filter your events by title, department, category..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="h-10 rounded-2xl border-border/70 bg-card/60 pl-10 text-xs backdrop-blur-xl"
+        />
+      </div>
+
+      {/* Events List */}
+      <div className="space-y-3">
+        {filteredList.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-border/80 bg-card/40 py-12 text-center backdrop-blur-xl">
+            <FileCheck className="size-10 text-muted-foreground/40" />
+            <h3 className="mt-3 font-display text-base font-bold text-foreground">
+              No events found in this category
+            </h3>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {activeTab === "registered"
+                ? "Browse upcoming events in the Home tab and register with one click."
+                : "Attend campus sessions and check in with your QR scanner to earn verified certificates."}
+            </p>
+          </div>
+        ) : (
+          filteredList.map((event) => {
+            const reg = userRegistrations.find((r) => r.eventId === event.id);
+            const isAttended = activeTab === "attended" || reg?.status === "attended";
+
+            return (
+              <div
+                key={event.id}
+                className="group flex flex-col justify-between gap-4 rounded-2xl border border-border/70 bg-card/70 p-4 shadow-sm backdrop-blur-xl transition-all hover:border-brand/40 hover:shadow-md sm:flex-row sm:items-center"
+              >
+                {/* Event Info */}
+                <div className="flex items-start gap-3.5">
+                  <div className="flex size-14 shrink-0 flex-col items-center justify-center rounded-xl bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#F2A93B]">
+                      {event.date.split("-")[1] === "06" ? "JUN" : "MAY"}
+                    </span>
+                    <span className="font-display text-base font-black leading-none">
+                      {event.date.split("-")[2] || "12"}
+                    </span>
+                  </div>
+
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="rounded-md bg-accent/20 px-2 py-0.5 text-[10px] font-bold uppercase text-[#1A3C6E] dark:text-[#F2A93B]">
+                        {event.category}
+                      </span>
+                      {reg?.isTeam && (
+                        <span className="flex items-center gap-1 rounded-md bg-brand/10 px-2 py-0.5 text-[10px] font-semibold text-brand">
+                          <Users className="size-3" /> {reg.teamName || "Team"}
+                        </span>
+                      )}
+                      {reg?.status === "waitlisted" && (
+                        <span className="rounded-md bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400">
+                          Waitlisted
+                        </span>
+                      )}
+                    </div>
+                    <h3
+                      onClick={() => onSelectEvent(event)}
+                      className="mt-1 cursor-pointer font-display text-base font-bold text-foreground transition-colors hover:text-brand"
+                    >
+                      {event.title}
+                    </h3>
+                    <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <Clock className="size-3 text-brand" /> {event.time}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <MapPin className="size-3 text-brand" /> {event.venue}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex shrink-0 flex-wrap items-center gap-2">
+                  {isAttended ? (
+                    <>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleDownloadCertificate(event)}
+                        disabled={downloadingCertId === event.id}
+                        className="h-9 gap-1.5 rounded-xl border-[#1A3C6E]/30 bg-[#1A3C6E]/5 text-xs font-bold text-[#1A3C6E] hover:bg-[#1A3C6E]/15 dark:border-[#F2A93B]/30 dark:bg-[#F2A93B]/10 dark:text-[#F2A93B]"
+                      >
+                        <Download className="size-3.5" />
+                        <span>{downloadingCertId === event.id ? "Generating..." : "PDF Certificate"}</span>
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setFeedbackEvent(event)}
+                        className="h-9 gap-1 rounded-xl text-xs font-semibold text-amber-600 dark:text-amber-400 hover:bg-amber-500/10"
+                      >
+                        <Star className="size-3.5 fill-current" />
+                        <span>Review</span>
+                      </Button>
+                    </>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => onSelectEvent(event)}
+                      className="h-9 rounded-xl text-xs font-semibold"
+                    >
+                      View Pass & Details
+                    </Button>
+                  )}
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {feedbackEvent && (
+        <FeedbackModal
+          event={feedbackEvent}
+          onClose={() => setFeedbackEvent(null)}
+        />
+      )}
+    </div>
+  );
+}
