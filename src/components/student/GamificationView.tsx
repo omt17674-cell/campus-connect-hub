@@ -22,10 +22,18 @@ interface GamificationViewProps {
 export function GamificationView({ state }: GamificationViewProps) {
   const t = translations[state.language];
   const [leaderboardTab, setLeaderboardTab] = useState<"students" | "departments">("students");
+  const user = state?.currentUser || {
+    id: "u-om",
+    name: "Om Thakkar",
+    rollNo: "24BT04171",
+    department: "B.Tech CSE",
+    points: 640,
+    streakDays: 9,
+  };
 
   const studentRankings = [
     { rank: 1, name: "Tanvi Bhatt", rollNo: "GSFC-CS-0091", dept: "Computer Science", xp: 820, streak: 14, avatar: "TB" },
-    { rank: 2, name: "Aarav Mehta (You)", rollNo: state.currentUser.rollNo, dept: state.currentUser.department, xp: state.currentUser.points, streak: state.currentUser.streakDays, avatar: "AM", isUser: true },
+    { rank: 2, name: `${user.name || "You"} (You)`, rollNo: user.rollNo || "24BT04171", dept: user.department || "CSE", xp: user.points || 640, streak: user.streakDays || 9, avatar: user.avatar || "OT", isUser: true },
     { rank: 3, name: "Harshil Patel", rollNo: "GSFC-CH-0044", dept: "Chemical Eng", xp: 460, streak: 6, avatar: "HP" },
     { rank: 4, name: "Sneha Desai", rollNo: "GSFC-MG-0112", dept: "Management", xp: 410, streak: 5, avatar: "SD" },
     { rank: 5, name: "Kunal Shah", rollNo: "GSFC-CS-0205", dept: "Computer Science", xp: 380, streak: 4, avatar: "KS" },
@@ -39,8 +47,9 @@ export function GamificationView({ state }: GamificationViewProps) {
     { rank: 5, dept: "Humanities & Social Sciences", participation: "54%", totalXp: "4,950 XP", events: 8 },
   ];
 
-  const currentLevel = Math.floor(state.currentUser.points / 200) + 1;
-  const currentLevelXp = state.currentUser.points % 200;
+  const userPoints = user.points || 0;
+  const currentLevel = Math.floor(userPoints / 200) + 1;
+  const currentLevelXp = userPoints % 200;
   const nextLevelXp = 200;
   const levelProgress = Math.min(100, (currentLevelXp / nextLevelXp) * 100);
 

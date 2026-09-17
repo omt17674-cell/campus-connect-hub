@@ -2561,6 +2561,10 @@ export const campusStore = {
     };
   },
 
+  calculate100PointActivitySummary(userId?: string): ActivityPointsBreakdown {
+    return campusStore.calculateActivityPoints(userId);
+  },
+
   // --- Post-Event Rating & Feedback ---
   submitEventFeedback(
     eventId: string,

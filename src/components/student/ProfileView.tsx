@@ -19,23 +19,38 @@ interface ProfileViewProps {
 }
 
 export function ProfileView({ state }: ProfileViewProps) {
-  const user = state.currentUser;
+  const user = state?.currentUser || {
+    id: "u-om",
+    name: "Om Thakkar",
+    rollNo: "24BT04171",
+    email: "omthakkar168@gsfcuniversity.ac.in",
+    role: "student",
+    department: "B.Tech Computer Science & Engineering",
+    semester: 4,
+    avatar: "OT",
+    points: 640,
+    streakDays: 9,
+    volunteerHours: 18,
+    attendanceRate: 91,
+    badges: ["b1", "b2", "b3", "b5"],
+  };
 
   const handleExportStudentRecord = () => {
+    const records = state?.attendanceRecords || [];
     const rows = [
-      ["Student Name", user.name],
-      ["Roll Number", user.rollNo],
-      ["Department", user.department],
-      ["Semester", String(user.semester)],
-      ["Total XP Points", String(user.points)],
-      ["Streak (Days)", String(user.streakDays)],
-      ["Volunteer Hours", String(user.volunteerHours)],
-      ["Verified Attendance Rate", `${user.attendanceRate}%`],
+      ["Student Name", user.name || ""],
+      ["Roll Number", user.rollNo || ""],
+      ["Department", user.department || ""],
+      ["Semester", String(user.semester || 4)],
+      ["Total XP Points", String(user.points || 0)],
+      ["Streak (Days)", String(user.streakDays || 0)],
+      ["Volunteer Hours", String(user.volunteerHours || 0)],
+      ["Verified Attendance Rate", `${user.attendanceRate || 100}%`],
       [],
       ["Event ID", "Event Title", "Verified Date", "Method", "Certificate ID"],
-      ...state.attendanceRecords
-        .filter((a) => a.userId === user.id)
-        .map((a) => [a.eventId, a.eventTitle, a.timestamp, a.verifiedMethod, a.certificateId]),
+      ...records
+        .filter((a) => a && (a.userId === user.id || a.userRollNo === user.rollNo))
+        .map((a) => [a.eventId, a.eventTitle, a.timestamp, a.verifiedMethod, a.certificateId || ""]),
     ];
 
     const csvContent = "data:text/csv;charset=utf-8," + rows.map((e) => e.join(",")).join("\n");

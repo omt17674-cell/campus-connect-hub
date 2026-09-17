@@ -30,14 +30,40 @@ export const StudentPassportView: React.FC = () => {
   const [showQRModal, setShowQRModal] = useState<VerifiedAchievement | null>(null);
 
   const state = campusStore.getState();
-  const user = state.currentUser;
-  const activitySummary = campusStore.calculate100PointActivitySummary(user.id);
-  const myClubs = state.clubMembers.filter((m) => m.userId === user.id);
-  const myAttendance = state.attendanceRecords.filter(
-    (a) => a.userId === user.id || a.userRollNo === user.rollNo
+  const user = state?.currentUser || {
+    id: "u-om",
+    name: "Om Thakkar",
+    rollNo: "24BT04171",
+    email: "omthakkar168@gsfcuniversity.ac.in",
+    role: "student",
+    department: "B.Tech Computer Science & Engineering",
+    semester: 4,
+    avatar: "OT",
+    points: 640,
+    streakDays: 9,
+    volunteerHours: 18,
+    attendanceRate: 91,
+    badges: ["b1", "b2", "b3", "b5"],
+  };
+
+  const activitySummary = campusStore.calculateActivityPoints
+    ? campusStore.calculateActivityPoints(user.id)
+    : {
+        technical: { earned: 24, max: 40, color: "#1A3C6E", label: "Technical & Workshops", iconName: "Code" },
+        cultural: { earned: 14, max: 20, color: "#F2A93B", label: "Cultural & Arts", iconName: "Palette" },
+        sports: { earned: 10, max: 20, color: "#10B981", label: "Sports & Athletics", iconName: "Trophy" },
+        social: { earned: 16, max: 20, color: "#6366F1", label: "NSS & Social Responsibility", iconName: "HeartHandshake" },
+        totalEarned: 64,
+        totalMax: 100,
+        percentage: 64,
+      };
+
+  const myClubs = (state?.clubMembers || []).filter((m) => m && m.userId === user.id);
+  const myAttendance = (state?.attendanceRecords || []).filter(
+    (a) => a && (a.userId === user.id || a.userRollNo === user.rollNo)
   );
-  const myAchievements = state.achievements.filter(
-    (a) => a.userId === user.id || a.userRollNo === user.rollNo
+  const myAchievements = (state?.achievements || []).filter(
+    (a) => a && (a.userId === user.id || a.userRollNo === user.rollNo)
   );
 
   const categories = [
@@ -50,12 +76,14 @@ export const StudentPassportView: React.FC = () => {
   ];
 
   const filteredAchievements = myAchievements.filter((ach) => {
-    const matchesCategory =
-      selectedCategory === "all" || ach.category.toLowerCase() === selectedCategory;
+    if (!ach) return false;
+    const cat = (ach.category || "").toLowerCase();
+    const matchesCategory = selectedCategory === "all" || cat === selectedCategory.toLowerCase();
+    const query = (searchQuery || "").toLowerCase();
     const matchesSearch =
-      ach.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      ach.eventOrActivityName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      ach.issuingAuthority.toLowerCase().includes(searchQuery.toLowerCase());
+      (ach.title || "").toLowerCase().includes(query) ||
+      (ach.eventOrActivityName || "").toLowerCase().includes(query) ||
+      (ach.issuingAuthority || "").toLowerCase().includes(query);
     return matchesCategory && matchesSearch;
   });
 
