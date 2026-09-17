@@ -1,0 +1,140 @@
+// GSFC University Campus Connect Hub — Typed API Client
+
+export const apiClient = {
+  async getHealth() {
+    try {
+      const res = await fetch("/api/health");
+      return await res.json();
+    } catch (e) {
+      return { status: "offline", error: String(e) };
+    }
+  },
+
+  async loginWithCredentials(identifier: string, role: string, password?: string) {
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ identifier, role, password }),
+      });
+      return await res.json();
+    } catch (e) {
+      return { success: false, message: "Network error contacting server." };
+    }
+  },
+
+  async loginWithGoogle(email?: string, name?: string, rollNo?: string) {
+    try {
+      const res = await fetch("/api/auth/google", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, name, rollNo }),
+      });
+      return await res.json();
+    } catch (e) {
+      return { success: false, message: "Google SSO network error." };
+    }
+  },
+
+  async fetchEvents(category?: string) {
+    try {
+      const url = category ? `/api/events?category=${encodeURIComponent(category)}` : "/api/events";
+      const res = await fetch(url);
+      return await res.json();
+    } catch (e) {
+      return { success: false, events: [] };
+    }
+  },
+
+  async registerForEvent(payload: {
+    eventId: string;
+    userId: string;
+    userRollNo: string;
+    userName: string;
+    department: string;
+    isTeam?: boolean;
+    teamName?: string;
+  }) {
+    try {
+      const res = await fetch("/api/events/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      return await res.json();
+    } catch (e) {
+      return { success: false, message: "Failed to register with server." };
+    }
+  },
+
+  async recordCheckIn(payload: {
+    eventId: string;
+    userId: string;
+    userRollNo: string;
+    userName: string;
+    department: string;
+    token: string;
+    locationData?: { latitude: number; longitude: number; distanceMeters: number; verified: boolean };
+  }) {
+    try {
+      const res = await fetch("/api/attendance/check-in", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      return await res.json();
+    } catch (e) {
+      return { success: false, message: "Failed to record check-in on server." };
+    }
+  },
+
+  async verifyCertificate(certificateId: string) {
+    try {
+      const res = await fetch(`/api/certificates/verify?id=${encodeURIComponent(certificateId)}`);
+      return await res.json();
+    } catch (e) {
+      return { success: false, verified: false, message: "Verification server unreachable." };
+    }
+  },
+
+  async fetchClubs() {
+    try {
+      const res = await fetch("/api/clubs");
+      return await res.json();
+    } catch (e) {
+      return { success: false, clubs: [] };
+    }
+  },
+
+  async joinClub(payload: {
+    clubId: string;
+    userId: string;
+    userName: string;
+    userRollNo: string;
+    department: string;
+  }) {
+    try {
+      const res = await fetch("/api/clubs/join", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      return await res.json();
+    } catch (e) {
+      return { success: false, message: "Failed to join club on server." };
+    }
+  },
+
+  async queryAiAssistant(prompt: string, userRole?: string, userId?: string) {
+    try {
+      const res = await fetch("/api/ai/assistant", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt, userRole, userId }),
+      });
+      return await res.json();
+    } catch (e) {
+      return null;
+    }
+  },
+};
