@@ -190,32 +190,45 @@ export function Header({
         </div>
       </div>
 
-      {/* Role Workspace Switcher & Offline Status Bar */}
+      {/* Active Portal Scope Banner & Offline Status Bar */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        {/* Role Selector Tabs */}
-        <div className="flex items-center gap-1 rounded-full border border-border/70 bg-card/50 p-1 backdrop-blur-xl">
-          {(["student", "organizer", "admin"] as UserRole[]).map((r) => {
-            const isActive = state.currentRole === r;
-            const label = t.roles[r];
-            const Icon = r === "student" ? Users : r === "organizer" ? UserCheck : ShieldCheck;
-            return (
-              <Button
-                key={r}
-                variant="ghost"
-                size="sm"
-                onClick={() => campusStore.setRole(r)}
-                className={cn(
-                  "h-8 gap-1.5 rounded-full px-3 text-xs font-bold transition-all",
-                  isActive
-                    ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
-                    : "text-muted-foreground hover:bg-brand/10 hover:text-foreground"
-                )}
-              >
-                <Icon className="size-3.5" />
-                <span>{label}</span>
-              </Button>
-            );
-          })}
+        {/* Logged-In Portal Scope Badge */}
+        <div className="flex items-center gap-2 rounded-full border border-border/70 bg-card/60 px-3.5 py-1.5 backdrop-blur-xl shadow-sm">
+          {state.currentRole === "student" && (
+            <div className="flex items-center gap-2">
+              <div className="flex size-5 items-center justify-center rounded-full bg-[#1A3C6E] text-white">
+                <Users className="size-3" />
+              </div>
+              <span className="text-xs font-black text-foreground">Student Portal</span>
+              <span className="rounded-md bg-brand/10 px-2 py-0.5 text-[10px] font-bold text-brand">
+                {state.currentUser.department || "B.Tech CSE"}
+              </span>
+            </div>
+          )}
+
+          {state.currentRole === "organizer" && (
+            <div className="flex items-center gap-2">
+              <div className="flex size-5 items-center justify-center rounded-full bg-emerald-600 text-white">
+                <UserCheck className="size-3" />
+              </div>
+              <span className="text-xs font-black text-foreground">Faculty & TPC Organizer Portal</span>
+              <span className="rounded-md bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                Event Convener
+              </span>
+            </div>
+          )}
+
+          {state.currentRole === "admin" && (
+            <div className="flex items-center gap-2">
+              <div className="flex size-5 items-center justify-center rounded-full bg-amber-500 text-white">
+                <ShieldCheck className="size-3" />
+              </div>
+              <span className="text-xs font-black text-foreground">University Administration Portal</span>
+              <span className="rounded-md bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400">
+                Dean Governance
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Offline Simulation & Sync Pill */}
