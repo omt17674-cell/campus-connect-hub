@@ -54,11 +54,11 @@ export const STUDENT_ACCOUNT: CampusAccount = {
     department: "B.Tech Computer Science & Engineering",
     semester: 4,
     avatar: "OT",
-    points: 640,
-    streakDays: 9,
-    volunteerHours: 18,
-    attendanceRate: 91,
-    badges: ["b1", "b2", "b3", "b5"],
+    points: 0,
+    streakDays: 0,
+    volunteerHours: 0,
+    attendanceRate: 100,
+    badges: [],
   },
 };
 
@@ -152,8 +152,7 @@ const INITIAL_BADGES: Badge[] = [
     description: "Attended your first official GSFC University event",
     icon: "Rocket",
     category: "attendance",
-    unlocked: true,
-    earnedDate: "2026-02-10",
+    unlocked: false,
     xpBonus: 50,
   },
   {
@@ -162,8 +161,7 @@ const INITIAL_BADGES: Badge[] = [
     description: "Completed 5+ technical workshops with verified attendance",
     icon: "Cpu",
     category: "engagement",
-    unlocked: true,
-    earnedDate: "2026-04-18",
+    unlocked: false,
     xpBonus: 150,
   },
   {
@@ -172,8 +170,7 @@ const INITIAL_BADGES: Badge[] = [
     description: "Maintained a continuous 7-day campus activity streak",
     icon: "Flame",
     category: "attendance",
-    unlocked: true,
-    earnedDate: "2026-05-30",
+    unlocked: false,
     xpBonus: 100,
   },
   {
@@ -191,8 +188,7 @@ const INITIAL_BADGES: Badge[] = [
     description: "Contributed over 10+ hours of verified volunteer service",
     icon: "Award",
     category: "volunteer",
-    unlocked: true,
-    earnedDate: "2026-06-01",
+    unlocked: false,
     xpBonus: 200,
   },
   {
@@ -201,8 +197,7 @@ const INITIAL_BADGES: Badge[] = [
     description: "Maintained >85% verified attendance across the semester",
     icon: "Trophy",
     category: "attendance",
-    unlocked: true,
-    earnedDate: "2026-06-10",
+    unlocked: false,
     xpBonus: 250,
   },
 ];
@@ -384,107 +379,11 @@ const INITIAL_EVENTS: CampusEvent[] = [
   },
 ];
 
-const INITIAL_REGISTRATIONS: Registration[] = [
-  {
-    id: "reg-1",
-    eventId: "evt-1",
-    userId: "u-om",
-    userRollNo: "24BT04171",
-    userName: "Om Thakkar",
-    department: "B.Tech Computer Science & Engineering",
-    registeredAt: "2026-06-08T09:30:00Z",
-    status: "confirmed",
-    isTeam: true,
-    teamName: "CodeCrafters",
-    teamMembers: [
-      { name: "Om Thakkar", rollNo: "24BT04171", email: "omthakkar168@gsfcuniversity.ac.in" },
-      { name: "Pooja Varma", rollNo: "24BT04192", email: "pooja.v@gsfcuniversity.ac.in" },
-      { name: "Rohan Dave", rollNo: "24BT04205", email: "rohan.d@gsfcuniversity.ac.in" },
-    ],
-  },
-  {
-    id: "reg-2",
-    eventId: "evt-2",
-    userId: "u-om",
-    userRollNo: "24BT04171",
-    userName: "Om Thakkar",
-    department: "B.Tech Computer Science & Engineering",
-    registeredAt: "2026-06-09T14:15:00Z",
-    status: "confirmed",
-    isTeam: false,
-  },
-  {
-    id: "reg-3",
-    eventId: "evt-6",
-    userId: "u-om",
-    userRollNo: "24BT04171",
-    userName: "Om Thakkar",
-    department: "B.Tech Computer Science & Engineering",
-    registeredAt: "2026-05-20T10:00:00Z",
-    status: "attended",
-    isTeam: false,
-  },
-  {
-    id: "reg-4",
-    eventId: "evt-3",
-    userId: "u-om",
-    userRollNo: "24BT04171",
-    userName: "Om Thakkar",
-    department: "B.Tech Computer Science & Engineering",
-    registeredAt: "2026-06-11T18:00:00Z",
-    status: "waitlisted",
-    isTeam: true,
-    teamName: "CS Strikers",
-  },
-];
+const INITIAL_REGISTRATIONS: Registration[] = [];
 
-const INITIAL_ATTENDANCE: AttendanceRecord[] = [
-  {
-    id: "att-1",
-    eventId: "evt-6",
-    eventTitle: "Design Systems & Modern Web UI Workshop",
-    userId: "u-om",
-    userName: "Om Thakkar",
-    userRollNo: "24BT04171",
-    department: "B.Tech Computer Science & Engineering",
-    timestamp: "2026-05-28T10:02:14Z",
-    verifiedMethod: "qr_scan",
-    tokenUsed: "GSFC-DS101-VERIFIED",
-    synced: true,
-    certificateId: "GSFC-CERT-EVT6-4171-99B4A",
-    distanceFromVenueMeters: 18,
-    locationVerified: true,
-  },
-];
+const INITIAL_ATTENDANCE: AttendanceRecord[] = [];
 
-const INITIAL_NOTIFICATIONS: NotificationItem[] = [
-  {
-    id: "notif-1",
-    title: "Reminder: Hackathon Today!",
-    message: "AI & Robotics National Hackathon is starting in 2 hours at Innovation Lab, Block C. Keep your QR scanner ready.",
-    type: "reminder",
-    timestamp: "10 minutes ago",
-    read: false,
-    eventId: "evt-1",
-  },
-  {
-    id: "notif-2",
-    title: "Registration Confirmed: Navratri Conclave",
-    message: "Your registration for Cultural Fest has been confirmed. Seat #108 allotted.",
-    type: "approval",
-    timestamp: "1 hour ago",
-    read: false,
-    eventId: "evt-2",
-  },
-  {
-    id: "notif-3",
-    title: "Badge Unlocked: Dean's Honor Roll",
-    message: "Congratulations! You maintained >85% attendance and earned +250 XP.",
-    type: "achievement",
-    timestamp: "Yesterday",
-    read: true,
-  },
-];
+const INITIAL_NOTIFICATIONS: NotificationItem[] = [];
 
 const INITIAL_VISITORS: VisitorRecord[] = [
   {
@@ -803,44 +702,7 @@ const INITIAL_CLUBS: Club[] = [
   },
 ];
 
-const INITIAL_CLUB_MEMBERS: ClubMember[] = [
-  {
-    id: "cm-1",
-    clubId: "club-1",
-    userId: "u-om",
-    userName: "Om Thakkar",
-    userRollNo: "24BT04171",
-    department: "B.Tech Computer Science & Engineering",
-    role: "lead",
-    joinedAt: "2024-08-15T10:00:00Z",
-    status: "active",
-    volunteerHoursEarned: 18,
-  },
-  {
-    id: "cm-2",
-    clubId: "club-2",
-    userId: "u-om",
-    userName: "Om Thakkar",
-    userRollNo: "24BT04171",
-    department: "B.Tech Computer Science & Engineering",
-    role: "member",
-    joinedAt: "2025-01-10T14:00:00Z",
-    status: "active",
-    volunteerHoursEarned: 6,
-  },
-  {
-    id: "cm-3",
-    clubId: "club-5",
-    userId: "u-om",
-    userName: "Om Thakkar",
-    userRollNo: "24BT04171",
-    department: "B.Tech Computer Science & Engineering",
-    role: "committee",
-    joinedAt: "2024-09-01T09:00:00Z",
-    status: "active",
-    volunteerHoursEarned: 14,
-  },
-];
+const INITIAL_CLUB_MEMBERS: ClubMember[] = [];
 
 const INITIAL_CLUB_ACTIVITIES: ClubActivity[] = [
   {
@@ -869,59 +731,7 @@ const INITIAL_CLUB_ACTIVITIES: ClubActivity[] = [
   },
 ];
 
-const INITIAL_ACHIEVEMENTS: VerifiedAchievement[] = [
-  {
-    id: "ach-1",
-    userId: "u-om",
-    userName: "Om Thakkar",
-    userRollNo: "24BT04171",
-    title: "Winner: 1st Place National AI Hackathon",
-    category: "hackathon",
-    eventOrActivityName: "AI & Robotics National Hackathon 2026",
-    issuingAuthority: "Dr. Ananya Sharma (Dean) & Dr. Suresh Rao (Convener)",
-    dateEarned: "2026-06-12",
-    certificateId: "GSFC-CERT-EVT1-4171-GOLD",
-    verificationHash: "SHA256:88F209EA149C03810BCDE9812A",
-    qrCodePayload: "GSFCU:ACH:AI_HACKATHON_1ST_PLACE:24BT04171",
-    verifiedBy: "GSFC Academic Governance & TPC",
-    badgeIcon: "Trophy",
-    description: "Awarded 1st place among 30+ national engineering teams for autonomous drone computer vision project.",
-  },
-  {
-    id: "ach-2",
-    userId: "u-om",
-    userName: "Om Thakkar",
-    userRollNo: "24BT04171",
-    title: "Excellence in UI/UX & Frontend Architecture",
-    category: "technical",
-    eventOrActivityName: "Design Systems & Modern Web UI Workshop",
-    issuingAuthority: "School of Technology & IEEE Student Branch",
-    dateEarned: "2026-05-20",
-    certificateId: "GSFC-CERT-EVT6-4171-UIUX",
-    verificationHash: "SHA256:77B1499F02319ACDEF49013B",
-    qrCodePayload: "GSFCU:ACH:DESIGN_SYSTEMS:24BT04171",
-    verifiedBy: "Prof. Rajiv Mehta (TPC)",
-    badgeIcon: "Award",
-    description: "Demonstrated production-grade component modularity, accessibility compliance, and design token integration.",
-  },
-  {
-    id: "ach-3",
-    userId: "u-om",
-    userName: "Om Thakkar",
-    userRollNo: "24BT04171",
-    title: "Outstanding Community Volunteer Honor",
-    category: "volunteering",
-    eventOrActivityName: "NSS Mega Blood Donation & Health Drive",
-    issuingAuthority: "Dr. Neha Trivedi (NSS Officer)",
-    dateEarned: "2026-04-10",
-    certificateId: "GSFC-CERT-NSS-4171-VOL",
-    verificationHash: "SHA256:19A440BC99814EF01235678A",
-    qrCodePayload: "GSFCU:ACH:NSS_VOLUNTEER:24BT04171",
-    verifiedBy: "Student Affairs Office",
-    badgeIcon: "HeartHandshake",
-    description: "Contributed 18+ verified on-ground volunteer hours supporting hospital logistics and donor registration.",
-  },
-];
+const INITIAL_ACHIEVEMENTS: VerifiedAchievement[] = [];
 
 const INITIAL_ANNOUNCEMENTS: CampusAnnouncement[] = [
   {
@@ -1131,8 +941,10 @@ function loadSavedState(): CampusState {
         }
       }
 
-      // Merge saved registrations with defaults
-      const existingRegs: Registration[] = Array.isArray(parsed.registrations) ? parsed.registrations : [];
+      // Clean legacy dummy test records for fresh manual testing
+      const existingRegs: Registration[] = Array.isArray(parsed.registrations)
+        ? parsed.registrations.filter((r: Registration) => !["reg-1", "reg-2", "reg-3", "reg-4"].includes(r.id))
+        : [];
       const mergedRegs = [...existingRegs];
       for (const defReg of INITIAL_REGISTRATIONS) {
         if (!mergedRegs.some((r) => r.id === defReg.id || (r.eventId === defReg.eventId && (r.userId === defReg.userId || r.userRollNo === defReg.userRollNo)))) {
@@ -1140,8 +952,10 @@ function loadSavedState(): CampusState {
         }
       }
 
-      // Merge saved attendance records with defaults
-      const existingAtt: AttendanceRecord[] = Array.isArray(parsed.attendanceRecords) ? parsed.attendanceRecords : [];
+      // Clean legacy dummy attendance records
+      const existingAtt: AttendanceRecord[] = Array.isArray(parsed.attendanceRecords)
+        ? parsed.attendanceRecords.filter((a: AttendanceRecord) => !["att-1", "att-2"].includes(a.id))
+        : [];
       const mergedAtt = [...existingAtt];
       for (const defAtt of INITIAL_ATTENDANCE) {
         if (!mergedAtt.some((a) => a.id === defAtt.id || (a.eventId === defAtt.eventId && (a.userId === defAtt.userId || a.userRollNo === defAtt.userRollNo)))) {
@@ -1176,8 +990,10 @@ function loadSavedState(): CampusState {
         }
       }
 
-      // Merge club members
-      const existingClubMembers: ClubMember[] = Array.isArray(parsed.clubMembers) ? parsed.clubMembers : [];
+      // Merge club members (clean dummy records)
+      const existingClubMembers: ClubMember[] = Array.isArray(parsed.clubMembers)
+        ? parsed.clubMembers.filter((cm: ClubMember) => !["cm-1", "cm-2", "cm-3"].includes(cm.id))
+        : [];
       const mergedClubMembers = [...existingClubMembers];
       for (const defCm of INITIAL_CLUB_MEMBERS) {
         if (!mergedClubMembers.some((cm) => cm.id === defCm.id || (cm.clubId === defCm.clubId && cm.userId === defCm.userId))) {
@@ -1194,8 +1010,10 @@ function loadSavedState(): CampusState {
         }
       }
 
-      // Merge achievements
-      const existingAchievements: VerifiedAchievement[] = Array.isArray(parsed.achievements) ? parsed.achievements : [];
+      // Merge achievements (clean dummy records)
+      const existingAchievements: VerifiedAchievement[] = Array.isArray(parsed.achievements)
+        ? parsed.achievements.filter((a: VerifiedAchievement) => !["ach-1", "ach-2", "ach-3"].includes(a.id))
+        : [];
       const mergedAchievements = [...existingAchievements];
       for (const defAch of INITIAL_ACHIEVEMENTS) {
         if (!mergedAchievements.some((a) => a.id === defAch.id)) {
@@ -1221,10 +1039,22 @@ function loadSavedState(): CampusState {
         }
       }
 
+      let cleanCurrentUser = parsed.currentUser || INITIAL_USER;
+      if (cleanCurrentUser.id === "u-om" || cleanCurrentUser.rollNo === "24BT04171") {
+        cleanCurrentUser = {
+          ...cleanCurrentUser,
+          points: existingAtt.length * 50,
+          streakDays: existingAtt.length > 0 ? (cleanCurrentUser.streakDays || 1) : 0,
+          volunteerHours: cleanCurrentUser.volunteerHours && cleanCurrentUser.volunteerHours !== 18 ? cleanCurrentUser.volunteerHours : 0,
+          attendanceRate: existingRegs.length > 0 ? Math.round((existingAtt.length / existingRegs.length) * 100) : 100,
+          badges: Array.isArray(cleanCurrentUser.badges) ? cleanCurrentUser.badges.filter((b: string) => !["b1", "b2", "b3", "b5"].includes(b)) : [],
+        };
+      }
+
       return {
         ...parsed,
         isAuthenticated: parsed.isAuthenticated !== undefined ? parsed.isAuthenticated : false,
-        currentUser: parsed.currentUser || INITIAL_USER,
+        currentUser: cleanCurrentUser,
         currentRole: parsed.currentRole || "student",
         events: mergedEvents,
         registrations: mergedRegs,

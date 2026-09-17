@@ -105,11 +105,9 @@ class ServerDatabase {
           role: "student",
           department: "B.Tech Computer Science & Engineering",
           year: 2,
-          semester: 4,
-          attendancePercentage: 88,
-          points: 1200,
-          streakDays: 14,
-          volunteerHours: 24,
+          points: 0,
+          streakDays: 0,
+          volunteerHours: 0,
           avatar: "OT",
         },
       },
@@ -258,61 +256,9 @@ class ServerDatabase {
       },
     ];
 
-    this.registrations = [
-      {
-        id: "reg-1",
-        eventId: "evt-1",
-        userId: "u-om",
-        userRollNo: "24BT04171",
-        userName: "Om Thakkar",
-        department: "B.Tech Computer Science & Engineering",
-        registeredAt: "2026-06-08T09:30:00Z",
-        status: "confirmed",
-        isTeam: true,
-        teamName: "CodeCrafters",
-      },
-      {
-        id: "reg-2",
-        eventId: "evt-2",
-        userId: "u-om",
-        userRollNo: "24BT04171",
-        userName: "Om Thakkar",
-        department: "B.Tech Computer Science & Engineering",
-        registeredAt: "2026-06-09T14:15:00Z",
-        status: "confirmed",
-        isTeam: false,
-      },
-      {
-        id: "reg-3",
-        eventId: "evt-6",
-        userId: "u-om",
-        userRollNo: "24BT04171",
-        userName: "Om Thakkar",
-        department: "B.Tech Computer Science & Engineering",
-        registeredAt: "2026-05-20T10:00:00Z",
-        status: "attended",
-        isTeam: false,
-      },
-    ];
+    this.registrations = [];
 
-    this.attendanceRecords = [
-      {
-        id: "att-1",
-        eventId: "evt-6",
-        eventTitle: "Design Systems & Modern Web UI Workshop",
-        userId: "u-om",
-        userName: "Om Thakkar",
-        userRollNo: "24BT04171",
-        department: "B.Tech Computer Science & Engineering",
-        timestamp: "2026-05-28T10:02:14Z",
-        verifiedMethod: "qr_scan",
-        tokenUsed: "GSFC-DS101-VERIFIED",
-        synced: true,
-        certificateId: "GSFC-CERT-EVT6-4171-99B4A",
-        distanceFromVenueMeters: 18,
-        locationVerified: true,
-      },
-    ];
+    this.attendanceRecords = [];
 
     this.clubs = [
       {
