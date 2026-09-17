@@ -36,6 +36,7 @@ import {
 } from "@/lib/campus-store";
 import { UserRole, UserProfile } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { ShortCampusTourModal } from "@/components/tour/ShortCampusTourModal";
 
 interface LoginPageProps {
   onLoginSuccess?: () => void;
@@ -50,6 +51,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [autoAppendDomain, setAutoAppendDomain] = useState(true);
   const [showCredentialsSheet, setShowCredentialsSheet] = useState(false);
+  const [showCampusTour, setShowCampusTour] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
 
   // New Registration State
@@ -338,12 +340,12 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
             type="button"
             variant="outline"
             size="sm"
-            onClick={handleGuestPreview}
-            className="h-8 gap-1.5 rounded-lg border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+            onClick={() => setShowCampusTour(true)}
+            className="h-8 gap-1.5 rounded-lg border-[#1A3C6E]/30 bg-white px-2.5 text-xs font-bold text-[#1A3C6E] shadow-sm hover:bg-blue-50"
           >
-            <LayoutGrid className="size-3.5 text-[#1A3C6E]" />
-            <span className="hidden sm:inline">Preview Portal as Guest ↗</span>
-            <span className="sm:hidden">Guest</span>
+            <Compass className="size-3.5 text-[#F2A93B]" />
+            <span className="hidden sm:inline">Short Campus Tour 🏛️</span>
+            <span className="sm:hidden">Tour 🏛️</span>
           </Button>
 
           <span className="hidden rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-black text-[#1A3C6E] lg:inline-flex">
@@ -1090,6 +1092,13 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
           <path d="M0,120 L0,30 Q140,-10 260,60 Q340,100 400,120 Z" fill="#EA580C" opacity="0.95" />
         </svg>
       </div>
+
+      {/* Short Campus Tour Modal (Copyright-free photo gallery & Instagram video reels) */}
+      <ShortCampusTourModal
+        isOpen={showCampusTour}
+        onClose={() => setShowCampusTour(false)}
+        onEnterGuestPortal={handleGuestPreview}
+      />
 
       {/* Bottom Footer Banner (Matching Screenshot) */}
       <footer className="relative z-20 flex flex-wrap items-center justify-between gap-2 bg-[#0284C7] px-6 py-2.5 text-xs font-bold text-white sm:px-8">

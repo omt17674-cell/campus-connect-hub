@@ -106,20 +106,20 @@ export function AttendanceHub({
             <div className="rounded-2xl border border-border/70 bg-card/50 p-3">
               <div className="flex items-center gap-1.5 text-xs text-[#F2A93B]">
                 <Award className="size-3.5" />
-                <span className="font-semibold text-muted-foreground">Volunteer</span>
+                <span className="font-semibold text-muted-foreground">Volunteer Hours</span>
               </div>
               <p className="mt-1 font-display text-xl font-black text-foreground">
-                {user.volunteerHours}h Logged
+                {user.volunteerHours || 0} Hrs
               </p>
             </div>
 
             <div className="rounded-2xl border border-border/70 bg-card/50 p-3">
               <div className="flex items-center gap-1.5 text-xs text-emerald-500">
                 <TrendingUp className="size-3.5" />
-                <span className="font-semibold text-muted-foreground">Attended</span>
+                <span className="font-semibold text-muted-foreground">Events Attended</span>
               </div>
               <p className="mt-1 font-display text-xl font-black text-foreground">
-                {state.attendanceRecords.length + 5} Events
+                {state.attendanceRecords.filter((a) => a.userId === user.id || a.userRollNo === user.rollNo).length} Verified
               </p>
             </div>
           </div>
