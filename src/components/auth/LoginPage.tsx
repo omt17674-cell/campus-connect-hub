@@ -133,10 +133,10 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
   };
 
   // Handle New Student / Faculty Registration Submit
-  const handleRegisterSubmit = (e: React.FormEvent) => {
+  const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!regFullName.trim() || !regRollNo.trim() || !regEmail.trim()) {
-      setStatusMessage({ text: "Please fill in all required academic details.", type: "error" });
+    if (!regFullName.trim() || !regRollNo.trim() || !regEmail.trim() || !regPhone.trim()) {
+      setStatusMessage({ text: "Please fill in all mandatory fields (Name, Roll No, Mobile Number, Email).", type: "error" });
       return;
     }
 
@@ -152,7 +152,42 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
 
     setRegSubmitting(true);
 
-    setTimeout(() => {
+    try {
+      const cleanRoll = regRollNo.trim().toUpperCase();
+      const cleanEmail = regEmail.includes("@") ? regEmail.trim() : `${regEmail.trim()}@gsfcuniversity.ac.in`;
+
+      // 1. Submit to API Gateway -> Supabase new_registered_students table
+      const res = await fetch("/api/students/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fullName: regFullName.trim(),
+          mobileNumber: regPhone.trim(),
+          rollNo: cleanRoll,
+          email: cleanEmail,
+          school: regSchool,
+          department: regDepartment,
+          degree: regDegree,
+          semester: regSemester,
+          residenceType: regResidence,
+          hostelBlockOrBusRoute: regResidence === "hostel" ? regHostelBlock : "University Bus Route 4",
+          clubsInterested: regClubs,
+          idCardUploaded: regIdUploaded,
+          password: regPassword || "Student@2026",
+        }),
+      });
+
+      const resData = await res.json().catch(() => null);
+
+      if (res && res.status === 409) {
+        setStatusMessage({
+          text: `⚠️ Identity Locked: Student ${cleanRoll} is already registered. Name & Mobile cannot be changed.`,
+          type: "error",
+        });
+        setRegSubmitting(false);
+        return;
+      }
+
       const initials = regFullName
         .split(" ")
         .map((n) => n[0])
@@ -161,10 +196,10 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
         .slice(0, 2) || "ST";
 
       const newUserProfile: UserProfile = {
-        id: `u-${regRollNo.toLowerCase().replace(/[^a-z0-9]/g, "")}-${Date.now()}`,
-        name: regFullName,
-        rollNo: regRollNo.toUpperCase(),
-        email: regEmail.includes("@") ? regEmail : `${regEmail}@gsfcuniversity.ac.in`,
+        id: `u-${cleanRoll.toLowerCase()}`,
+        name: regFullName.trim(),
+        rollNo: cleanRoll,
+        email: cleanEmail,
         role: regRole,
         department: `${regDegree} ${regDepartment}`,
         semester: regSemester,
@@ -179,10 +214,10 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
       const newAccount: CampusAccount = {
         role: regRole,
         roleTitle: regRole === "student" ? "GSFC Student" : "Faculty Organizer",
-        roleBadge: regRollNo.toUpperCase(),
-        name: regFullName,
-        idOrRoll: regRollNo.toUpperCase(),
-        email: newUserProfile.email,
+        roleBadge: cleanRoll,
+        name: regFullName.trim(),
+        idOrRoll: cleanRoll,
+        email: cleanEmail,
         password: regPassword || "Student@2026",
         profile: newUserProfile,
       };
@@ -201,14 +236,49 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
 
       setRegSubmitting(false);
       setStatusMessage({
-        text: `🎉 Registration successful! Welcome to Campus Connect, ${regFullName}.`,
+        text: `🔒 Registered & Identity Permanently Locked! Welcome to Campus Connect, ${regFullName}.`,
         type: "success",
       });
 
       if (onLoginSuccess) {
         setTimeout(onLoginSuccess, 400);
       }
-    }, 600);
+    } catch (err) {
+      console.warn("Registration API fallback:", err);
+      // Fallback local registration
+      const initials = regFullName.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2) || "ST";
+      const cleanRoll = regRollNo.trim().toUpperCase();
+      const cleanEmail = regEmail.includes("@") ? regEmail.trim() : `${regEmail.trim()}@gsfcuniversity.ac.in`;
+      
+      const newAccount: CampusAccount = {
+        role: regRole,
+        roleTitle: "GSFC Student",
+        roleBadge: cleanRoll,
+        name: regFullName.trim(),
+        idOrRoll: cleanRoll,
+        email: cleanEmail,
+        password: regPassword || "Student@2026",
+        profile: {
+          id: `u-${cleanRoll.toLowerCase()}`,
+          name: regFullName.trim(),
+          rollNo: cleanRoll,
+          email: cleanEmail,
+          role: regRole,
+          department: `${regDegree} ${regDepartment}`,
+          semester: regSemester,
+          avatar: initials,
+          points: 100,
+          streakDays: 1,
+          volunteerHours: 0,
+          attendanceRate: 100,
+          badges: ["b1"],
+        },
+      };
+      campusStore.registerNewAccount(newAccount);
+      campusStore.loginWithAccount(newAccount);
+      setRegSubmitting(false);
+      if (onLoginSuccess) setTimeout(onLoginSuccess, 400);
+    }
   };
 
   // Toggle club selection
@@ -624,9 +694,20 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
 
                 {/* 2. Personal & Contact Information */}
                 <div>
-                  <label className="block font-bold text-slate-600 mb-1">
-                    2. Personal & Identity Details
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block font-bold text-slate-600">
+                      2. Academic Identity & Contact Details
+                    </label>
+                    <span className="flex items-center gap-1 rounded bg-amber-100 px-1.5 py-0.5 text-[9px] font-black text-amber-800">
+                      🔒 Locked After Registration
+                    </span>
+                  </div>
+                  <div className="mb-2 rounded-xl border border-amber-300 bg-amber-50/80 p-2 text-[10px] text-amber-900 flex items-start gap-1.5">
+                    <span className="text-xs">⚠️</span>
+                    <span>
+                      <strong>Identity Security Policy:</strong> Your <strong>Full Name</strong>, <strong>Roll Number</strong>, and <strong>Mobile Number</strong> will be permanently locked upon registration in the university database and cannot be changed later. Please enter exact credentials.
+                    </span>
+                  </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     <div>
                       <span className="text-[10px] font-semibold text-slate-500">Full Name (As per GSFC Records) *</span>

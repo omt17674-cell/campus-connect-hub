@@ -32,6 +32,43 @@ class ServerDatabase {
   public visitors: VisitorRecord[] = [];
   public vehicles: VehicleRecord[] = [];
   public auditLogs: AuditLogEntry[] = [];
+  public newRegisteredStudents: Array<{
+    id: string;
+    fullName: string;
+    mobileNumber: string;
+    rollNo: string;
+    email: string;
+    school: string;
+    department: string;
+    degree: string;
+    semester: number;
+    residenceType: "hostel" | "dayscholar";
+    hostelBlockOrBusRoute?: string;
+    clubsInterested: string[];
+    idCardUploaded: boolean;
+    isLocked: boolean;
+    verifiedByUniversity: boolean;
+    createdAt: string;
+  }> = [
+    {
+      id: "STU-OM4171",
+      fullName: "Om Thakkar",
+      mobileNumber: "+91 98765 04171",
+      rollNo: "24BT04171",
+      email: "omthakkar168@gsfcuniversity.ac.in",
+      school: "School of Technology (SOT)",
+      department: "Computer Science & Engineering",
+      degree: "B.Tech",
+      semester: 4,
+      residenceType: "hostel",
+      hostelBlockOrBusRoute: "Sardar Patel Boys Hostel - Block A",
+      clubsInterested: ["Coding & AI Club", "Robotics Club"],
+      idCardUploaded: true,
+      isLocked: true,
+      verifiedByUniversity: true,
+      createdAt: "2026-06-01T10:00:00Z",
+    },
+  ];
   public digitalId: DigitalStudentIdCard = {
     rollNo: "24BT04171",
     name: "Om Thakkar",

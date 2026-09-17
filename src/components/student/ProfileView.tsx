@@ -137,6 +137,90 @@ export function ProfileView({ state }: ProfileViewProps) {
         </div>
       </div>
 
+      {/* Immutable Student Academic Identity Security Card */}
+      <div className="rounded-3xl border border-amber-500/30 bg-gradient-to-br from-amber-500/5 via-card/60 to-[#1A3C6E]/5 p-6 shadow-xl shadow-amber-500/5 backdrop-blur-2xl">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-border/70 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="flex size-10 items-center justify-center rounded-2xl bg-amber-500/15 text-amber-600 dark:text-amber-400">
+              <ShieldCheck className="size-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-display text-base font-black text-foreground">
+                  Verified Academic Identity Protection
+                </h3>
+                <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                  🔒 Locked Post-Registration
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                GSFC University Academic Governance & Anti-Impersonation Protocol
+              </p>
+            </div>
+          </div>
+          <span className="inline-flex items-center gap-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-bold text-amber-700 dark:text-amber-300">
+            Immutable Record
+          </span>
+        </div>
+
+        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          {/* Locked Name */}
+          <div className="rounded-2xl border border-border/70 bg-card/60 p-3.5 relative overflow-hidden">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>Full Name</span>
+              <span className="flex items-center gap-1 text-[10px] font-bold text-amber-600 dark:text-amber-400">
+                🔒 Permanent Lock
+              </span>
+            </div>
+            <p className="mt-1.5 font-display text-sm font-black text-foreground">
+              {user.name}
+            </p>
+            <p className="mt-1 text-[10px] text-muted-foreground">
+              Name change prohibited after initial enrolment.
+            </p>
+          </div>
+
+          {/* Locked Roll No */}
+          <div className="rounded-2xl border border-border/70 bg-card/60 p-3.5 relative overflow-hidden">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>Enrolment Roll No</span>
+              <span className="flex items-center gap-1 text-[10px] font-bold text-amber-600 dark:text-amber-400">
+                🔒 Permanent Lock
+              </span>
+            </div>
+            <p className="mt-1.5 font-display text-sm font-black text-foreground">
+              {user.rollNo}
+            </p>
+            <p className="mt-1 text-[10px] text-muted-foreground">
+              Tied to official GSFC University ERP & Examination Board.
+            </p>
+          </div>
+
+          {/* Locked Mobile / Contact */}
+          <div className="rounded-2xl border border-border/70 bg-card/60 p-3.5 relative overflow-hidden">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>Mobile Phone Number</span>
+              <span className="flex items-center gap-1 text-[10px] font-bold text-amber-600 dark:text-amber-400">
+                🔒 Permanent Lock
+              </span>
+            </div>
+            <p className="mt-1.5 font-display text-sm font-black text-foreground">
+              +91 95584 13347 / +91 98765 43210
+            </p>
+            <p className="mt-1 text-[10px] text-muted-foreground">
+              Registered 2FA number is permanently bound to this student profile.
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-4 rounded-2xl bg-amber-500/10 p-3 text-[11px] font-medium text-amber-800 dark:text-amber-200 flex items-start gap-2.5">
+          <span className="text-sm">🛡️</span>
+          <span>
+            <strong>University Policy Note:</strong> In accordance with GSFC University security rules, students cannot edit their registered <strong>Full Name</strong>, <strong>Enrolment Number</strong>, or <strong>Primary Mobile Number</strong> directly. For corrections, please contact the Office of the Registrar with official government identity proof.
+          </span>
+        </div>
+      </div>
+
       {/* University SSO Status Card */}
       <div className="rounded-3xl border border-border/80 bg-card/60 p-6 shadow-xl shadow-brand/5 backdrop-blur-2xl">
         <h3 className="font-display text-base font-black text-foreground">

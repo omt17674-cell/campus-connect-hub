@@ -360,7 +360,26 @@ export interface DigitalStudentIdCard {
   qrVerificationCode: string;
   barcode: string;
   photoUrl: string;
-  status: "active" | "graduated" | "suspended";
+  status: "active" | "suspended" | "expired";
+}
+
+export interface NewRegisteredStudent {
+  id: string;
+  fullName: string;
+  mobileNumber: string;
+  rollNo: string;
+  email: string;
+  school: string;
+  department: string;
+  degree: string;
+  semester: number;
+  residenceType: "hostel" | "dayscholar";
+  hostelBlockOrBusRoute?: string;
+  clubsInterested: string[];
+  idCardUploaded: boolean;
+  isLocked: boolean;
+  verifiedByUniversity: boolean;
+  createdAt: string;
 }
 
 export interface AssistantMessage {

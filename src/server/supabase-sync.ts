@@ -66,6 +66,73 @@ export const supabaseSync = {
     }
   },
 
+  // Save Newly Registered Student to Supabase (Immutable Identity)
+  async saveNewStudent(student: import("../lib/types").NewRegisteredStudent): Promise<{ success: boolean; message?: string }> {
+    try {
+      const payload = {
+        id: student.id,
+        full_name: student.fullName,
+        mobile_number: student.mobileNumber,
+        roll_no: student.rollNo,
+        email: student.email,
+        school: student.school,
+        department: student.department,
+        degree: student.degree,
+        semester: student.semester,
+        residence_type: student.residenceType,
+        hostel_block_or_bus_route: student.hostelBlockOrBusRoute || null,
+        clubs_interested: student.clubsInterested || [],
+        id_card_uploaded: student.idCardUploaded,
+        is_locked: true,
+        verified_by_university: student.verifiedByUniversity,
+        created_at: student.createdAt || new Date().toISOString(),
+      };
+
+      const { error } = await supabaseAdmin.from("new_registered_students").insert(payload);
+      if (error) {
+        return { success: false, message: error.message };
+      }
+      return { success: true };
+    } catch (e: any) {
+      console.warn("Supabase save new registered student error:", e);
+      return { success: false, message: e.message || String(e) };
+    }
+  },
+
+  // Pull New Registered Students from Supabase or Fallback
+  async getNewRegisteredStudents(): Promise<import("../lib/types").NewRegisteredStudent[]> {
+    try {
+      const { data, error } = await supabaseAdmin
+        .from("new_registered_students")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (!error && data && data.length > 0) {
+        return data.map((d: any) => ({
+          id: d.id,
+          fullName: d.full_name,
+          mobileNumber: d.mobile_number,
+          rollNo: d.roll_no,
+          email: d.email,
+          school: d.school,
+          department: d.department,
+          degree: d.degree,
+          semester: d.semester,
+          residenceType: d.residence_type,
+          hostelBlockOrBusRoute: d.hostel_block_or_bus_route,
+          clubsInterested: d.clubs_interested || [],
+          idCardUploaded: d.id_card_uploaded,
+          isLocked: d.is_locked,
+          verifiedByUniversity: d.verified_by_university,
+          createdAt: d.created_at,
+        }));
+      }
+    } catch (e) {
+      console.warn("Supabase fetch new registered students error, using local:", e);
+    }
+    return db.newRegisteredStudents;
+  },
+
   // Seed Supabase with initial catalog if empty
   async seedSupabaseIfEmpty(): Promise<void> {
     try {

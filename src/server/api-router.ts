@@ -381,5 +381,147 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
     });
   }
 
+  // 12. Newly Registered Students (Immutable Identity System)
+  if (path === "/api/students/register" && method === "POST") {
+    const body = await parseBody<Partial<import("../lib/types").NewRegisteredStudent & { password?: string }>>(request);
+    if (!body || !body.fullName || !body.rollNo || !body.mobileNumber || !body.email) {
+      return jsonResponse({
+        success: false,
+        message: "Missing mandatory registration fields: Full Name, Roll No, Mobile Number, or Email.",
+      }, 400);
+    }
+
+    // Check if roll number or email or mobile already registered
+    const cleanRoll = body.rollNo.trim().toUpperCase();
+    const cleanMobile = body.mobileNumber.trim();
+    const cleanEmail = body.email.trim().toLowerCase();
+
+    const existingStudent = db.newRegisteredStudents.find(
+      (s) => s.rollNo.toUpperCase() === cleanRoll || s.email.toLowerCase() === cleanEmail || s.mobileNumber === cleanMobile
+    );
+
+    if (existingStudent) {
+      return jsonResponse({
+        success: false,
+        message: `Student with Roll Number ${cleanRoll} or Mobile ${cleanMobile} is already registered. Name & Mobile are permanently locked.`,
+        isLocked: true,
+      }, 409);
+    }
+
+    const newStudent: import("../lib/types").NewRegisteredStudent = {
+      id: `STU-${cleanRoll}`,
+      fullName: body.fullName.trim(),
+      mobileNumber: cleanMobile,
+      rollNo: cleanRoll,
+      email: cleanEmail,
+      school: body.school || "School of Technology (SOT)",
+      department: body.department || "Computer Science & Engineering",
+      degree: body.degree || "B.Tech CSE",
+      semester: Number(body.semester) || 1,
+      residenceType: body.residenceType || "dayscholar",
+      hostelBlockOrBusRoute: body.hostelBlockOrBusRoute || "",
+      clubsInterested: body.clubsInterested || [],
+      idCardUploaded: Boolean(body.idCardUploaded),
+      isLocked: true, // Permanent lock enforced
+      verifiedByUniversity: false,
+      createdAt: new Date().toISOString(),
+    };
+
+    // Store in memory
+    db.newRegisteredStudents.unshift(newStudent);
+
+    // Also create login account if not exists
+    const existingAccount = db.accounts.find((a) => a.idOrRoll.toLowerCase() === cleanRoll.toLowerCase());
+    if (!existingAccount) {
+      db.accounts.push({
+        role: "student",
+        roleTitle: "GSFC Student",
+        roleBadge: cleanRoll,
+        name: newStudent.fullName,
+        idOrRoll: cleanRoll,
+        email: cleanEmail,
+        password: body.password || "gsfc@2026",
+        profile: {
+          id: `u-${cleanRoll.toLowerCase()}`,
+          name: newStudent.fullName,
+          rollNo: cleanRoll,
+          email: cleanEmail,
+          role: "student",
+          department: newStudent.department,
+          year: 1,
+          semester: newStudent.semester,
+          attendancePercentage: 100,
+          points: 100,
+          streakDays: 1,
+          volunteerHours: 0,
+          avatar: newStudent.fullName.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2),
+        },
+      });
+    }
+
+    // Sync to Supabase table: new_registered_students
+    const supabaseResult = await supabaseSync.saveNewStudent(newStudent);
+
+    return jsonResponse({
+      success: true,
+      message: "Student registration submitted and permanently locked. Full Name and Mobile Number cannot be modified.",
+      student: newStudent,
+      identityLocked: true,
+      supabaseSyncStatus: supabaseResult.success ? "synced" : "saved_locally",
+    }, 201);
+  }
+
+  // Fetch all registered students
+  if (path === "/api/students/registered" && method === "GET") {
+    const students = await supabaseSync.getNewRegisteredStudents();
+    return jsonResponse({
+      success: true,
+      count: students.length,
+      students,
+      policy: "Full Name, Mobile Number, and Roll No are immutable.",
+    });
+  }
+
+  // Profile Update Guard - strictly prevent changing full_name, mobile_number, or roll_no
+  if (path === "/api/students/profile/update" && method === "POST") {
+    const body = await parseBody<{
+      studentId: string;
+      fullName?: string;
+      mobileNumber?: string;
+      rollNo?: string;
+      department?: string;
+      semester?: number;
+    }>(request);
+
+    if (!body || !body.studentId) {
+      return jsonResponse({ success: false, message: "Missing student ID." }, 400);
+    }
+
+    const currentStudent = db.newRegisteredStudents.find(
+      (s) => s.id === body.studentId || s.rollNo.toLowerCase() === body.studentId.toLowerCase()
+    );
+
+    if (currentStudent) {
+      // Check if attempt is made to mutate locked fields
+      if (
+        (body.fullName && body.fullName.trim() !== currentStudent.fullName) ||
+        (body.mobileNumber && body.mobileNumber.trim() !== currentStudent.mobileNumber) ||
+        (body.rollNo && body.rollNo.trim().toUpperCase() !== currentStudent.rollNo)
+      ) {
+        return jsonResponse({
+          success: false,
+          error: "IMMUTABLE_FIELD_MODIFICATION_BLOCKED",
+          message: "SECURITY POLICY VIOLATION: Student Full Name, Mobile Number, and Roll Number are permanently locked after registration and cannot be modified under any circumstances.",
+          lockedFields: ["fullName", "mobileNumber", "rollNo"],
+        }, 403);
+      }
+    }
+
+    return jsonResponse({
+      success: true,
+      message: "Non-critical profile details updated. Core identity remains locked.",
+    });
+  }
+
   return jsonResponse({ error: "Route not found in GSFC API Gateway" }, 404);
 }

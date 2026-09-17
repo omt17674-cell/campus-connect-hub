@@ -26,7 +26,58 @@ CREATE TABLE IF NOT EXISTS public.accounts (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 2. EVENTS TABLE
+-- 2. NEW REGISTERED STUDENTS TABLE (LOCKED IDENTITY: NAME & MOBILE CANNOT BE ALTERED)
+CREATE TABLE IF NOT EXISTS public.new_registered_students (
+  id TEXT PRIMARY KEY,
+  full_name TEXT NOT NULL,
+  mobile_number TEXT NOT NULL,
+  roll_no TEXT UNIQUE NOT NULL,
+  email TEXT UNIQUE NOT NULL,
+  school TEXT NOT NULL,
+  department TEXT NOT NULL,
+  degree TEXT NOT NULL DEFAULT 'B.Tech',
+  semester INT NOT NULL DEFAULT 4,
+  residence_type TEXT DEFAULT 'hostel' CHECK (residence_type IN ('hostel', 'dayscholar')),
+  hostel_block_or_bus_route TEXT,
+  clubs_interested TEXT[] DEFAULT ARRAY[]::TEXT[],
+  id_card_uploaded BOOLEAN DEFAULT TRUE,
+  is_locked BOOLEAN DEFAULT TRUE,
+  verified_by_university BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- STRICT DATABASE TRIGGER: PREVENTS ANY MODIFICATION TO NAME, MOBILE NUMBER, OR ROLL NUMBER
+CREATE OR REPLACE FUNCTION lock_student_name_and_number()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- Check if full_name was modified
+  IF NEW.full_name <> OLD.full_name THEN
+    RAISE EXCEPTION 'SECURITY POLICY: Student Full Name is permanently locked and cannot be changed after registration.';
+  END IF;
+
+  -- Check if mobile_number was modified
+  IF NEW.mobile_number <> OLD.mobile_number THEN
+    RAISE EXCEPTION 'SECURITY POLICY: Student Mobile Number is permanently locked and cannot be changed after registration.';
+  END IF;
+
+  -- Check if roll_no was modified
+  IF NEW.roll_no <> OLD.roll_no THEN
+    RAISE EXCEPTION 'SECURITY POLICY: Student Roll/Enrollment Number is permanently locked and cannot be changed after registration.';
+  END IF;
+
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_lock_student_identity ON public.new_registered_students;
+CREATE TRIGGER trg_lock_student_identity
+BEFORE UPDATE ON public.new_registered_students
+FOR EACH ROW
+EXECUTE FUNCTION lock_student_name_and_number();
+
+-- 3. EVENTS TABLE
 CREATE TABLE IF NOT EXISTS public.events (
   id TEXT PRIMARY KEY,
   title TEXT NOT NULL,
@@ -53,7 +104,7 @@ CREATE TABLE IF NOT EXISTS public.events (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 3. REGISTRATIONS TABLE
+-- 4. REGISTRATIONS TABLE
 CREATE TABLE IF NOT EXISTS public.registrations (
   id TEXT PRIMARY KEY,
   event_id TEXT REFERENCES public.events(id) ON DELETE CASCADE,
@@ -68,7 +119,7 @@ CREATE TABLE IF NOT EXISTS public.registrations (
   team_members JSONB
 );
 
--- 4. ATTENDANCE & PUNCH RECORDS TABLE
+-- 5. ATTENDANCE & PUNCH RECORDS TABLE
 CREATE TABLE IF NOT EXISTS public.attendance (
   id TEXT PRIMARY KEY,
   event_id TEXT REFERENCES public.events(id) ON DELETE CASCADE,
@@ -90,7 +141,7 @@ CREATE TABLE IF NOT EXISTS public.attendance (
   synced BOOLEAN DEFAULT TRUE
 );
 
--- 5. VERIFIED ACHIEVEMENTS & DIGITAL PASSPORT
+-- 6. VERIFIED ACHIEVEMENTS & DIGITAL PASSPORT
 CREATE TABLE IF NOT EXISTS public.achievements (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL,
@@ -110,7 +161,7 @@ CREATE TABLE IF NOT EXISTS public.achievements (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 6. CLUBS & SOCIETIES TABLE
+-- 7. CLUBS & SOCIETIES TABLE
 CREATE TABLE IF NOT EXISTS public.clubs (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -129,7 +180,7 @@ CREATE TABLE IF NOT EXISTS public.clubs (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 7. CLUB MEMBERSHIP TABLE
+-- 8. CLUB MEMBERSHIP TABLE
 CREATE TABLE IF NOT EXISTS public.club_members (
   id TEXT PRIMARY KEY,
   club_id TEXT REFERENCES public.clubs(id) ON DELETE CASCADE,
@@ -143,7 +194,7 @@ CREATE TABLE IF NOT EXISTS public.club_members (
   volunteer_hours_earned INT DEFAULT 0
 );
 
--- 8. CAMPUS ANNOUNCEMENTS TABLE
+-- 9. CAMPUS ANNOUNCEMENTS TABLE
 CREATE TABLE IF NOT EXISTS public.announcements (
   id TEXT PRIMARY KEY,
   title TEXT NOT NULL,
@@ -157,7 +208,7 @@ CREATE TABLE IF NOT EXISTS public.announcements (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 9. CAMPUS SERVICES DIRECTORY TABLE
+-- 10. CAMPUS SERVICES DIRECTORY TABLE
 CREATE TABLE IF NOT EXISTS public.services (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -173,7 +224,7 @@ CREATE TABLE IF NOT EXISTS public.services (
   icon_name TEXT DEFAULT 'Building'
 );
 
--- 10. VISITOR & GATE PASS TABLE
+-- 11. VISITOR & GATE PASS TABLE
 CREATE TABLE IF NOT EXISTS public.visitors (
   id TEXT PRIMARY KEY,
   full_name TEXT NOT NULL,
@@ -194,7 +245,7 @@ CREATE TABLE IF NOT EXISTS public.visitors (
   qr_pass_code TEXT NOT NULL
 );
 
--- 11. VEHICLE PARKING ALLOCATION TABLE
+-- 12. VEHICLE PARKING ALLOCATION TABLE
 CREATE TABLE IF NOT EXISTS public.vehicles (
   id TEXT PRIMARY KEY,
   vehicle_number TEXT UNIQUE NOT NULL,
@@ -210,7 +261,7 @@ CREATE TABLE IF NOT EXISTS public.vehicles (
   gate_pass_id TEXT
 );
 
--- 12. AUDIT LOGS TABLE
+-- 13. AUDIT LOGS TABLE
 CREATE TABLE IF NOT EXISTS public.audit_logs (
   id TEXT PRIMARY KEY,
   action TEXT NOT NULL,
@@ -221,18 +272,15 @@ CREATE TABLE IF NOT EXISTS public.audit_logs (
 );
 
 -- ==============================================================================
--- INDEXES FOR ULTRA-FAST QUERY PERFORMANCE
+-- INDEXES & ROW LEVEL SECURITY
 -- ==============================================================================
+CREATE INDEX IF NOT EXISTS idx_new_students_roll ON public.new_registered_students(roll_no);
 CREATE INDEX IF NOT EXISTS idx_events_date ON public.events(date);
-CREATE INDEX IF NOT EXISTS idx_events_status ON public.events(status);
 CREATE INDEX IF NOT EXISTS idx_registrations_user ON public.registrations(user_id, event_id);
 CREATE INDEX IF NOT EXISTS idx_attendance_user ON public.attendance(user_id, event_id);
-CREATE INDEX IF NOT EXISTS idx_attendance_cert ON public.attendance(certificate_id);
-CREATE INDEX IF NOT EXISTS idx_achievements_user ON public.achievements(user_id);
-CREATE INDEX IF NOT EXISTS idx_club_members_club ON public.club_members(club_id, user_id);
 
--- Disable Row Level Security (or allow public anonymous access for app demo)
 ALTER TABLE public.accounts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.new_registered_students ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.registrations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.attendance ENABLE ROW LEVEL SECURITY;
@@ -245,13 +293,16 @@ ALTER TABLE public.visitors ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.vehicles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 
--- Allow read & write policies for public application
 DO $$
 BEGIN
   CREATE POLICY "Allow public read accounts" ON public.accounts FOR SELECT USING (true);
   CREATE POLICY "Allow public insert accounts" ON public.accounts FOR INSERT WITH CHECK (true);
   CREATE POLICY "Allow public update accounts" ON public.accounts FOR UPDATE USING (true);
-  
+
+  CREATE POLICY "Allow public read new_students" ON public.new_registered_students FOR SELECT USING (true);
+  CREATE POLICY "Allow public insert new_students" ON public.new_registered_students FOR INSERT WITH CHECK (true);
+  CREATE POLICY "Allow public update new_students" ON public.new_registered_students FOR UPDATE USING (true);
+
   CREATE POLICY "Allow public read events" ON public.events FOR SELECT USING (true);
   CREATE POLICY "Allow public insert events" ON public.events FOR INSERT WITH CHECK (true);
   CREATE POLICY "Allow public update events" ON public.events FOR UPDATE USING (true);
@@ -287,3 +338,13 @@ BEGIN
 EXCEPTION WHEN OTHERS THEN
   NULL;
 END $$;
+
+-- ==============================================================================
+-- INITIAL SAMPLE DATA FOR NEW REGISTERED STUDENTS (LOCKED)
+-- ==============================================================================
+INSERT INTO public.new_registered_students (id, full_name, mobile_number, roll_no, email, school, department, degree, semester, residence_type, hostel_block_or_bus_route, clubs_interested, id_card_uploaded, is_locked, verified_by_university)
+VALUES
+  ('STU-OM4171', 'Om Thakkar', '+91 98765 04171', '24BT04171', 'omthakkar168@gsfcuniversity.ac.in', 'School of Technology (SOT)', 'Computer Science & Engineering', 'B.Tech', 4, 'hostel', 'Sardar Patel Boys Hostel - Block A', ARRAY['Coding & AI Club', 'Robotics Club'], true, true, true),
+  ('STU-PV4192', 'Pooja Varma', '+91 98240 19283', '24BT04192', 'pooja.v@gsfcuniversity.ac.in', 'School of Technology (SOT)', 'Computer Science & Engineering', 'B.Tech', 4, 'dayscholar', 'Route 4 - Vadodara Alkapuri', ARRAY['Chrysalis Cultural Guild'], true, true, true),
+  ('STU-RD4205', 'Rohan Dave', '+91 97250 88205', '24BT04205', 'rohan.d@gsfcuniversity.ac.in', 'School of Technology (SOT)', 'Chemical Engineering', 'B.Tech', 4, 'hostel', 'Sardar Patel Boys Hostel - Block A', ARRAY['GSFC E-Cell'], true, true, true)
+ON CONFLICT (id) DO NOTHING;
