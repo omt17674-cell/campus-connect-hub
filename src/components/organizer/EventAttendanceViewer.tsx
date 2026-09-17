@@ -7,6 +7,7 @@ import {
   Clock,
   Download,
   FileSpreadsheet,
+  FileText,
   Filter,
   GraduationCap,
   LogIn,
@@ -21,6 +22,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { CampusEvent, Registration, AttendanceRecord } from "@/lib/types";
 import { campusStore, CampusState } from "@/lib/campus-store";
+import { generateEventAttendanceRosterPdf } from "@/lib/attendance-roster-pdf";
+import { generateCertificatePdf } from "@/lib/certificate-generator";
 import { cn } from "@/lib/utils";
 
 interface EventAttendanceViewerProps {
@@ -48,6 +51,7 @@ export function EventAttendanceViewer({
   }, [selectedEventId]);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "punched_in" | "attended" | "pending">("all");
+  const [downloadingCertUserId, setDownloadingCertUserId] = useState<string | null>(null);
 
   const activeEvent = state.events.find((e) => e.id === currentEventId) || state.events[0];
 
@@ -130,6 +134,56 @@ export function EventAttendanceViewer({
     document.body.removeChild(link);
   };
 
+  // Export PDF Institutional Roster
+  const handleExportPdf = () => {
+    if (!activeEvent) return;
+    generateEventAttendanceRosterPdf(activeEvent, eventRegistrations, eventAttendanceRecords);
+  };
+
+  // Download Individual Student Certificate PDF
+  const handleDownloadStudentCert = async (reg: Registration) => {
+    if (!activeEvent) return;
+    setDownloadingCertUserId(reg.userId);
+    try {
+      const record: AttendanceRecord = eventAttendanceRecords.find((a) => a.userId === reg.userId) || {
+        id: `att-gen-${reg.userId}-${Date.now()}`,
+        eventId: activeEvent.id,
+        eventTitle: activeEvent.title,
+        userId: reg.userId,
+        userName: reg.userName,
+        userRollNo: reg.userRollNo,
+        department: reg.department,
+        timestamp: new Date().toISOString(),
+        verifiedMethod: "live_punch",
+        tokenUsed: "GSFC-OFFICIAL",
+        synced: true,
+        certificateId: `GSFC-CERT-${activeEvent.id.replace(/[^a-zA-Z0-9]/g, "").toUpperCase()}-${reg.userRollNo.replace(/[^a-zA-Z0-9]/g, "").slice(-4)}-98A4`,
+      };
+
+      const userProfile = {
+        id: reg.userId,
+        name: reg.userName,
+        rollNo: reg.userRollNo,
+        department: reg.department,
+        email: `${reg.userRollNo.toLowerCase()}@gsfcuniversity.ac.in`,
+        avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+        role: "student" as const,
+        points: 450,
+        level: "Campus Champion",
+        streakDays: 8,
+        volunteerHours: 12,
+        attendanceRate: 92,
+        semester: 6,
+      };
+
+      await generateCertificatePdf(record, activeEvent, userProfile);
+    } catch (err) {
+      console.error("Failed to generate student cert", err);
+    } finally {
+      setDownloadingCertUserId(null);
+    }
+  };
+
   // Quick manual mark
   const handleManualToggleAttendance = (reg: Registration) => {
     const isAttended = reg.status === "attended";
@@ -192,11 +246,21 @@ export function EventAttendanceViewer({
           )}
 
           <Button
+            onClick={handleExportPdf}
+            size="sm"
+            className="h-9 gap-1.5 rounded-xl bg-gradient-to-r from-[#1A3C6E] to-[#0E2342] text-xs font-black text-[#F2A93B] shadow-md hover:opacity-95"
+          >
+            <FileText className="size-3.5" />
+            Download PDF Roster
+          </Button>
+
+          <Button
             onClick={handleExportCsv}
             size="sm"
-            className="h-9 gap-1.5 rounded-xl bg-[#1A3C6E] text-xs font-bold text-white shadow-md hover:bg-[#1A3C6E]/90"
+            variant="outline"
+            className="h-9 gap-1.5 rounded-xl border-border/80 text-xs font-bold"
           >
-            <FileSpreadsheet className="size-3.5 text-[#F2A93B]" />
+            <FileSpreadsheet className="size-3.5 text-brand" />
             Export CSV
           </Button>
         </div>
@@ -408,21 +472,35 @@ export function EventAttendanceViewer({
 
                     {/* Status & Manual Action */}
                     <td className="px-3 py-3 text-right">
-                      <button
-                        type="button"
-                        onClick={() => handleManualToggleAttendance(reg)}
-                        className={cn(
-                          "rounded-lg px-2.5 py-1 text-[10px] font-black transition-all",
-                          isCompleted
-                            ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 hover:bg-rose-500/15 hover:text-rose-600"
-                            : hasPunchIn
-                            ? "bg-amber-500/15 text-amber-700 dark:text-amber-300 hover:bg-emerald-500/20"
-                            : "bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-emerald-500/15 hover:text-emerald-600"
-                        )}
-                        title="Click to toggle attendance status"
-                      >
-                        {isCompleted ? "✓ Verified Present" : hasPunchIn ? "⚡ In Session" : "Mark Present"}
-                      </button>
+                      <div className="flex items-center justify-end gap-1.5">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleDownloadStudentCert(reg)}
+                          disabled={downloadingCertUserId === reg.userId}
+                          className="h-7 gap-1 rounded-lg border-[#1A3C6E]/30 bg-[#1A3C6E]/5 text-[10px] font-bold text-[#1A3C6E] hover:bg-[#1A3C6E]/15 dark:border-[#F2A93B]/30 dark:bg-[#F2A93B]/10 dark:text-[#F2A93B]"
+                          title="Download individual student participation certificate"
+                        >
+                          <Download className="size-3" />
+                          <span>{downloadingCertUserId === reg.userId ? "..." : "PDF Cert"}</span>
+                        </Button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleManualToggleAttendance(reg)}
+                          className={cn(
+                            "rounded-lg px-2.5 py-1 text-[10px] font-black transition-all",
+                            isCompleted
+                              ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 hover:bg-rose-500/15 hover:text-rose-600"
+                              : hasPunchIn
+                              ? "bg-amber-500/15 text-amber-700 dark:text-amber-300 hover:bg-emerald-500/20"
+                              : "bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-emerald-500/15 hover:text-emerald-600"
+                          )}
+                          title="Click to toggle attendance status"
+                        >
+                          {isCompleted ? "✓ Verified Present" : hasPunchIn ? "⚡ In Session" : "Mark Present"}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
