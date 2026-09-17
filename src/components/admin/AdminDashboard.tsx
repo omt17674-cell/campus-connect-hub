@@ -6,6 +6,7 @@ import {
   Check,
   Download,
   FileText,
+  GraduationCap,
   History,
   Mail,
   PieChart as PieIcon,
