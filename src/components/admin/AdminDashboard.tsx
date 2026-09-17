@@ -32,6 +32,7 @@ import { CampusState, campusStore } from "@/lib/campus-store";
 import { translations } from "@/lib/i18n";
 import { EventAttendanceViewer } from "@/components/organizer/EventAttendanceViewer";
 import { VisitorVehicleSecurityViewer } from "@/components/admin/VisitorVehicleSecurityViewer";
+import { StudentRegistryViewer } from "@/components/admin/StudentRegistryViewer";
 import { cn } from "@/lib/utils";
 
 interface AdminDashboardProps {
@@ -42,7 +43,7 @@ interface AdminDashboardProps {
 export function AdminDashboard({ state, onOpenGateModal }: AdminDashboardProps) {
   const t = translations[state.language];
   const [adminTab, setAdminTab] = useState<
-    "overview" | "roster" | "security" | "approvals" | "alerts" | "audit"
+    "overview" | "students" | "roster" | "security" | "approvals" | "alerts" | "audit"
   >("overview");
 
   const pendingApprovals = state.events.filter((e) => e.status === "pending_approval");
@@ -155,6 +156,21 @@ export function AdminDashboard({ state, onOpenGateModal }: AdminDashboardProps) 
         <Button
           variant="ghost"
           size="sm"
+          onClick={() => setAdminTab("students")}
+          className={cn(
+            "rounded-xl text-xs font-bold",
+            adminTab === "students"
+              ? "bg-[#1A3C6E] text-white"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <GraduationCap className="mr-1.5 size-3.5 text-[#F2A93B]" />
+          Student Identity Registry ({(state.newRegisteredStudents || []).length})
+        </Button>
+
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={() => setAdminTab("roster")}
           className={cn(
             "rounded-xl text-xs font-bold",
@@ -227,6 +243,11 @@ export function AdminDashboard({ state, onOpenGateModal }: AdminDashboardProps) 
           Immutable Audit Log
         </Button>
       </div>
+
+      {/* Student Identity Registry View */}
+      {adminTab === "students" && (
+        <StudentRegistryViewer state={state} />
+      )}
 
       {/* Event Attendance Roster View */}
       {adminTab === "roster" && (

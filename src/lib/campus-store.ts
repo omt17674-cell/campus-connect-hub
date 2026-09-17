@@ -14,6 +14,7 @@ import {
   EventFeedback,
   Language,
   NotificationItem,
+  NewRegisteredStudent,
   PendingCheckin,
   Registration,
   UserProfile,
@@ -139,6 +140,7 @@ export interface CampusState {
   notifications: NotificationItem[];
   auditLogs: AuditLogEntry[];
   lowAttendanceAlertSent: boolean;
+  newRegisteredStudents: NewRegisteredStudent[];
 }
 
 const INITIAL_USER: UserProfile = STUDENT_ACCOUNT.profile;
@@ -871,6 +873,45 @@ const INITIAL_SERVICES: CampusService[] = [
   },
 ];
 
+export const INITIAL_NEW_STUDENTS: NewRegisteredStudent[] = [
+  {
+    id: "stu-24bt04171",
+    fullName: "Om Thakkar",
+    mobileNumber: "+91 98765 04171",
+    rollNo: "24BT04171",
+    email: "omthakkar168@gsfcuniversity.ac.in",
+    school: "School of Technology (SOT)",
+    department: "Computer Science & Engineering",
+    degree: "B.Tech",
+    semester: 4,
+    residenceType: "hostel",
+    hostelBlockOrBusRoute: "Sardar Patel Boys Hostel - Block A",
+    clubsInterested: ["Coding & AI Club", "Robotics Club"],
+    idCardUploaded: true,
+    isLocked: true,
+    verifiedByUniversity: true,
+    createdAt: "2026-06-01T10:00:00Z",
+  },
+  {
+    id: "stu-24bt04007",
+    fullName: "Aryan Singh",
+    mobileNumber: "+91 98254 04007",
+    rollNo: "24BT04007",
+    email: "aryan.singh@gsfcuniversity.ac.in",
+    school: "School of Technology (SOT)",
+    department: "Computer Science & Engineering",
+    degree: "B.Tech",
+    semester: 4,
+    residenceType: "hostel",
+    hostelBlockOrBusRoute: "Sardar Patel Boys Hostel - Block A",
+    clubsInterested: ["Coding & AI Club"],
+    idCardUploaded: true,
+    isLocked: true,
+    verifiedByUniversity: true,
+    createdAt: "2026-06-12T11:30:00Z",
+  },
+];
+
 const STORAGE_KEY = "gsfc_campus_connect_state_v2";
 const ACCOUNTS_STORAGE_KEY = "gsfc_campus_accounts_v2";
 
@@ -924,6 +965,14 @@ function loadSavedState(): CampusState {
       notifications: INITIAL_NOTIFICATIONS,
       auditLogs: INITIAL_AUDIT_LOGS,
       lowAttendanceAlertSent: false,
+      clubs: INITIAL_CLUBS,
+      clubMembers: INITIAL_CLUB_MEMBERS,
+      clubActivities: INITIAL_CLUB_ACTIVITIES,
+      achievements: INITIAL_ACHIEVEMENTS,
+      announcements: INITIAL_ANNOUNCEMENTS,
+      services: INITIAL_SERVICES,
+      digitalId: INITIAL_DIGITAL_ID,
+      newRegisteredStudents: INITIAL_NEW_STUDENTS,
     };
   }
 
@@ -1039,6 +1088,15 @@ function loadSavedState(): CampusState {
         }
       }
 
+      // Merge new registered students
+      const existingStudents: NewRegisteredStudent[] = Array.isArray(parsed.newRegisteredStudents) ? parsed.newRegisteredStudents : [];
+      const mergedStudents = [...existingStudents];
+      for (const defStu of INITIAL_NEW_STUDENTS) {
+        if (!mergedStudents.some((s) => s.rollNo.toUpperCase() === defStu.rollNo.toUpperCase())) {
+          mergedStudents.push(defStu);
+        }
+      }
+
       let cleanCurrentUser = parsed.currentUser || INITIAL_USER;
       if (cleanCurrentUser.id === "u-om" || cleanCurrentUser.rollNo === "24BT04171") {
         cleanCurrentUser = {
@@ -1074,6 +1132,7 @@ function loadSavedState(): CampusState {
         announcements: mergedAnnouncements,
         services: mergedServices,
         digitalId: parsed.digitalId || INITIAL_DIGITAL_ID,
+        newRegisteredStudents: mergedStudents,
       };
     }
   } catch (e) {
@@ -1105,6 +1164,7 @@ function loadSavedState(): CampusState {
     announcements: INITIAL_ANNOUNCEMENTS,
     services: INITIAL_SERVICES,
     digitalId: INITIAL_DIGITAL_ID,
+    newRegisteredStudents: INITIAL_NEW_STUDENTS,
   };
 }
 
@@ -1127,8 +1187,29 @@ export async function syncStateToSupabase(state: CampusState): Promise<void> {
     if (state.announcements && state.announcements.length > 0) {
       await supabase.from("announcements").upsert(state.announcements).then(() => {});
     }
+    // 5. Sync newly registered students
+    if (state.newRegisteredStudents && state.newRegisteredStudents.length > 0) {
+      const mapped = state.newRegisteredStudents.map((s) => ({
+        id: s.id,
+        full_name: s.fullName,
+        mobile_number: s.mobileNumber,
+        roll_no: s.rollNo,
+        email: s.email,
+        school: s.school,
+        department: s.department,
+        degree: s.degree,
+        semester: s.semester,
+        residence_type: s.residenceType,
+        hostel_block_or_bus_route: s.hostelBlockOrBusRoute || null,
+        clubs_interested: s.clubsInterested || [],
+        id_card_uploaded: s.idCardUploaded,
+        is_locked: true,
+        verified_by_university: true,
+        created_at: s.createdAt,
+      }));
+      await supabase.from("new_registered_students").upsert(mapped).then(() => {});
+    }
   } catch (err) {
-    // Non-blocking background sync
     console.debug("Supabase background sync:", err);
   }
 }
@@ -1137,7 +1218,6 @@ export function saveState(state: CampusState): void {
   if (typeof window === "undefined") return;
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    // Asynchronously push to Supabase PostgreSQL
     syncStateToSupabase(state);
   } catch (e) {
     console.error("Failed to save state to localStorage", e);
@@ -1166,9 +1246,19 @@ export const campusStore = {
     listeners.forEach((l) => l(globalState));
   },
 
+  registerNewStudent(student: NewRegisteredStudent) {
+    campusStore.setState((prev) => {
+      const filtered = (prev.newRegisteredStudents || []).filter(
+        (s) => s.rollNo.toUpperCase() !== student.rollNo.toUpperCase()
+      );
+      return { newRegisteredStudents: [student, ...filtered] };
+    });
+  },
+
   async loadFromSupabase(): Promise<void> {
     if (typeof window === "undefined" || !navigator.onLine) return;
     try {
+      // 1. Pull events
       const { data: supaEvents } = await supabase.from("events").select("*");
       if (supaEvents && supaEvents.length > 0) {
         campusStore.setState((prev) => {
@@ -1182,6 +1272,67 @@ export const campusStore = {
         });
       }
 
+      // 2. Pull registrations
+      const { data: supaRegs } = await supabase.from("registrations").select("*");
+      if (supaRegs && supaRegs.length > 0) {
+        campusStore.setState((prev) => {
+          const merged = [...prev.registrations];
+          for (const r of supaRegs as Registration[]) {
+            if (!merged.some((existing) => existing.id === r.id || (existing.eventId === r.eventId && existing.userRollNo === r.userRollNo))) {
+              merged.push(r);
+            }
+          }
+          return { registrations: merged };
+        });
+      }
+
+      // 3. Pull attendance
+      const { data: supaAtt } = await supabase.from("attendance").select("*");
+      if (supaAtt && supaAtt.length > 0) {
+        campusStore.setState((prev) => {
+          const merged = [...prev.attendanceRecords];
+          for (const a of supaAtt as AttendanceRecord[]) {
+            if (!merged.some((existing) => existing.id === a.id)) {
+              merged.push(a);
+            }
+          }
+          return { attendanceRecords: merged };
+        });
+      }
+
+      // 4. Pull new registered students
+      const { data: supaStudents } = await supabase.from("new_registered_students").select("*");
+      if (supaStudents && supaStudents.length > 0) {
+        const mappedStudents: NewRegisteredStudent[] = supaStudents.map((d: any) => ({
+          id: d.id,
+          fullName: d.full_name || d.fullName || "Student",
+          mobileNumber: d.mobile_number || d.mobileNumber || "N/A",
+          rollNo: d.roll_no || d.rollNo || "N/A",
+          email: d.email || "",
+          school: d.school || "School of Technology (SOT)",
+          department: d.department || "Computer Science & Engineering",
+          degree: d.degree || "B.Tech",
+          semester: d.semester || 4,
+          residenceType: d.residence_type || d.residenceType || "hostel",
+          hostelBlockOrBusRoute: d.hostel_block_or_bus_route || d.hostelBlockOrBusRoute,
+          clubsInterested: d.clubs_interested || d.clubsInterested || [],
+          idCardUploaded: d.id_card_uploaded || d.idCardUploaded || true,
+          isLocked: true,
+          verifiedByUniversity: true,
+          createdAt: d.created_at || d.createdAt || new Date().toISOString(),
+        }));
+        campusStore.setState((prev) => {
+          const merged = [...(prev.newRegisteredStudents || [])];
+          for (const s of mappedStudents) {
+            if (!merged.some((existing) => existing.rollNo.toUpperCase() === s.rollNo.toUpperCase())) {
+              merged.push(s);
+            }
+          }
+          return { newRegisteredStudents: merged };
+        });
+      }
+
+      // 5. Pull announcements
       const { data: supaAnnouncements } = await supabase.from("announcements").select("*");
       if (supaAnnouncements && supaAnnouncements.length > 0) {
         campusStore.setState((prev) => {
@@ -1195,7 +1346,7 @@ export const campusStore = {
         });
       }
     } catch (e) {
-      console.debug("Initial Supabase load note:", e);
+      console.debug("Supabase realtime sync note:", e);
     }
   },
 

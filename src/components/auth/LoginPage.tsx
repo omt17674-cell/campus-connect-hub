@@ -226,6 +226,24 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
       };
 
       campusStore.registerNewAccount(newAccount);
+      campusStore.registerNewStudent({
+        id: `stu-${cleanRoll.toLowerCase()}`,
+        fullName: regFullName.trim(),
+        mobileNumber: regPhone.trim(),
+        rollNo: cleanRoll,
+        email: cleanEmail,
+        school: regSchool,
+        department: regDepartment,
+        degree: regDegree,
+        semester: regSemester,
+        residenceType: regResidence,
+        hostelBlockOrBusRoute: regResidence === "hostel" ? regHostelBlock : regBusRoute,
+        clubsInterested: regClubs,
+        idCardUploaded: regIdUploaded,
+        isLocked: true,
+        verifiedByUniversity: true,
+        createdAt: new Date().toISOString(),
+      });
       campusStore.loginWithAccount(newAccount);
 
       try {
@@ -278,6 +296,24 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
         },
       };
       campusStore.registerNewAccount(newAccount);
+      campusStore.registerNewStudent({
+        id: `stu-${cleanRoll.toLowerCase()}`,
+        fullName: regFullName.trim(),
+        mobileNumber: regPhone.trim(),
+        rollNo: cleanRoll,
+        email: cleanEmail,
+        school: regSchool,
+        department: regDepartment,
+        degree: regDegree,
+        semester: regSemester,
+        residenceType: regResidence,
+        hostelBlockOrBusRoute: regResidence === "hostel" ? regHostelBlock : regBusRoute,
+        clubsInterested: regClubs,
+        idCardUploaded: regIdUploaded,
+        isLocked: true,
+        verifiedByUniversity: true,
+        createdAt: new Date().toISOString(),
+      });
       campusStore.loginWithAccount(newAccount);
       setRegSubmitting(false);
       if (onLoginSuccess) setTimeout(onLoginSuccess, 400);
