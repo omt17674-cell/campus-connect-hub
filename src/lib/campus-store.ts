@@ -627,7 +627,38 @@ const INITIAL_AUDIT_LOGS: AuditLogEntry[] = [
   },
 ];
 
-const STORAGE_KEY = "gsfc_campus_connect_state_v1";
+const STORAGE_KEY = "gsfc_campus_connect_state_v2";
+const ACCOUNTS_STORAGE_KEY = "gsfc_campus_accounts_v2";
+
+export function getStoredAccounts(): CampusAccount[] {
+  const defaultAccounts = [STUDENT_ACCOUNT, ADMIN_ACCOUNT, TPC_ADMIN_ACCOUNT];
+  if (typeof window === "undefined") return defaultAccounts;
+  try {
+    const raw = localStorage.getItem(ACCOUNTS_STORAGE_KEY);
+    if (raw) {
+      const parsed: CampusAccount[] = JSON.parse(raw);
+      const merged = [...parsed];
+      for (const def of defaultAccounts) {
+        if (!merged.some((a) => a.email.toLowerCase() === def.email.toLowerCase() || a.idOrRoll.toLowerCase() === def.idOrRoll.toLowerCase())) {
+          merged.push(def);
+        }
+      }
+      return merged;
+    }
+  } catch (e) {
+    console.error("Failed to load stored accounts", e);
+  }
+  return defaultAccounts;
+}
+
+export function saveStoredAccounts(accounts: CampusAccount[]): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(ACCOUNTS_STORAGE_KEY, JSON.stringify(accounts));
+  } catch (e) {
+    console.error("Failed to save accounts", e);
+  }
+}
 
 function loadSavedState(): CampusState {
   if (typeof window === "undefined") {
@@ -655,16 +686,63 @@ function loadSavedState(): CampusState {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       const parsed = JSON.parse(saved);
+
+      // Merge saved events with defaults to prevent loss
+      const existingEvents: CampusEvent[] = Array.isArray(parsed.events) ? parsed.events : [];
+      const mergedEvents = [...existingEvents];
+      for (const defEvt of INITIAL_EVENTS) {
+        if (!mergedEvents.some((e) => e.id === defEvt.id)) {
+          mergedEvents.push(defEvt);
+        }
+      }
+
+      // Merge saved registrations with defaults
+      const existingRegs: Registration[] = Array.isArray(parsed.registrations) ? parsed.registrations : [];
+      const mergedRegs = [...existingRegs];
+      for (const defReg of INITIAL_REGISTRATIONS) {
+        if (!mergedRegs.some((r) => r.id === defReg.id || (r.eventId === defReg.eventId && (r.userId === defReg.userId || r.userRollNo === defReg.userRollNo)))) {
+          mergedRegs.push(defReg);
+        }
+      }
+
+      // Merge saved attendance records with defaults
+      const existingAtt: AttendanceRecord[] = Array.isArray(parsed.attendanceRecords) ? parsed.attendanceRecords : [];
+      const mergedAtt = [...existingAtt];
+      for (const defAtt of INITIAL_ATTENDANCE) {
+        if (!mergedAtt.some((a) => a.id === defAtt.id || (a.eventId === defAtt.eventId && (a.userId === defAtt.userId || a.userRollNo === defAtt.userRollNo)))) {
+          mergedAtt.push(defAtt);
+        }
+      }
+
+      // Merge visitor records
+      const existingVisitors: VisitorRecord[] = Array.isArray(parsed.visitorRecords) ? parsed.visitorRecords : [];
+      const mergedVisitors = [...existingVisitors];
+      for (const defVis of INITIAL_VISITORS) {
+        if (!mergedVisitors.some((v) => v.id === defVis.id)) {
+          mergedVisitors.push(defVis);
+        }
+      }
+
+      // Merge vehicle records
+      const existingVehicles: VehicleRecord[] = Array.isArray(parsed.vehicleRecords) ? parsed.vehicleRecords : [];
+      const mergedVehicles = [...existingVehicles];
+      for (const defVeh of INITIAL_VEHICLES) {
+        if (!mergedVehicles.some((v) => v.id === defVeh.id || v.vehicleNumber === defVeh.vehicleNumber)) {
+          mergedVehicles.push(defVeh);
+        }
+      }
+
       return {
         ...parsed,
         isAuthenticated: parsed.isAuthenticated !== undefined ? parsed.isAuthenticated : false,
-        // Ensure critical structures are arrays
-        events: parsed.events || INITIAL_EVENTS,
-        registrations: parsed.registrations || INITIAL_REGISTRATIONS,
-        attendanceRecords: parsed.attendanceRecords || INITIAL_ATTENDANCE,
+        currentUser: parsed.currentUser || INITIAL_USER,
+        currentRole: parsed.currentRole || "student",
+        events: mergedEvents,
+        registrations: mergedRegs,
+        attendanceRecords: mergedAtt,
         pendingCheckins: parsed.pendingCheckins || [],
-        visitorRecords: parsed.visitorRecords || INITIAL_VISITORS,
-        vehicleRecords: parsed.vehicleRecords || INITIAL_VEHICLES,
+        visitorRecords: mergedVisitors,
+        vehicleRecords: mergedVehicles,
         badges: parsed.badges || INITIAL_BADGES,
         feedbackList: parsed.feedbackList || [],
         notifications: parsed.notifications || INITIAL_NOTIFICATIONS,
@@ -726,7 +804,21 @@ export const campusStore = {
     listeners.forEach((l) => l(globalState));
   },
 
+  registerNewAccount(account: CampusAccount) {
+    const current = getStoredAccounts();
+    const filtered = current.filter(
+      (a) =>
+        a.email.toLowerCase() !== account.email.toLowerCase() &&
+        a.idOrRoll.toLowerCase() !== account.idOrRoll.toLowerCase()
+    );
+    const updated = [account, ...filtered];
+    saveStoredAccounts(updated);
+    CAMPUS_ACCOUNTS.length = 0;
+    CAMPUS_ACCOUNTS.push(...updated);
+  },
+
   loginWithAccount(account: CampusAccount) {
+    campusStore.registerNewAccount(account);
     campusStore.setState(() => ({
       isAuthenticated: true,
       currentRole: account.role,
@@ -736,14 +828,17 @@ export const campusStore = {
 
   loginWithCredentials(identifier: string, role: UserRole): { success: boolean; message: string; account?: CampusAccount } {
     const cleanId = identifier.trim().toLowerCase();
-    const account = CAMPUS_ACCOUNTS.find(
-      (acc) =>
-        acc.role === role &&
-        (acc.email.toLowerCase() === cleanId ||
-          acc.idOrRoll.toLowerCase() === cleanId ||
-          cleanId.includes(acc.idOrRoll.toLowerCase()) ||
-          cleanId.includes(acc.email.split("@")[0].toLowerCase()))
-    ) || CAMPUS_ACCOUNTS.find((acc) => acc.role === role);
+    const allAccounts = getStoredAccounts();
+
+    const account =
+      allAccounts.find(
+        (acc) =>
+          acc.role === role &&
+          (acc.email.toLowerCase() === cleanId ||
+            acc.idOrRoll.toLowerCase() === cleanId ||
+            cleanId.includes(acc.idOrRoll.toLowerCase()) ||
+            cleanId.includes(acc.email.split("@")[0].toLowerCase()))
+      ) || allAccounts.find((acc) => acc.role === role);
 
     if (account) {
       campusStore.loginWithAccount(account);

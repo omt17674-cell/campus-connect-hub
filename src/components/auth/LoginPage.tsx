@@ -31,6 +31,7 @@ import {
   STUDENT_ACCOUNT,
   ADMIN_ACCOUNT,
   TPC_ADMIN_ACCOUNT,
+  getStoredAccounts,
   campusStore,
 } from "@/lib/campus-store";
 import { UserRole, UserProfile } from "@/lib/types";
@@ -41,6 +42,7 @@ interface LoginPageProps {
 }
 
 export function LoginPage({ onLoginSuccess }: LoginPageProps) {
+  const allAccounts = getStoredAccounts();
   const [activeTab, setActiveTab] = useState<"signin" | "register">("signin");
   const [selectedRole, setSelectedRole] = useState<UserRole>("student");
   const [identifier, setIdentifier] = useState(STUDENT_ACCOUNT.email);
@@ -73,7 +75,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
   // Handle role change from dropdown
   const handleRoleChange = (role: UserRole) => {
     setSelectedRole(role);
-    const targetAccount = CAMPUS_ACCOUNTS.find((a) => a.role === role) || STUDENT_ACCOUNT;
+    const targetAccount = allAccounts.find((a) => a.role === role) || STUDENT_ACCOUNT;
     setIdentifier(targetAccount.email);
     setPassword(targetAccount.password);
     setStatusMessage(null);
@@ -159,7 +161,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
         .slice(0, 2) || "ST";
 
       const newUserProfile: UserProfile = {
-        id: `u-${Date.now()}`,
+        id: `u-${regRollNo.toLowerCase().replace(/[^a-z0-9]/g, "")}-${Date.now()}`,
         name: regFullName,
         rollNo: regRollNo.toUpperCase(),
         email: regEmail.includes("@") ? regEmail : `${regEmail}@gsfcuniversity.ac.in`,
@@ -185,7 +187,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
         profile: newUserProfile,
       };
 
-      CAMPUS_ACCOUNTS.unshift(newAccount);
+      campusStore.registerNewAccount(newAccount);
       campusStore.loginWithAccount(newAccount);
 
       try {
@@ -959,7 +961,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
             </div>
 
             <div className="mt-4 space-y-3">
-              {CAMPUS_ACCOUNTS.map((acc) => (
+              {allAccounts.map((acc) => (
                 <div
                   key={acc.idOrRoll}
                   className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-xs"

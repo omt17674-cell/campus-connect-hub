@@ -32,19 +32,35 @@ export function MyEventsView({ state, onSelectEvent, onOpenPunchModal }: MyEvent
   const [feedbackEvent, setFeedbackEvent] = useState<CampusEvent | null>(null);
   const [downloadingCertId, setDownloadingCertId] = useState<string | null>(null);
 
+  const currentRollNo = state.currentUser.rollNo?.toLowerCase() || "";
+  const currentUserId = state.currentUser.id;
+  const currentUserName = state.currentUser.name?.toLowerCase() || "";
+
   const userRegistrations = state.registrations.filter(
-    (r) => r.userId === state.currentUser.id
+    (r) =>
+      r.userId === currentUserId ||
+      (r.userRollNo && r.userRollNo.toLowerCase() === currentRollNo) ||
+      (r.userName && r.userName.toLowerCase() === currentUserName)
+  );
+
+  const attendedEvents = state.events.filter((e) =>
+    state.attendanceRecords.some(
+      (a) =>
+        a.eventId === e.id &&
+        (a.userId === currentUserId || (a.userRollNo && a.userRollNo.toLowerCase() === currentRollNo))
+    ) ||
+    userRegistrations.some((r) => r.eventId === e.id && r.status === "attended")
   );
 
   const registeredEvents = state.events.filter((e) =>
     userRegistrations.some(
-      (r) => r.eventId === e.id && (r.status === "confirmed" || r.status === "waitlisted" || r.status === "pending_approval" || r.status === "punched_in")
+      (r) =>
+        r.eventId === e.id &&
+        (r.status === "confirmed" ||
+          r.status === "waitlisted" ||
+          r.status === "pending_approval" ||
+          r.status === "punched_in")
     )
-  );
-
-  const attendedEvents = state.events.filter((e) =>
-    state.attendanceRecords.some((a) => a.eventId === e.id && a.userId === state.currentUser.id) ||
-    userRegistrations.some((r) => r.eventId === e.id && r.status === "attended")
   );
 
   const pastEvents = state.events.filter(
