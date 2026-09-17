@@ -1,5 +1,6 @@
 import { useState } from "react";
 import {
+  Award,
   Calendar,
   CheckCircle2,
   Clock,
@@ -247,6 +248,24 @@ export function OrganizerDashboard({ state }: OrganizerDashboardProps) {
                         <Users className="size-3.5 text-brand" />
                         Manage Attendees
                       </Button>
+
+                      {event.status !== "completed" ? (
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            const res = campusStore.endAndConcludeEvent(event.id);
+                            alert(`🎓 ${res.message}`);
+                          }}
+                          className="h-9 gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-[#1A3C6E] text-xs font-bold text-white shadow-md hover:opacity-95"
+                        >
+                          <Award className="size-3.5 text-[#F2A93B]" />
+                          Conclude & Issue Certs
+                        </Button>
+                      ) : (
+                        <span className="flex items-center gap-1 rounded-xl bg-emerald-500/15 px-2.5 py-1.5 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                          ✓ Certified
+                        </span>
+                      )}
 
                       <Button
                         size="sm"

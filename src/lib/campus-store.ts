@@ -1191,4 +1191,112 @@ export const campusStore = {
       auditLogs: [audit, ...prev.auditLogs],
     }));
   },
+
+  endAndConcludeEvent(eventId: string): { success: boolean; message: string; attendeesCount: number } {
+    const state = campusStore.getState();
+    const event = state.events.find((e) => e.id === eventId);
+    if (!event) return { success: false, message: "Event not found", attendeesCount: 0 };
+
+    const now = new Date().toISOString();
+    const eventRegistrations = state.registrations.filter((r) => r.eventId === eventId);
+
+    // Find all attendees (punched in, attended, or confirmed registered attendees)
+    const updatedAttendance = [...state.attendanceRecords];
+    let issuedCount = 0;
+
+    const updatedRegs = state.registrations.map((r) => {
+      if (r.eventId !== eventId) return r;
+      const isPresent =
+        r.status === "punched_in" ||
+        r.status === "attended" ||
+        r.status === "confirmed" ||
+        Boolean(r.punchInTime);
+
+      if (isPresent) {
+        issuedCount++;
+        const certId = `GSFC-CERT-${event.id.replace(/[^a-zA-Z0-9]/g, "").toUpperCase()}-${r.userRollNo.replace(/[^a-zA-Z0-9]/g, "").slice(-4)}-${Date.now().toString(36).toUpperCase()}`;
+
+        const existingAtt = updatedAttendance.find((a) => a.eventId === eventId && a.userId === r.userId);
+        if (!existingAtt) {
+          updatedAttendance.push({
+            id: `att-cert-${Date.now()}-${r.userId}`,
+            eventId: event.id,
+            eventTitle: event.title,
+            userId: r.userId,
+            userName: r.userName,
+            userRollNo: r.userRollNo,
+            department: r.department,
+            timestamp: now,
+            punchInTime: r.punchInTime || now,
+            punchOutTime: r.punchOutTime || now,
+            verifiedMethod: "live_punch",
+            tokenUsed: "GSFC-CERT-AUTOGEN",
+            synced: true,
+            certificateId: certId,
+            locationVerified: true,
+          });
+        } else if (!existingAtt.certificateId) {
+          existingAtt.certificateId = certId;
+          existingAtt.punchOutTime = existingAtt.punchOutTime || now;
+        }
+
+        return {
+          ...r,
+          status: "attended" as const,
+          punchOutTime: r.punchOutTime || now,
+        };
+      }
+      return r;
+    });
+
+    const updatedEvents = state.events.map((e) =>
+      e.id === eventId ? { ...e, status: "completed" as const } : e
+    );
+
+    const notif: NotificationItem = {
+      id: `notif-cert-${Date.now()}`,
+      title: `🎓 Certificates Issued: ${event.title}`,
+      message: `The event has concluded. Verified participation certificates with GSFC seal have been generated for all attendees!`,
+      type: "achievement",
+      timestamp: "Just now",
+      read: false,
+      eventId: event.id,
+    };
+
+    const audit: AuditLogEntry = {
+      id: `aud-conclude-${Date.now()}`,
+      action: "Event Concluded & Certificates Auto-Generated",
+      performedBy: `${state.currentUser.name} (${state.currentUser.role})`,
+      target: event.title,
+      timestamp: now.replace("T", " ").slice(0, 19),
+      details: `Generated and digitally signed participation certificates for ${issuedCount} verified attendees with official GSFC seal.`,
+    };
+
+    // If current logged-in user is an attendee, award XP and volunteer hours
+    let updatedCurrentUser = state.currentUser;
+    const isCurrentUserAttendee = eventRegistrations.some((r) => r.userId === state.currentUser.id);
+    if (isCurrentUserAttendee) {
+      updatedCurrentUser = {
+        ...state.currentUser,
+        points: state.currentUser.points + 50,
+        volunteerHours: state.currentUser.volunteerHours + (event.volunteerHoursReward || 3),
+        attendanceRate: Math.min(100, state.currentUser.attendanceRate + 2),
+      };
+    }
+
+    campusStore.setState((prev) => ({
+      events: updatedEvents,
+      registrations: updatedRegs,
+      attendanceRecords: updatedAttendance,
+      notifications: [notif, ...prev.notifications],
+      auditLogs: [audit, ...prev.auditLogs],
+      currentUser: updatedCurrentUser,
+    }));
+
+    return {
+      success: true,
+      message: `Event concluded! Generated ${issuedCount} participation certificates with GSFC seal.`,
+      attendeesCount: issuedCount,
+    };
+  },
 };

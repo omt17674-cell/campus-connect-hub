@@ -20,6 +20,11 @@ export async function generateCertificatePdf(
   doc.setFillColor(253, 252, 248); // warm cream
   doc.rect(0, 0, pageWidth, pageHeight, "F");
 
+  // Subtle Watermark Emblem
+  doc.setDrawColor(240, 235, 225);
+  doc.setFillColor(250, 247, 240);
+  doc.circle(pageWidth / 2, pageHeight / 2 + 5, 45, "FD");
+
   // Outer Border in GSFC Deep Blue (#1A3C6E)
   doc.setDrawColor(26, 60, 110);
   doc.setLineWidth(3);
@@ -40,27 +45,45 @@ export async function generateCertificatePdf(
   drawCorner(14, pageHeight - 20);
   drawCorner(pageWidth - 20, pageHeight - 20);
 
+  // GSFC University Official Logo Badge (Left & Center Accents)
+  const logoCenterX = pageWidth / 2;
+  const logoCenterY = 24;
+
+  // Outer Gold Circle
+  doc.setFillColor(242, 169, 59);
+  doc.circle(logoCenterX, logoCenterY, 8.5, "F");
+
+  // Inner Deep Blue Circle
+  doc.setFillColor(26, 60, 110);
+  doc.circle(logoCenterX, logoCenterY, 7.5, "F");
+
+  // Logo Monogram "GC"
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8.5);
+  doc.text("GC", logoCenterX, logoCenterY + 2.5, { align: "center" });
+
   // Header - GSFC University
   doc.setTextColor(26, 60, 110);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(24);
-  doc.text("GSFC UNIVERSITY", pageWidth / 2, 32, { align: "center" });
+  doc.setFontSize(22);
+  doc.text("GSFC UNIVERSITY", pageWidth / 2, 40, { align: "center" });
 
-  doc.setFontSize(10);
+  doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(100, 116, 139);
-  doc.text("EDUCATION WITH PURPOSE · VADODARA, GUJARAT, INDIA", pageWidth / 2, 38, { align: "center" });
+  doc.text("EDUCATION WITH PURPOSE · VADODARA, GUJARAT, INDIA", pageWidth / 2, 45, { align: "center" });
 
   // Certificate Title
-  doc.setFontSize(28);
+  doc.setFontSize(26);
   doc.setFont("times", "bold");
   doc.setTextColor(242, 169, 59);
-  doc.text("Certificate of Participation", pageWidth / 2, 54, { align: "center" });
+  doc.text("Certificate of Participation", pageWidth / 2, 58, { align: "center" });
 
-  doc.setFontSize(12);
+  doc.setFontSize(11);
   doc.setFont("helvetica", "italic");
   doc.setTextColor(51, 65, 85);
-  doc.text("This is to proudly certify that", pageWidth / 2, 68, { align: "center" });
+  doc.text("This is to proudly certify that", pageWidth / 2, 70, { align: "center" });
 
   // Student Name
   doc.setFontSize(26);

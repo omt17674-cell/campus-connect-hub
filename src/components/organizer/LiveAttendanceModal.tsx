@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import {
+  Award,
   Check,
   Clock,
   Download,
@@ -221,15 +222,30 @@ export function LiveAttendanceModal({
         </div>
 
         {/* Footer info */}
-        <div className="mt-6 flex items-center justify-between border-t border-border/70 pt-4 text-xs text-muted-foreground">
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-t border-border/70 pt-4 text-xs text-muted-foreground">
           <span>Project this QR on auditorium screen for student scanning</span>
-          <Button
-            size="sm"
-            onClick={onClose}
-            className="rounded-xl bg-[#1A3C6E] text-white hover:bg-[#1A3C6E]/90"
-          >
-            End Live Session
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={onClose}
+              className="rounded-xl text-xs font-semibold"
+            >
+              Close Window
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => {
+                const res = campusStore.endAndConcludeEvent(event.id);
+                alert(`🎓 ${res.message}`);
+                onClose();
+              }}
+              className="rounded-xl bg-gradient-to-r from-emerald-600 to-[#1A3C6E] text-xs font-bold text-white shadow-md hover:opacity-95"
+            >
+              <Award className="mr-1.5 size-3.5 text-[#F2A93B]" />
+              Conclude Event & Issue Certificates
+            </Button>
+          </div>
         </div>
       </div>
     </div>

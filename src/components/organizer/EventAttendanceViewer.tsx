@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import {
+  Award,
   Calendar,
   Check,
   CheckCircle2,
@@ -106,20 +107,20 @@ export function EventAttendanceViewer({
     const rows = eventRegistrations.map((reg) => {
       const att = eventAttendanceRecords.find((a) => a.userId === reg.userId);
       return [
-        `"${reg.userRollNo}"`,
-        `"${reg.userName}"`,
-        `"${reg.department}"`,
-        `"${activeEvent.title}"`,
-        `"${activeEvent.date}"`,
-        `"${reg.punchInTime || att?.punchInTime || att?.timestamp || "N/A"}"`,
-        `"${att?.distanceFromVenueMeters ? `${att.distanceFromVenueMeters}m (On-Site)` : "18m (Verified)"}"`,
-        `"${reg.punchOutTime || att?.punchOutTime || "Active in Session"}"`,
-        `"${reg.status === "attended" ? "Completed" : reg.status === "punched_in" ? "Punched In (Active)" : "Registered"}"`,
-        `"${att?.verifiedMethod || "Live Punch / Geo Verified"}"`,
+        reg.userRollNo,
+        reg.userName,
+        reg.department,
+        activeEvent.title,
+        activeEvent.date,
+        reg.punchInTime || att?.punchInTime || "N/A",
+        reg.punchInLocation ? `${reg.punchInLocation.distanceMeters}m (Verified)` : att?.distanceFromVenueMeters ? `${att.distanceFromVenueMeters}m` : "On Campus",
+        reg.punchOutTime || att?.punchOutTime || "N/A",
+        reg.status === "attended" ? "Attendance Verified (Completed)" : reg.status === "punched_in" ? "Punched In (Active)" : "Pending Check-In",
+        att?.verifiedMethod || "live_punch",
       ];
     });
 
-    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((e) => e.join(","))].join("\n");
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
@@ -154,7 +155,7 @@ export function EventAttendanceViewer({
           </h2>
         </div>
 
-        {/* Event Select Dropdown & Export */}
+        {/* Event Select Dropdown & Export & Conclude Event */}
         <div className="flex flex-wrap items-center gap-2">
           <select
             value={currentEventId}
@@ -166,11 +167,29 @@ export function EventAttendanceViewer({
           >
             {state.events.map((evt) => (
               <option key={evt.id} value={evt.id}>
-                {evt.status === "live" ? "🔴 " : ""}
+                {evt.status === "live" ? "🔴 " : evt.status === "completed" ? "✓ " : ""}
                 {evt.title} ({evt.category})
               </option>
             ))}
           </select>
+
+          {activeEvent && activeEvent.status !== "completed" ? (
+            <Button
+              size="sm"
+              onClick={() => {
+                const res = campusStore.endAndConcludeEvent(activeEvent.id);
+                alert(`🎓 ${res.message}`);
+              }}
+              className="h-9 gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-[#1A3C6E] text-xs font-bold text-white shadow-md hover:opacity-95"
+            >
+              <Award className="size-3.5 text-[#F2A93B]" />
+              Conclude Event & Issue Certificates
+            </Button>
+          ) : (
+            <span className="flex items-center gap-1.5 rounded-xl bg-emerald-500/15 px-3 py-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+              <ShieldCheck className="size-4" /> Completed & Certified
+            </span>
+          )}
 
           <Button
             onClick={handleExportCsv}
@@ -178,7 +197,7 @@ export function EventAttendanceViewer({
             className="h-9 gap-1.5 rounded-xl bg-[#1A3C6E] text-xs font-bold text-white shadow-md hover:bg-[#1A3C6E]/90"
           >
             <FileSpreadsheet className="size-3.5 text-[#F2A93B]" />
-            <span>Export CSV</span>
+            Export CSV
           </Button>
         </div>
       </div>
