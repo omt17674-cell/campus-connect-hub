@@ -47,7 +47,7 @@ export function AttendanceHub({
         <div className="flex items-center justify-between">
           <div>
             <span className="text-[10px] font-bold uppercase tracking-wider text-brand/70">
-              Semester 6 Official Record
+              Official Event Record
             </span>
             <h3 className="font-display text-lg font-black text-foreground">
               {t.common.attendanceRate}
