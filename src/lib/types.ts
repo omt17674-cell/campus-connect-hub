@@ -245,3 +245,131 @@ export interface AuditLogEntry {
   details: string;
 }
 
+// ==========================================
+// CAMPUS PLATFORM 360 EXTENSIONS
+// ==========================================
+
+export type ClubCategory = "Technical" | "Cultural" | "Sports" | "Social & NSS" | "Entrepreneurship" | "Literary";
+
+export interface Club {
+  id: string;
+  name: string;
+  category: ClubCategory;
+  department: string;
+  description: string;
+  bannerImage: string;
+  logo: string;
+  facultyCoordinator: {
+    name: string;
+    email: string;
+    department: string;
+  };
+  studentLead: {
+    name: string;
+    rollNo: string;
+    email: string;
+  };
+  memberCount: number;
+  meetingSchedule: string;
+  foundedYear: number;
+  status: "active" | "recruiting" | "inactive";
+  tags: string[];
+}
+
+export interface ClubMember {
+  id: string;
+  clubId: string;
+  userId: string;
+  userName: string;
+  userRollNo: string;
+  department: string;
+  role: "member" | "committee" | "lead" | "coordinator";
+  joinedAt: string;
+  status: "active" | "pending_approval";
+  volunteerHoursEarned: number;
+}
+
+export interface ClubActivity {
+  id: string;
+  clubId: string;
+  clubName: string;
+  title: string;
+  date: string;
+  time: string;
+  venue: string;
+  description: string;
+  isPublicEvent: boolean;
+  attendanceCount: number;
+}
+
+export interface VerifiedAchievement {
+  id: string;
+  userId: string;
+  userName: string;
+  userRollNo: string;
+  title: string;
+  category: "technical" | "hackathon" | "cultural" | "sports" | "leadership" | "volunteering";
+  eventOrActivityName: string;
+  issuingAuthority: string;
+  dateEarned: string;
+  certificateId?: string;
+  verificationHash: string;
+  qrCodePayload: string;
+  verifiedBy: string;
+  badgeIcon: string;
+  description: string;
+}
+
+export interface CampusAnnouncement {
+  id: string;
+  title: string;
+  content: string;
+  category: "university" | "department" | "club" | "placement" | "emergency";
+  authorName: string;
+  authorRole: string;
+  departmentTarget?: string; // "all" or specific
+  priority: "normal" | "important" | "emergency";
+  createdAt: string;
+  expiresAt?: string;
+  readBy: string[]; // user IDs
+}
+
+export interface CampusService {
+  id: string;
+  name: string;
+  category: "academic" | "administrative" | "facility" | "student_support" | "emergency";
+  location: string;
+  roomNumber: string;
+  building: string;
+  openingHours: string;
+  headPerson: string;
+  contactEmail: string;
+  contactPhone: string;
+  description: string;
+  iconName: string;
+}
+
+export interface DigitalStudentIdCard {
+  rollNo: string;
+  name: string;
+  program: string;
+  department: string;
+  semester: number;
+  validTill: string;
+  bloodGroup: string;
+  qrVerificationCode: string;
+  barcode: string;
+  photoUrl: string;
+  status: "active" | "graduated" | "suspended";
+}
+
+export interface AssistantMessage {
+  id: string;
+  sender: "user" | "assistant";
+  text: string;
+  timestamp: string;
+  suggestions?: string[];
+  actionLink?: { label: string; view: string; eventId?: string };
+}
+
+

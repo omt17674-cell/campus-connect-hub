@@ -3,7 +3,13 @@ import {
   AttendanceRecord,
   AuditLogEntry,
   Badge,
+  CampusAnnouncement,
   CampusEvent,
+  CampusService,
+  Club,
+  ClubActivity,
+  ClubMember,
+  DigitalStudentIdCard,
   EventBroadcast,
   EventFeedback,
   Language,
@@ -14,6 +20,7 @@ import {
   UserRole,
   VehicleRecord,
   VehicleType,
+  VerifiedAchievement,
   VisitorRecord,
 } from "./types";
 import { generateQrPayload } from "./qr-engine";
@@ -121,6 +128,13 @@ export interface CampusState {
   badges: Badge[];
   feedbackList: EventFeedback[];
   eventBroadcasts: EventBroadcast[];
+  clubs: Club[];
+  clubMembers: ClubMember[];
+  clubActivities: ClubActivity[];
+  achievements: VerifiedAchievement[];
+  announcements: CampusAnnouncement[];
+  services: CampusService[];
+  digitalId: DigitalStudentIdCard;
   notifications: NotificationItem[];
   auditLogs: AuditLogEntry[];
   lowAttendanceAlertSent: boolean;
@@ -651,6 +665,401 @@ const INITIAL_BROADCASTS: EventBroadcast[] = [
   },
 ];
 
+const INITIAL_DIGITAL_ID: DigitalStudentIdCard = {
+  rollNo: "24BT04171",
+  name: "Om Thakkar",
+  program: "Bachelor of Technology (B.Tech)",
+  department: "Computer Science & Engineering",
+  semester: 4,
+  validTill: "June 2028",
+  bloodGroup: "B+ (Positive)",
+  qrVerificationCode: "GSFCU:VERIFIED:24BT04171:OM_THAKKAR:CSE:2024-28",
+  barcode: "24BT04171",
+  photoUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80",
+  status: "active",
+};
+
+const INITIAL_CLUBS: Club[] = [
+  {
+    id: "club-1",
+    name: "GSFC Coding & Robotics Club",
+    category: "Technical",
+    department: "Computer Science & Engineering",
+    description: "The premier developer & robotics community at GSFC University. Organizing national hackathons, open-source cohorts, AI bootcamps, and competitive programming meetups.",
+    bannerImage: "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=1200&q=80",
+    logo: "💻",
+    facultyCoordinator: {
+      name: "Dr. Suresh Rao",
+      email: "suresh.rao@gsfcuni.edu",
+      department: "CSE Department",
+    },
+    studentLead: {
+      name: "Om Thakkar",
+      rollNo: "24BT04171",
+      email: "omthakkar168@gsfcuniversity.ac.in",
+    },
+    memberCount: 142,
+    meetingSchedule: "Every Wednesday & Friday · 05:00 PM at Lab 4",
+    foundedYear: 2019,
+    status: "recruiting",
+    tags: ["Web3", "AI/ML", "Robotics", "Hackathons", "Competitive Coding"],
+  },
+  {
+    id: "club-2",
+    name: "Chrysalis Cultural & Arts Guild",
+    category: "Cultural",
+    department: "All Departments",
+    description: "Fostering creative expression, theatre, music, classical dance, painting, and literature across all faculties of GSFC University.",
+    bannerImage: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=1200&q=80",
+    logo: "🎭",
+    facultyCoordinator: {
+      name: "Prof. Meera Joshi",
+      email: "meera.joshi@gsfcuni.edu",
+      department: "Humanities & Liberal Arts",
+    },
+    studentLead: {
+      name: "Pooja Varma",
+      rollNo: "24BT04192",
+      email: "pooja.v@gsfcuniversity.ac.in",
+    },
+    memberCount: 188,
+    meetingSchedule: "Tuesdays & Thursdays · 04:30 PM at Amphitheatre",
+    foundedYear: 2018,
+    status: "active",
+    tags: ["Music", "Dance", "Drama", "Fine Arts", "Heritage"],
+  },
+  {
+    id: "club-3",
+    name: "GSFC E-Cell & Innovation Hub",
+    category: "Entrepreneurship",
+    department: "Management & Engineering",
+    description: "Nurturing student startup founders, seed pitching, venture incubation, patent filings, and industry mentorship circles.",
+    bannerImage: "https://images.unsplash.com/photo-1559136555-9303baea8ebd?auto=format&fit=crop&w=1200&q=80",
+    logo: "🚀",
+    facultyCoordinator: {
+      name: "Prof. Rajiv Mehta (TPC Head)",
+      email: "tpc.admin@gsfcuniversity.ac.in",
+      department: "Training & Placement Cell",
+    },
+    studentLead: {
+      name: "Rohan Dave",
+      rollNo: "24BT04205",
+      email: "rohan.d@gsfcuniversity.ac.in",
+    },
+    memberCount: 96,
+    meetingSchedule: "Saturdays · 11:00 AM at Incubation Block",
+    foundedYear: 2020,
+    status: "active",
+    tags: ["Startups", "Incubation", "Pitching", "Venture Capital"],
+  },
+  {
+    id: "club-4",
+    name: "University Sports & Athletics Council",
+    category: "Sports",
+    department: "Physical Education",
+    description: "Coordinating inter-university leagues in football, cricket, basketball, volleyball, athletics, and chess with professional coaching.",
+    bannerImage: "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&w=1200&q=80",
+    logo: "🏆",
+    facultyCoordinator: {
+      name: "Coach Vikram Gohil",
+      email: "sports@gsfcuni.edu",
+      department: "Athletics Cell",
+    },
+    studentLead: {
+      name: "Karan Solanki",
+      rollNo: "23BT03112",
+      email: "karan.s@gsfcuniversity.ac.in",
+    },
+    memberCount: 164,
+    meetingSchedule: "Daily Morning & Evening Sessions at Sports Arena",
+    foundedYear: 2017,
+    status: "active",
+    tags: ["Football", "Cricket", "Athletics", "Badminton", "Fitness"],
+  },
+  {
+    id: "club-5",
+    name: "Rotaract & Social Action Cell (NSS)",
+    category: "Social & NSS",
+    department: "Student Affairs",
+    description: "Driving community impact, blood donation drives, environmental tree plantations, rural digital literacy, and NGO partnerships.",
+    bannerImage: "https://images.unsplash.com/photo-1593113598332-cd288d649433?auto=format&fit=crop&w=1200&q=80",
+    logo: "🤝",
+    facultyCoordinator: {
+      name: "Dr. Neha Trivedi",
+      email: "neha.trivedi@gsfcuni.edu",
+      department: "School of Science",
+    },
+    studentLead: {
+      name: "Ananya Dave",
+      rollNo: "24SC01088",
+      email: "ananya.d@gsfcuniversity.ac.in",
+    },
+    memberCount: 120,
+    meetingSchedule: "Alternate Sundays · 10:00 AM",
+    foundedYear: 2018,
+    status: "active",
+    tags: ["NSS", "Social Work", "Blood Donation", "Sustainability"],
+  },
+];
+
+const INITIAL_CLUB_MEMBERS: ClubMember[] = [
+  {
+    id: "cm-1",
+    clubId: "club-1",
+    userId: "u-om",
+    userName: "Om Thakkar",
+    userRollNo: "24BT04171",
+    department: "B.Tech Computer Science & Engineering",
+    role: "lead",
+    joinedAt: "2024-08-15T10:00:00Z",
+    status: "active",
+    volunteerHoursEarned: 18,
+  },
+  {
+    id: "cm-2",
+    clubId: "club-2",
+    userId: "u-om",
+    userName: "Om Thakkar",
+    userRollNo: "24BT04171",
+    department: "B.Tech Computer Science & Engineering",
+    role: "member",
+    joinedAt: "2025-01-10T14:00:00Z",
+    status: "active",
+    volunteerHoursEarned: 6,
+  },
+  {
+    id: "cm-3",
+    clubId: "club-5",
+    userId: "u-om",
+    userName: "Om Thakkar",
+    userRollNo: "24BT04171",
+    department: "B.Tech Computer Science & Engineering",
+    role: "committee",
+    joinedAt: "2024-09-01T09:00:00Z",
+    status: "active",
+    volunteerHoursEarned: 14,
+  },
+];
+
+const INITIAL_CLUB_ACTIVITIES: ClubActivity[] = [
+  {
+    id: "ca-1",
+    clubId: "club-1",
+    clubName: "GSFC Coding & Robotics Club",
+    title: "Hands-on Microcontrollers & ROS2 Workshop",
+    date: "2026-06-20",
+    time: "03:00 PM - 06:00 PM",
+    venue: "Computer Center, Lab 4",
+    description: "Deep dive into real-time robotics programming with ROS2 and ESP32 hardware interfacing.",
+    isPublicEvent: true,
+    attendanceCount: 42,
+  },
+  {
+    id: "ca-2",
+    clubId: "club-2",
+    clubName: "Chrysalis Cultural & Arts Guild",
+    title: "Acoustic Jam Night & Heritage Recital",
+    date: "2026-06-22",
+    time: "06:00 PM - 08:30 PM",
+    venue: "Central Lawns Amphitheatre",
+    description: "Open mic musical showcase featuring classical and fusion acoustic performances.",
+    isPublicEvent: true,
+    attendanceCount: 78,
+  },
+];
+
+const INITIAL_ACHIEVEMENTS: VerifiedAchievement[] = [
+  {
+    id: "ach-1",
+    userId: "u-om",
+    userName: "Om Thakkar",
+    userRollNo: "24BT04171",
+    title: "Winner: 1st Place National AI Hackathon",
+    category: "hackathon",
+    eventOrActivityName: "AI & Robotics National Hackathon 2026",
+    issuingAuthority: "Dr. Ananya Sharma (Dean) & Dr. Suresh Rao (Convener)",
+    dateEarned: "2026-06-12",
+    certificateId: "GSFC-CERT-EVT1-4171-GOLD",
+    verificationHash: "SHA256:88F209EA149C03810BCDE9812A",
+    qrCodePayload: "GSFCU:ACH:AI_HACKATHON_1ST_PLACE:24BT04171",
+    verifiedBy: "GSFC Academic Governance & TPC",
+    badgeIcon: "Trophy",
+    description: "Awarded 1st place among 30+ national engineering teams for autonomous drone computer vision project.",
+  },
+  {
+    id: "ach-2",
+    userId: "u-om",
+    userName: "Om Thakkar",
+    userRollNo: "24BT04171",
+    title: "Excellence in UI/UX & Frontend Architecture",
+    category: "technical",
+    eventOrActivityName: "Design Systems & Modern Web UI Workshop",
+    issuingAuthority: "School of Technology & IEEE Student Branch",
+    dateEarned: "2026-05-20",
+    certificateId: "GSFC-CERT-EVT6-4171-UIUX",
+    verificationHash: "SHA256:77B1499F02319ACDEF49013B",
+    qrCodePayload: "GSFCU:ACH:DESIGN_SYSTEMS:24BT04171",
+    verifiedBy: "Prof. Rajiv Mehta (TPC)",
+    badgeIcon: "Award",
+    description: "Demonstrated production-grade component modularity, accessibility compliance, and design token integration.",
+  },
+  {
+    id: "ach-3",
+    userId: "u-om",
+    userName: "Om Thakkar",
+    userRollNo: "24BT04171",
+    title: "Outstanding Community Volunteer Honor",
+    category: "volunteering",
+    eventOrActivityName: "NSS Mega Blood Donation & Health Drive",
+    issuingAuthority: "Dr. Neha Trivedi (NSS Officer)",
+    dateEarned: "2026-04-10",
+    certificateId: "GSFC-CERT-NSS-4171-VOL",
+    verificationHash: "SHA256:19A440BC99814EF01235678A",
+    qrCodePayload: "GSFCU:ACH:NSS_VOLUNTEER:24BT04171",
+    verifiedBy: "Student Affairs Office",
+    badgeIcon: "HeartHandshake",
+    description: "Contributed 18+ verified on-ground volunteer hours supporting hospital logistics and donor registration.",
+  },
+];
+
+const INITIAL_ANNOUNCEMENTS: CampusAnnouncement[] = [
+  {
+    id: "ann-1",
+    title: "Official Notice: End-Semester Exam Schedule & Hall Tickets",
+    content: "The examination schedule for Semester 4, 6, and 8 has been finalized by Academic Governance. Hall tickets with verified attendance eligibility are accessible in the student portal.",
+    category: "university",
+    authorName: "Dr. Ananya Sharma",
+    authorRole: "Dean, Academic Governance",
+    departmentTarget: "all",
+    priority: "important",
+    createdAt: "2026-06-11T09:00:00Z",
+    readBy: ["u-om"],
+  },
+  {
+    id: "ann-2",
+    title: "TPC Placement Alert: L&T Infotech & TCS Campus Drives Open",
+    content: "Online registration for L&T Infotech and TCS campus recruitment drives is now active. B.Tech (CSE/Chemical/Mechanical) students with >= 75% attendance are eligible to apply.",
+    category: "placement",
+    authorName: "Prof. Rajiv Mehta",
+    authorRole: "Head, Training & Placement Cell (TPC)",
+    departmentTarget: "Computer Science",
+    priority: "important",
+    createdAt: "2026-06-12T08:30:00Z",
+    readBy: [],
+  },
+  {
+    id: "ann-3",
+    title: "Campus Security Circular: South Gate Maintenance Access",
+    content: "Please note that the South Student Gate will undergo sensor calibration between 02:00 PM and 04:00 PM today. Please use Main Campus Security Gate #1 for entry & vehicle parking.",
+    category: "emergency",
+    authorName: "Chief Security Officer",
+    authorRole: "GSFC Campus Security Command",
+    departmentTarget: "all",
+    priority: "emergency",
+    createdAt: "2026-06-12T10:15:00Z",
+    readBy: ["u-om"],
+  },
+  {
+    id: "ann-4",
+    title: "Coding Club Meetup: Microcontroller Hardware Kit Allocation",
+    content: "Hardware kits, Arduino Nano, and ESP32 boards for the upcoming IoT hackathon can be collected from Computer Center Lab 4 today between 04:00 PM and 06:00 PM.",
+    category: "club",
+    authorName: "Dr. Suresh Rao",
+    authorRole: "Faculty Coordinator, Coding Club",
+    departmentTarget: "Computer Science",
+    priority: "normal",
+    createdAt: "2026-06-12T11:00:00Z",
+    readBy: [],
+  },
+];
+
+const INITIAL_SERVICES: CampusService[] = [
+  {
+    id: "srv-1",
+    name: "Training & Placement Cell (TPC)",
+    category: "administrative",
+    location: "Block A, 1st Floor, Room 104",
+    roomNumber: "104",
+    building: "Block A (Admin Block)",
+    openingHours: "09:00 AM - 05:30 PM (Mon-Sat)",
+    headPerson: "Prof. Rajiv Mehta",
+    contactEmail: "tpc.admin@gsfcuniversity.ac.in",
+    contactPhone: "+91 265 309 3751",
+    description: "Corporate recruitment drives, industry internships, resume reviews, mock interviews, and company liaison.",
+    iconName: "Briefcase",
+  },
+  {
+    id: "srv-2",
+    name: "Dean & Academic Governance Office",
+    category: "administrative",
+    location: "Block A, 2nd Floor, Room 201",
+    roomNumber: "201",
+    building: "Block A (Dean Wing)",
+    openingHours: "09:30 AM - 05:00 PM (Mon-Fri)",
+    headPerson: "Dr. Ananya Sharma",
+    contactEmail: "admin.dean@gsfcuniversity.ac.in",
+    contactPhone: "+91 265 309 3701",
+    description: "Academic regulations, curriculum governance, attendance exemption appeals, degree certificates, and student affairs.",
+    iconName: "GraduationCap",
+  },
+  {
+    id: "srv-3",
+    name: "Central University Library & Digital Knowledge Hub",
+    category: "facility",
+    location: "Vigyan Bhavan, Ground Floor",
+    roomNumber: "GB-01",
+    building: "Vigyan Bhavan",
+    openingHours: "08:00 AM - 09:00 PM (All Days)",
+    headPerson: "Dr. R. K. Patel (Chief Librarian)",
+    contactEmail: "library@gsfcuni.edu",
+    contactPhone: "+91 265 309 3820",
+    description: "50,000+ technical volumes, IEEE/ACM digital access, quiet study pods, high-speed WiFi, and journal archives.",
+    iconName: "BookOpen",
+  },
+  {
+    id: "srv-4",
+    name: "Computer Center & Robotics Innovation Lab",
+    category: "academic",
+    location: "Block C, 3rd Floor, Lab 4",
+    roomNumber: "C-304",
+    building: "Block C (Technology Wing)",
+    openingHours: "08:30 AM - 07:00 PM (Mon-Sat)",
+    headPerson: "Dr. Suresh Rao (HOD CSE)",
+    contactEmail: "suresh.rao@gsfcuni.edu",
+    contactPhone: "+91 265 309 3765",
+    description: "GPU compute workstations, 3D printers, ROS robotics hardware testbeds, and hackathon project facilities.",
+    iconName: "Cpu",
+  },
+  {
+    id: "srv-5",
+    name: "Campus Health Center & Emergency Medical Ward",
+    category: "emergency",
+    location: "Student Amenities Block, Room 02",
+    roomNumber: "02",
+    building: "Amenities Complex",
+    openingHours: "24x7 Emergency Service",
+    headPerson: "Dr. J. M. Mehta (Campus Physician)",
+    contactEmail: "health.center@gsfcuni.edu",
+    contactPhone: "+91 265 309 3999",
+    description: "First aid, emergency patient care, ambulance dispatch, routine medical checkups, and mental health counseling.",
+    iconName: "HeartPulse",
+  },
+  {
+    id: "srv-6",
+    name: "Main Campus Security Command & Gate Control",
+    category: "emergency",
+    location: "Main Entrance Gate #1",
+    roomNumber: "Security Cabin 01",
+    building: "Main Gate Complex",
+    openingHours: "24x7 Round-the-Clock",
+    headPerson: "Security Control Officer",
+    contactEmail: "security@gsfcuni.edu",
+    contactPhone: "+91 265 309 3911",
+    description: "Visitor gate passes, parking allocation, lost & found counter, CCTV surveillance, and campus vehicle tracking.",
+    iconName: "ShieldCheck",
+  },
+];
+
 const STORAGE_KEY = "gsfc_campus_connect_state_v2";
 const ACCOUNTS_STORAGE_KEY = "gsfc_campus_accounts_v2";
 
@@ -757,6 +1166,60 @@ function loadSavedState(): CampusState {
         }
       }
 
+      // Merge clubs
+      const existingClubs: Club[] = Array.isArray(parsed.clubs) ? parsed.clubs : [];
+      const mergedClubs = [...existingClubs];
+      for (const defClub of INITIAL_CLUBS) {
+        if (!mergedClubs.some((c) => c.id === defClub.id)) {
+          mergedClubs.push(defClub);
+        }
+      }
+
+      // Merge club members
+      const existingClubMembers: ClubMember[] = Array.isArray(parsed.clubMembers) ? parsed.clubMembers : [];
+      const mergedClubMembers = [...existingClubMembers];
+      for (const defCm of INITIAL_CLUB_MEMBERS) {
+        if (!mergedClubMembers.some((cm) => cm.id === defCm.id || (cm.clubId === defCm.clubId && cm.userId === defCm.userId))) {
+          mergedClubMembers.push(defCm);
+        }
+      }
+
+      // Merge club activities
+      const existingActivities: ClubActivity[] = Array.isArray(parsed.clubActivities) ? parsed.clubActivities : [];
+      const mergedActivities = [...existingActivities];
+      for (const defAct of INITIAL_CLUB_ACTIVITIES) {
+        if (!mergedActivities.some((a) => a.id === defAct.id)) {
+          mergedActivities.push(defAct);
+        }
+      }
+
+      // Merge achievements
+      const existingAchievements: VerifiedAchievement[] = Array.isArray(parsed.achievements) ? parsed.achievements : [];
+      const mergedAchievements = [...existingAchievements];
+      for (const defAch of INITIAL_ACHIEVEMENTS) {
+        if (!mergedAchievements.some((a) => a.id === defAch.id)) {
+          mergedAchievements.push(defAch);
+        }
+      }
+
+      // Merge announcements
+      const existingAnnouncements: CampusAnnouncement[] = Array.isArray(parsed.announcements) ? parsed.announcements : [];
+      const mergedAnnouncements = [...existingAnnouncements];
+      for (const defAnn of INITIAL_ANNOUNCEMENTS) {
+        if (!mergedAnnouncements.some((a) => a.id === defAnn.id)) {
+          mergedAnnouncements.push(defAnn);
+        }
+      }
+
+      // Merge services
+      const existingServices: CampusService[] = Array.isArray(parsed.services) ? parsed.services : [];
+      const mergedServices = [...existingServices];
+      for (const defSrv of INITIAL_SERVICES) {
+        if (!mergedServices.some((s) => s.id === defSrv.id)) {
+          mergedServices.push(defSrv);
+        }
+      }
+
       return {
         ...parsed,
         isAuthenticated: parsed.isAuthenticated !== undefined ? parsed.isAuthenticated : false,
@@ -773,6 +1236,13 @@ function loadSavedState(): CampusState {
         eventBroadcasts: parsed.eventBroadcasts || INITIAL_BROADCASTS,
         notifications: parsed.notifications || INITIAL_NOTIFICATIONS,
         auditLogs: parsed.auditLogs || INITIAL_AUDIT_LOGS,
+        clubs: mergedClubs,
+        clubMembers: mergedClubMembers,
+        clubActivities: mergedActivities,
+        achievements: mergedAchievements,
+        announcements: mergedAnnouncements,
+        services: mergedServices,
+        digitalId: parsed.digitalId || INITIAL_DIGITAL_ID,
       };
     }
   } catch (e) {
@@ -793,9 +1263,17 @@ function loadSavedState(): CampusState {
     vehicleRecords: INITIAL_VEHICLES,
     badges: INITIAL_BADGES,
     feedbackList: [],
+    eventBroadcasts: INITIAL_BROADCASTS,
     notifications: INITIAL_NOTIFICATIONS,
     auditLogs: INITIAL_AUDIT_LOGS,
     lowAttendanceAlertSent: false,
+    clubs: INITIAL_CLUBS,
+    clubMembers: INITIAL_CLUB_MEMBERS,
+    clubActivities: INITIAL_CLUB_ACTIVITIES,
+    achievements: INITIAL_ACHIEVEMENTS,
+    announcements: INITIAL_ANNOUNCEMENTS,
+    services: INITIAL_SERVICES,
+    digitalId: INITIAL_DIGITAL_ID,
   };
 }
 
@@ -2272,5 +2750,405 @@ export const campusStore = {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+  },
+
+  // --- Clubs & Communities Methods ---
+  joinClub(clubId: string, role: "member" | "committee" = "member"): { success: boolean; message: string } {
+    const state = campusStore.getState();
+    const club = state.clubs.find((c) => c.id === clubId);
+    if (!club) return { success: false, message: "Club not found." };
+
+    const existingMember = state.clubMembers.find((m) => m.clubId === clubId && m.userId === state.currentUser.id);
+    if (existingMember) {
+      return { success: false, message: `You are already registered with ${club.name} as ${existingMember.role}.` };
+    }
+
+    const newMember: ClubMember = {
+      id: `cm-${Date.now()}`,
+      clubId,
+      userId: state.currentUser.id,
+      userName: state.currentUser.name,
+      userRollNo: state.currentUser.rollNo,
+      department: state.currentUser.department,
+      role,
+      joinedAt: new Date().toISOString(),
+      status: "active",
+      volunteerHoursEarned: 0,
+    };
+
+    const updatedClubs = state.clubs.map((c) =>
+      c.id === clubId ? { ...c, memberCount: c.memberCount + 1 } : c
+    );
+
+    const audit: AuditLogEntry = {
+      id: `aud-club-join-${Date.now()}`,
+      action: "Club Membership Registered",
+      performedBy: `${state.currentUser.name} (${state.currentUser.rollNo})`,
+      target: club.name,
+      timestamp: new Date().toISOString().replace("T", " ").slice(0, 19),
+      details: `Enrolled as ${role.toUpperCase()} in ${club.name}`,
+    };
+
+    const notif: NotificationItem = {
+      id: `notif-club-${Date.now()}`,
+      title: `Welcome to ${club.name}!`,
+      message: `Your membership request is confirmed. You can now access club discussions, activities, and workshops.`,
+      type: "approval",
+      timestamp: "Just now",
+      read: false,
+    };
+
+    campusStore.setState((prev) => ({
+      clubMembers: [newMember, ...prev.clubMembers],
+      clubs: updatedClubs,
+      notifications: [notif, ...prev.notifications],
+      auditLogs: [audit, ...prev.auditLogs],
+    }));
+
+    return { success: true, message: `Successfully joined ${club.name}!` };
+  },
+
+  leaveClub(clubId: string): { success: boolean; message: string } {
+    const state = campusStore.getState();
+    const club = state.clubs.find((c) => c.id === clubId);
+    const existing = state.clubMembers.find((m) => m.clubId === clubId && m.userId === state.currentUser.id);
+    if (!existing) return { success: false, message: "You are not a member of this club." };
+
+    const updatedMembers = state.clubMembers.filter((m) => !(m.clubId === clubId && m.userId === state.currentUser.id));
+    const updatedClubs = state.clubs.map((c) =>
+      c.id === clubId ? { ...c, memberCount: Math.max(0, c.memberCount - 1) } : c
+    );
+
+    campusStore.setState((prev) => ({
+      clubMembers: updatedMembers,
+      clubs: updatedClubs,
+    }));
+
+    return { success: true, message: `Left ${club ? club.name : "club"}.` };
+  },
+
+  createClub(clubData: Omit<Club, "id" | "memberCount" | "foundedYear">): Club {
+    const newClub: Club = {
+      ...clubData,
+      id: `club-${Date.now()}`,
+      memberCount: 1,
+      foundedYear: new Date().getFullYear(),
+    };
+
+    campusStore.setState((prev) => ({
+      clubs: [newClub, ...prev.clubs],
+      auditLogs: [
+        {
+          id: `aud-club-create-${Date.now()}`,
+          action: "New Student Club Chartered",
+          performedBy: prev.currentUser.name,
+          target: newClub.name,
+          timestamp: new Date().toISOString().replace("T", " ").slice(0, 19),
+          details: `Category: ${newClub.category} · Coordinator: ${newClub.facultyCoordinator.name}`,
+        },
+        ...prev.auditLogs,
+      ],
+    }));
+
+    return newClub;
+  },
+
+  // --- Verified Achievements & Digital Wallet ---
+  issueAchievement(
+    data: Omit<VerifiedAchievement, "id" | "verificationHash" | "qrCodePayload">
+  ): VerifiedAchievement {
+    const state = campusStore.getState();
+    const hash = `SHA256:${Math.random().toString(36).substring(2, 10).toUpperCase()}${Date.now().toString(36).toUpperCase()}`;
+    const newAchievement: VerifiedAchievement = {
+      ...data,
+      id: `ach-${Date.now()}`,
+      verificationHash: hash,
+      qrCodePayload: `GSFCU:ACH:${data.category.toUpperCase()}:${data.userRollNo}:${data.dateEarned}`,
+    };
+
+    const notif: NotificationItem = {
+      id: `notif-ach-${Date.now()}`,
+      title: `🎖️ Verified Achievement Credential Issued!`,
+      message: `Dean & Academic Affairs issued: "${data.title}" for ${data.eventOrActivityName}. Added to your Digital Passport.`,
+      type: "achievement",
+      timestamp: "Just now",
+      read: false,
+    };
+
+    const audit: AuditLogEntry = {
+      id: `aud-ach-${Date.now()}`,
+      action: "Digital Achievement Credential Issued",
+      performedBy: state.currentUser.name,
+      target: `${data.userName} (${data.userRollNo})`,
+      timestamp: new Date().toISOString().replace("T", " ").slice(0, 19),
+      details: `Title: ${data.title} · Category: ${data.category} · Hash: ${hash.slice(0, 18)}...`,
+    };
+
+    campusStore.setState((prev) => ({
+      achievements: [newAchievement, ...prev.achievements],
+      notifications: [notif, ...prev.notifications],
+      auditLogs: [audit, ...prev.auditLogs],
+    }));
+
+    return newAchievement;
+  },
+
+  verifyAchievement(idOrHash: string): VerifiedAchievement | undefined {
+    const state = campusStore.getState();
+    const clean = idOrHash.trim().toLowerCase();
+    return state.achievements.find(
+      (a) =>
+        a.id.toLowerCase() === clean ||
+        a.verificationHash.toLowerCase() === clean ||
+        a.certificateId?.toLowerCase() === clean ||
+        a.qrCodePayload.toLowerCase() === clean
+    );
+  },
+
+  // --- Campus Announcements & Communication Feed ---
+  postAnnouncement(
+    data: Omit<CampusAnnouncement, "id" | "createdAt" | "readBy">
+  ): CampusAnnouncement {
+    const newAnn: CampusAnnouncement = {
+      ...data,
+      id: `ann-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+      readBy: [],
+    };
+
+    const notif: NotificationItem = {
+      id: `notif-ann-${Date.now()}`,
+      title: `📢 ${data.priority === "emergency" ? "EMERGENCY: " : ""}${data.title}`,
+      message: data.content.slice(0, 120) + (data.content.length > 120 ? "..." : ""),
+      type: data.priority === "emergency" ? "alert" : "reminder",
+      timestamp: "Just now",
+      read: false,
+    };
+
+    campusStore.setState((prev) => ({
+      announcements: [newAnn, ...prev.announcements],
+      notifications: [notif, ...prev.notifications],
+      auditLogs: [
+        {
+          id: `aud-ann-${Date.now()}`,
+          action: "Campus Circular Published",
+          performedBy: `${data.authorName} (${data.authorRole})`,
+          target: data.title,
+          timestamp: new Date().toISOString().replace("T", " ").slice(0, 19),
+          details: `Priority: ${data.priority.toUpperCase()} · Category: ${data.category}`,
+        },
+        ...prev.auditLogs,
+      ],
+    }));
+
+    return newAnn;
+  },
+
+  markAnnouncementRead(announcementId: string): void {
+    const state = campusStore.getState();
+    const userId = state.currentUser.id;
+    const updated = state.announcements.map((a) => {
+      if (a.id === announcementId) {
+        const readSet = new Set(a.readBy);
+        readSet.add(userId);
+        return { ...a, readBy: Array.from(readSet) };
+      }
+      return a;
+    });
+
+    campusStore.setState(() => ({ announcements: updated }));
+  },
+
+  // --- Google OAuth Enterprise Flow ---
+  loginWithGoogle(userOverride?: { name?: string; email?: string; rollNo?: string; photo?: string }): { success: boolean; message: string } {
+    const email = userOverride?.email || "omthakkar168@gsfcuniversity.ac.in";
+    const name = userOverride?.name || "Om Thakkar";
+    const rollNo = userOverride?.rollNo || "24BT04171";
+
+    const allAccounts = getStoredAccounts();
+    let matchedAccount = allAccounts.find(
+      (a) => a.email.toLowerCase() === email.toLowerCase() || a.idOrRoll.toLowerCase() === rollNo.toLowerCase()
+    );
+
+    if (!matchedAccount) {
+      // Create new verified GSFC student account
+      matchedAccount = {
+        idOrRoll: rollNo,
+        email,
+        name,
+        role: "student",
+        department: "B.Tech Computer Science & Engineering",
+        profile: {
+          id: `u-${rollNo.toLowerCase()}`,
+          name,
+          rollNo,
+          email,
+          role: "student",
+          department: "B.Tech Computer Science & Engineering",
+          year: 2,
+          semester: 4,
+          attendancePercentage: 88,
+          points: 1200,
+          streakDays: 14,
+          volunteerHours: 24,
+          avatar: userOverride?.photo || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80",
+        },
+      };
+      campusStore.registerNewAccount(matchedAccount);
+    }
+
+    campusStore.setState(() => ({
+      isAuthenticated: true,
+      currentRole: matchedAccount!.role,
+      currentUser: matchedAccount!.profile,
+      auditLogs: [
+        {
+          id: `aud-google-${Date.now()}`,
+          action: "Google SSO Authentication Verified",
+          performedBy: `${matchedAccount!.name} (${matchedAccount!.email})`,
+          target: "GSFC University Identity Provider",
+          timestamp: new Date().toISOString().replace("T", " ").slice(0, 19),
+          details: `Authenticated via Google Workspace SSO · Role: ${matchedAccount!.role.toUpperCase()}`,
+        },
+        ...campusStore.getState().auditLogs,
+      ],
+    }));
+
+    return { success: true, message: `Successfully authenticated via Google as ${matchedAccount.name} (${matchedAccount.email})` };
+  },
+
+  // --- AI Campus Assistant (Role-Scoped & Privacy-Preserving) ---
+  queryCampusAssistant(rawPrompt: string): AssistantMessage {
+    const prompt = rawPrompt.trim().toLowerCase();
+    const state = campusStore.getState();
+    const user = state.currentUser;
+    const isStudent = state.currentRole === "student";
+
+    let responseText = "";
+    let suggestions: string[] = [
+      "What events are happening this week?",
+      "Show my registered events",
+      "What is my attendance percentage?",
+      "What clubs can I join?",
+    ];
+
+    // Query 1: Events happening / discover
+    if (prompt.includes("event") || prompt.includes("happen") || prompt.includes("workshop") || prompt.includes("hackathon") || prompt.includes("calendar")) {
+      const liveEvents = state.events.filter((e) => e.status === "live");
+      const upcomingEvents = state.events.filter((e) => e.status === "upcoming");
+
+      if (prompt.includes("tech") || prompt.includes("cse") || prompt.includes("coding")) {
+        const techEvents = state.events.filter((e) => e.category === "Tech" || e.category === "Workshop" || e.department.toLowerCase().includes("comp"));
+        responseText = `### 💻 Technical & Engineering Events at GSFC University:\n\n` +
+          techEvents.map((e) => `• **${e.title}** (${e.date} · ${e.time})\n  📍 *${e.venue}* · Organized by ${e.organizerName}\n  Seats Left: ${e.capacity - e.registeredCount}/${e.capacity}`).join("\n\n");
+      } else if (prompt.includes("today") || prompt.includes("tomorrow") || prompt.includes("week")) {
+        responseText = `### 📅 Campus Events Schedule:\n\n` +
+          `**Live Right Now:**\n` +
+          (liveEvents.length > 0 ? liveEvents.map((e) => `• 🔴 **${e.title}** at *${e.venue}* (${e.time})`).join("\n") : "_No events currently running._") +
+          `\n\n**Upcoming Highlights:**\n` +
+          upcomingEvents.slice(0, 4).map((e) => `• 📌 **${e.title}** on **${e.date}** at *${e.venue}* (${e.capacity - e.registeredCount} seats left)`).join("\n");
+      } else {
+        responseText = `### 🎓 Active & Upcoming Campus Events (${state.events.length} Total):\n\n` +
+          state.events.slice(0, 5).map((e) => `• **${e.title}** [${e.category}]\n  📅 ${e.date} · 📍 ${e.venue} · ${e.registeredCount}/${e.capacity} Registered`).join("\n\n") +
+          `\n\n_Tip: You can tap on any event in the Events Hub to register or view real-time location directions._`;
+      }
+      suggestions = ["Show my registered events", "How do I punch in for attendance?", "Which events have certificates?"];
+    }
+
+    // Query 2: My registrations / personal schedule (privacy-scoped to current student only)
+    else if (prompt.includes("register") || prompt.includes("my event") || prompt.includes("enrolled") || prompt.includes("ticket")) {
+      const myRegs = state.registrations.filter((r) => r.userId === user.id || r.userRollNo === user.rollNo);
+      if (myRegs.length === 0) {
+        responseText = `You currently have **0 active registrations**.\n\nBrowse the Events Hub to find upcoming hackathons, workshops, and sports tournaments!`;
+      } else {
+        responseText = `### 🎟️ Your Event Registrations (${myRegs.length}):\n\n` +
+          myRegs.map((r) => {
+            const ev = state.events.find((e) => e.id === r.eventId);
+            const statusBadge = r.status === "attended" ? "✅ Attended" : r.status === "punched_in" ? "🟢 In Session" : r.status === "waitlisted" ? "⏳ Waitlisted" : "📌 Confirmed";
+            return `• **${ev?.title || r.eventId}** — ${statusBadge}\n  📅 Date: ${ev?.date || "TBD"} · 📍 Venue: ${ev?.venue || "Campus"}${r.isTeam ? ` · Team: **${r.teamName}**` : ""}`;
+          }).join("\n\n");
+      }
+      suggestions = ["What is my attendance percentage?", "What certificates have I earned?", "How do I download my ID card?"];
+    }
+
+    // Query 3: Attendance & Punch-In / Punch-Out
+    else if (prompt.includes("attendance") || prompt.includes("punch") || prompt.includes("streak") || prompt.includes("points") || prompt.includes("xp")) {
+      const myAtt = state.attendanceRecords.filter((a) => a.userId === user.id || a.userRollNo === user.rollNo);
+      responseText = `### 📊 Your GSFC Academic & Event Engagement:\n\n` +
+        `• **Verified Attendance:** ${user.attendancePercentage}%\n` +
+        `• **Events Attended:** ${myAtt.length} events\n` +
+        `• **Activity Points / XP:** ${user.points} XP\n` +
+        `• **Daily Streak:** 🔥 ${user.streakDays} Days\n` +
+        `• **Volunteer Hours:** 🤝 ${user.volunteerHours} Hours\n\n` +
+        `> **Attendance Policy Note:** GSFC University requires minimum 75% attendance for end-semester hall ticket clearance and campus placement drive eligibility.`;
+      suggestions = ["Show my certificates", "What achievements have I unlocked?", "How to join student clubs?"];
+    }
+
+    // Query 4: Certificates & Credentials
+    else if (prompt.includes("cert") || prompt.includes("wallet") || prompt.includes("download") || prompt.includes("credential")) {
+      const myAttWithCert = state.attendanceRecords.filter((a) => (a.userId === user.id || a.userRollNo === user.rollNo) && a.certificateId);
+      if (myAttWithCert.length === 0) {
+        responseText = `You don't have any issued certificates yet. Attend upcoming workshops or hackathons to earn verified digital credentials with unique verification IDs.`;
+      } else {
+        responseText = `### 📜 Your Verified Digital Certificates (${myAttWithCert.length}):\n\n` +
+          myAttWithCert.map((a) => `• **${a.eventTitle}**\n  🆔 Cert ID: \`${a.certificateId}\`\n  📅 Verified on: ${a.timestamp.slice(0, 10)} via ${a.verifiedMethod}`).join("\n\n") +
+          `\n\nYou can view and download official GSFC PDF certificates in the **Passport & Wallet** tab.`;
+      }
+      suggestions = ["Show my campus activity passport", "Show technical events", "What clubs can I join?"];
+    }
+
+    // Query 5: Clubs & Communities
+    else if (prompt.includes("club") || prompt.includes("community") || prompt.includes("lead") || prompt.includes("committee")) {
+      responseText = `### 🏛️ GSFC University Recognized Student Clubs:\n\n` +
+        state.clubs.map((c) => `• **${c.logo} ${c.name}** [${c.category}]\n  Coordinator: ${c.facultyCoordinator.name} · Student Lead: ${c.studentLead.name}\n  Members: ${c.memberCount} · Schedule: ${c.meetingSchedule}`).join("\n\n") +
+        `\n\n_You can join or view club activities in the Clubs & Communities section._`;
+      suggestions = ["Show coding club activities", "How do I earn volunteer hours?", "What events are happening this week?"];
+    }
+
+    // Query 6: Campus Services / Directory / Placement / Dean
+    else if (prompt.includes("service") || prompt.includes("placement") || prompt.includes("tpc") || prompt.includes("dean") || prompt.includes("library") || prompt.includes("security") || prompt.includes("health") || prompt.includes("contact") || prompt.includes("where is")) {
+      responseText = `### 🏢 GSFC Campus Services Directory:\n\n` +
+        state.services.map((s) => `• **${s.name}**\n  📍 ${s.location} (${s.building})\n  ⏰ ${s.openingHours} · 📞 ${s.contactPhone}\n  ✉️ ${s.contactEmail}`).join("\n\n");
+      suggestions = ["Where is Training & Placement Cell?", "What events are happening this week?", "Show campus announcements"];
+    }
+
+    // Query 7: Digital Student ID Card
+    else if (prompt.includes("id") || prompt.includes("card") || prompt.includes("identity") || prompt.includes("roll")) {
+      responseText = `### 🪪 Digital Campus Identity Card:\n\n` +
+        `• **Student:** ${state.digitalId.name}\n` +
+        `• **Roll No:** \`${state.digitalId.rollNo}\`\n` +
+        `• **Program:** ${state.digitalId.program}\n` +
+        `• **Department:** ${state.digitalId.department} (Sem ${state.digitalId.semester})\n` +
+        `• **Blood Group:** ${state.digitalId.bloodGroup}\n` +
+        `• **Validity:** Till ${state.digitalId.validTill}\n` +
+        `• **Status:** 🟢 ${state.digitalId.status.toUpperCase()}\n\n` +
+        `Tap the **Digital ID** badge on the top right navigation bar to open your holographic smart card with barcode scanner.`;
+      suggestions = ["Show my registered events", "What is my attendance percentage?", "What events are happening this week?"];
+    }
+
+    // Query 8: Fallback / General Assistant
+    else {
+      responseText = `Hello **${user.name}**! I am your **GSFC Campus AI Assistant**.\n\nI can help you with:\n` +
+        `• 📅 **Event Discovery:** Find technical hackathons, cultural fests, workshops, and sports matches.\n` +
+        `• 🎟️ **Registrations & Tickets:** Check your confirmed event seats and team statuses.\n` +
+        `• 📊 **Attendance & Analytics:** View your punch-in history, semester attendance %, and streaks.\n` +
+        `• 📜 **Certificates & Passport:** Access verified digital credentials and 100-point activity records.\n` +
+        `• 🏛️ **Clubs & Communities:** Explore coding clubs, NSS, cultural societies, and meeting schedules.\n` +
+        `• 🏢 **Campus Services:** Find TPC placement contacts, Dean office hours, and library facilities.`;
+      suggestions = [
+        "What events are happening this week?",
+        "Show technical workshops for CSE",
+        "Show my registered events",
+        "What is my attendance percentage?",
+      ];
+    }
+
+    return {
+      id: `msg-${Date.now()}`,
+      sender: "assistant",
+      text: responseText,
+      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      suggestedActions: suggestions,
+    };
   },
 };

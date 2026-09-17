@@ -1,15 +1,29 @@
 import {
+  Award,
   CalendarDays,
+  Flame,
+  Globe,
+  Radio,
   ScanLine,
   TicketCheck,
   Trophy,
   UserRound,
+  Users,
 } from "lucide-react";
 import { CampusState } from "@/lib/campus-store";
 import { translations } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
-export type StudentNavView = "home" | "events" | "scan" | "gamification" | "profile";
+export type StudentNavView =
+  | "home"
+  | "events"
+  | "scan"
+  | "passport"
+  | "clubs"
+  | "feed"
+  | "services"
+  | "gamification"
+  | "profile";
 
 interface StudentBottomNavProps {
   state: CampusState;
@@ -33,10 +47,10 @@ export function StudentBottomNav({
     isPrimary?: boolean;
   }> = [
     { id: "home", label: t.nav.home, icon: CalendarDays },
-    { id: "events", label: t.nav.myEvents, icon: TicketCheck },
+    { id: "events", label: "My Events", icon: TicketCheck },
     { id: "scan", label: "Scan QR", icon: ScanLine, isPrimary: true },
-    { id: "gamification", label: "XP & League", icon: Trophy },
-    { id: "profile", label: t.nav.profile, icon: UserRound },
+    { id: "passport", label: "Passport", icon: Award },
+    { id: "clubs", label: "Clubs", icon: Users },
   ];
 
   return (

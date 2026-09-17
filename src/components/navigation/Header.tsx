@@ -36,6 +36,8 @@ interface HeaderProps {
   onOpenNotifications: () => void;
   onOpenMobileInstall?: () => void;
   onOpenUnifiedCheckIn?: () => void;
+  onOpenDigitalId?: () => void;
+  onOpenAiAssistant?: () => void;
 }
 
 export function Header({
@@ -45,6 +47,8 @@ export function Header({
   onOpenNotifications,
   onOpenMobileInstall,
   onOpenUnifiedCheckIn,
+  onOpenDigitalId,
+  onOpenAiAssistant,
 }: HeaderProps) {
   const t = translations[state.language];
   const [syncing, setSyncing] = useState(false);
@@ -100,16 +104,47 @@ export function Header({
             </Button>
           )}
 
+          {/* Digital Campus ID Card Button */}
+          {onOpenDigitalId && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onOpenDigitalId}
+              className="h-9 gap-1.5 rounded-full border-[#F2A93B]/40 bg-[#F2A93B]/10 px-3 text-xs font-bold text-amber-600 dark:text-[#F2A93B] hover:bg-[#F2A93B]/20"
+              title="Open Holographic Digital Student ID Card"
+            >
+              <ShieldCheck className="size-3.5 text-[#F2A93B]" />
+              <span className="hidden sm:inline">Digital ID</span>
+              <span className="font-mono text-[10px] opacity-80">{state.currentUser.rollNo.slice(-4)}</span>
+            </Button>
+          )}
+
+          {/* AI Campus Assistant Button */}
+          {onOpenAiAssistant && (
+            <Button
+              size="sm"
+              onClick={onOpenAiAssistant}
+              className="h-9 gap-1.5 rounded-full bg-gradient-to-r from-[#1A3C6E] to-[#255294] border border-blue-400/30 px-3 text-xs font-bold text-white shadow-md hover:brightness-110"
+              title="Ask GSFC Campus AI Assistant"
+            >
+              <span className="relative flex size-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#F2A93B] opacity-75" />
+                <span className="relative inline-flex size-2 rounded-full bg-[#F2A93B]" />
+              </span>
+              <span className="hidden sm:inline">AI Copilot</span>
+            </Button>
+          )}
+
           {/* Mobile App (Android & Apple) Install Button */}
           {onOpenMobileInstall && (
             <Button
               variant="outline"
               size="sm"
               onClick={onOpenMobileInstall}
-              className="h-9 gap-1.5 rounded-full border-brand/30 bg-brand/5 px-3 text-xs font-bold text-brand hover:bg-brand/15 hidden sm:flex"
+              className="h-9 gap-1.5 rounded-full border-brand/30 bg-brand/5 px-3 text-xs font-bold text-brand hover:bg-brand/15 hidden md:flex"
             >
               <Smartphone className="size-3.5 text-[#F2A93B]" />
-              <span>Mobile App</span>
+              <span>App</span>
             </Button>
           )}
 

@@ -1,9 +1,12 @@
 import { useState, useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import {
+  Award,
+  Building2,
   CalendarDays,
   Flame,
   QrCode,
+  Radio,
   ScanBarcode,
   ScanLine,
   TicketCheck,
@@ -19,6 +22,12 @@ import { AttendanceHub } from "@/components/student/AttendanceHub";
 import { MyEventsView } from "@/components/student/MyEventsView";
 import { GamificationView } from "@/components/student/GamificationView";
 import { ProfileView } from "@/components/student/ProfileView";
+import { StudentPassportView } from "@/components/student/StudentPassportView";
+import { ClubsHubView } from "@/components/clubs/ClubsHubView";
+import { CampusFeedView } from "@/components/feed/CampusFeedView";
+import { CampusServicesView } from "@/components/campus/CampusServicesView";
+import { DigitalCampusIdModal } from "@/components/student/DigitalCampusIdModal";
+import { CampusAssistantModal } from "@/components/ai/CampusAssistantModal";
 import { EventDetailModal } from "@/components/student/EventDetailModal";
 import { QRScannerModal } from "@/components/student/QRScannerModal";
 import { PunchAttendanceModal } from "@/components/student/PunchAttendanceModal";
@@ -58,6 +67,8 @@ function CampusConnectApp() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showMobileModal, setShowMobileModal] = useState(false);
   const [showGateModal, setShowGateModal] = useState(false);
+  const [showDigitalId, setShowDigitalId] = useState(false);
+  const [showAiAssistant, setShowAiAssistant] = useState(false);
   const [isDark, setIsDark] = useState(false);
 
   // Subscribe to reactive store
@@ -97,6 +108,8 @@ function CampusConnectApp() {
           onOpenNotifications={() => setShowNotifications(true)}
           onOpenMobileInstall={() => setShowMobileModal(true)}
           onOpenUnifiedCheckIn={() => setShowGateModal(true)}
+          onOpenDigitalId={() => setShowDigitalId(true)}
+          onOpenAiAssistant={() => setShowAiAssistant(true)}
         />
 
         {/* Dynamic Workspace based on Role */}
@@ -104,8 +117,8 @@ function CampusConnectApp() {
           {state.currentRole === "student" && (
             <div className="flex flex-col gap-6">
               {/* Desktop Sub-Nav Pill Bar */}
-              <div className="hidden items-center justify-between gap-4 border-b border-border/70 pb-3 md:flex">
-                <div className="flex items-center gap-2">
+              <div className="hidden items-center justify-between gap-4 border-b border-border/70 pb-3 md:flex flex-wrap">
+                <div className="flex items-center gap-1.5 flex-wrap">
                   <Button
                     variant="ghost"
                     size="sm"
@@ -134,6 +147,66 @@ function CampusConnectApp() {
                   >
                     <TicketCheck className="mr-1.5 size-3.5" />
                     {t.nav.myEvents}
+                  </Button>
+
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setStudentView("passport")}
+                    className={cn(
+                      "rounded-xl text-xs font-bold",
+                      studentView === "passport"
+                        ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <Award className="mr-1.5 size-3.5 text-[#F2A93B]" />
+                    360 Passport
+                  </Button>
+
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setStudentView("clubs")}
+                    className={cn(
+                      "rounded-xl text-xs font-bold",
+                      studentView === "clubs"
+                        ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <Users className="mr-1.5 size-3.5" />
+                    Clubs & Societies
+                  </Button>
+
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setStudentView("feed")}
+                    className={cn(
+                      "rounded-xl text-xs font-bold",
+                      studentView === "feed"
+                        ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <Radio className="mr-1.5 size-3.5" />
+                    Campus Feed
+                  </Button>
+
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setStudentView("services")}
+                    className={cn(
+                      "rounded-xl text-xs font-bold",
+                      studentView === "services"
+                        ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <Building2 className="mr-1.5 size-3.5" />
+                    Services & TPC
                   </Button>
 
                   <Button
@@ -213,6 +286,22 @@ function CampusConnectApp() {
                 />
               )}
 
+              {studentView === "passport" && (
+                <StudentPassportView />
+              )}
+
+              {studentView === "clubs" && (
+                <ClubsHubView />
+              )}
+
+              {studentView === "feed" && (
+                <CampusFeedView />
+              )}
+
+              {studentView === "services" && (
+                <CampusServicesView />
+              )}
+
               {studentView === "gamification" && (
                 <GamificationView state={state} />
               )}
@@ -247,6 +336,20 @@ function CampusConnectApp() {
       </div>
 
       {/* Global Modals */}
+      {showDigitalId && (
+        <DigitalCampusIdModal
+          isOpen={showDigitalId}
+          onClose={() => setShowDigitalId(false)}
+        />
+      )}
+
+      {showAiAssistant && (
+        <CampusAssistantModal
+          isOpen={showAiAssistant}
+          onClose={() => setShowAiAssistant(false)}
+        />
+      )}
+
       {showGateModal && (
         <UnifiedAttendanceGateModal
           state={state}
