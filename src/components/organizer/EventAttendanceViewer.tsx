@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Calendar,
   Check,
@@ -39,6 +39,12 @@ export function EventAttendanceViewer({
   const [currentEventId, setCurrentEventId] = useState<string>(
     selectedEventId || state.events[0]?.id || ""
   );
+
+  useEffect(() => {
+    if (selectedEventId) {
+      setCurrentEventId(selectedEventId);
+    }
+  }, [selectedEventId]);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "punched_in" | "attended" | "pending">("all");
 
