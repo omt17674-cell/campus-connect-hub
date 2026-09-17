@@ -1,7 +1,7 @@
-import { useState } from "react";
 import {
   Award,
   Calendar,
+  CalendarPlus,
   Check,
   Clock,
   Download,
@@ -17,7 +17,9 @@ import { Input } from "@/components/ui/input";
 import { CampusEvent, Registration } from "@/lib/types";
 import { campusStore, CampusState } from "@/lib/campus-store";
 import { generateCertificatePdf } from "@/lib/certificate-generator";
-import { FeedbackModal } from "./FeedbackModal";
+import { getGoogleCalendarUrl, downloadIcsFile } from "@/lib/calendar-utils";
+import { ActivityPointsCard } from "./ActivityPointsCard";
+import { EventFeedbackModal } from "./EventFeedbackModal";
 import { cn } from "@/lib/utils";
 
 interface MyEventsViewProps {
@@ -111,6 +113,9 @@ export function MyEventsView({ state, onSelectEvent, onOpenPunchModal }: MyEvent
 
   return (
     <div className="flex flex-col gap-5">
+      {/* 100 Activity Points (SAP) Tracker Widget */}
+      <ActivityPointsCard />
+
       {/* Header Banner */}
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
         <div>
@@ -209,119 +214,156 @@ export function MyEventsView({ state, onSelectEvent, onOpenPunchModal }: MyEvent
             return (
               <div
                 key={event.id}
-                className="group flex flex-col justify-between gap-4 rounded-2xl border border-border/70 bg-card/70 p-4 shadow-sm backdrop-blur-xl transition-all hover:border-brand/40 hover:shadow-md sm:flex-row sm:items-center"
+                className="group flex flex-col justify-between gap-4 rounded-2xl border border-border/70 bg-card/70 p-4 shadow-sm backdrop-blur-xl transition-all hover:border-brand/40 hover:shadow-md"
               >
-                {/* Event Info */}
-                <div className="flex items-start gap-3.5">
-                  <div className="flex size-14 shrink-0 flex-col items-center justify-center rounded-xl bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#F2A93B]">
-                      {event.date.split("-")[1] === "06" ? "JUN" : "MAY"}
-                    </span>
-                    <span className="font-display text-base font-black leading-none">
-                      {event.date.split("-")[2] || "12"}
-                    </span>
-                  </div>
-
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <span className="rounded-md bg-accent/20 px-2 py-0.5 text-[10px] font-bold uppercase text-[#1A3C6E] dark:text-[#F2A93B]">
-                        {event.category}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  {/* Event Info */}
+                  <div className="flex items-start gap-3.5">
+                    <div className="flex size-14 shrink-0 flex-col items-center justify-center rounded-xl bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#F2A93B]">
+                        {event.date.split("-")[1] === "06" ? "JUN" : "MAY"}
                       </span>
-                      {reg?.isTeam && (
-                        <span className="flex items-center gap-1 rounded-md bg-brand/10 px-2 py-0.5 text-[10px] font-semibold text-brand">
-                          <Users className="size-3" /> {reg.teamName || "Team"}
-                        </span>
-                      )}
-                      {isPunchedIn && !isAttended && (
-                        <span className="rounded-md bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 animate-pulse">
-                          🟢 Punched In (Active)
-                        </span>
-                      )}
-                      {reg?.status === "waitlisted" && (
-                        <span className="rounded-md bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400">
-                          Waitlisted
-                        </span>
-                      )}
-                    </div>
-                    <h3
-                      onClick={() => onSelectEvent(event)}
-                      className="mt-1 cursor-pointer font-display text-base font-bold text-foreground transition-colors hover:text-brand"
-                    >
-                      {event.title}
-                    </h3>
-                    <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <Clock className="size-3 text-brand" /> {event.time}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <MapPin className="size-3 text-brand" /> {event.venue}
+                      <span className="font-display text-base font-black leading-none">
+                        {event.date.split("-")[2] || "12"}
                       </span>
                     </div>
-                  </div>
-                </div>
 
-                {/* Actions */}
-                <div className="flex shrink-0 flex-wrap items-center gap-2">
-                  {isAttended ? (
-                    <>
-                      {isCertUnlocked ? (
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="rounded-md bg-accent/20 px-2 py-0.5 text-[10px] font-bold uppercase text-[#1A3C6E] dark:text-[#F2A93B]">
+                          {event.category}
+                        </span>
+                        {reg?.isTeam && (
+                          <span className="flex items-center gap-1 rounded-md bg-brand/10 px-2 py-0.5 text-[10px] font-semibold text-brand">
+                            <Users className="size-3" /> {reg.teamName || "Team"}
+                          </span>
+                        )}
+                        {isPunchedIn && !isAttended && (
+                          <span className="rounded-md bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 animate-pulse">
+                            🟢 Punched In (Live)
+                          </span>
+                        )}
+                        {reg?.status === "waitlisted" && (
+                          <span className="rounded-md bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400">
+                            Waitlisted
+                          </span>
+                        )}
+                      </div>
+                      <h3
+                        onClick={() => onSelectEvent(event)}
+                        className="mt-1 cursor-pointer font-display text-base font-bold text-foreground transition-colors hover:text-brand"
+                      >
+                        {event.title}
+                      </h3>
+                      <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <Clock className="size-3 text-brand" /> {event.time}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <MapPin className="size-3 text-brand" /> {event.venue}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex shrink-0 flex-wrap items-center gap-2">
+                    {isAttended ? (
+                      <>
+                        {isCertUnlocked ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleDownloadCertificate(event)}
+                            disabled={downloadingCertId === event.id}
+                            className="h-9 gap-1.5 rounded-xl border-[#1A3C6E]/30 bg-[#1A3C6E]/5 text-xs font-bold text-[#1A3C6E] hover:bg-[#1A3C6E]/15 dark:border-[#F2A93B]/30 dark:bg-[#F2A93B]/10 dark:text-[#F2A93B]"
+                          >
+                            <Download className="size-3.5" />
+                            <span>{downloadingCertId === event.id ? "Generating..." : "PDF Certificate"}</span>
+                          </Button>
+                        ) : (
+                          <span
+                            className="flex items-center gap-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-bold text-amber-600 dark:text-amber-400"
+                            title="Administration / Faculty Coordinator is finalizing roster verification before issuing certificates"
+                          >
+                            <Lock className="size-3.5" />
+                            <span>Cert Pending Admin Release</span>
+                          </span>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setFeedbackEvent(event)}
+                          className="h-9 gap-1 rounded-xl text-xs font-semibold text-amber-600 dark:text-amber-400 hover:bg-amber-500/10"
+                        >
+                          <Star className="size-3.5 fill-current" />
+                          <span>Review</span>
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        {onOpenPunchModal && (
+                          <Button
+                            size="sm"
+                            onClick={() => onOpenPunchModal(event)}
+                            className={cn(
+                              "h-9 gap-1.5 rounded-xl text-xs font-bold shadow-md",
+                              isPunchedIn
+                                ? "bg-gradient-to-r from-amber-600 to-rose-600 text-white"
+                                : "bg-gradient-to-r from-emerald-600 to-[#1A3C6E] text-white"
+                            )}
+                          >
+                            <MapPin className="size-3.5 text-[#F2A93B]" />
+                            {isPunchedIn ? "Punch Out (Exit Attendance)" : "Punch In (Live GPS)"}
+                          </Button>
+                        )}
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => handleDownloadCertificate(event)}
-                          disabled={downloadingCertId === event.id}
-                          className="h-9 gap-1.5 rounded-xl border-[#1A3C6E]/30 bg-[#1A3C6E]/5 text-xs font-bold text-[#1A3C6E] hover:bg-[#1A3C6E]/15 dark:border-[#F2A93B]/30 dark:bg-[#F2A93B]/10 dark:text-[#F2A93B]"
+                          onClick={() => onSelectEvent(event)}
+                          className="h-9 rounded-xl text-xs font-semibold"
                         >
-                          <Download className="size-3.5" />
-                          <span>{downloadingCertId === event.id ? "Generating..." : "PDF Certificate"}</span>
+                          View Pass
                         </Button>
-                      ) : (
-                        <span
-                          className="flex items-center gap-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-bold text-amber-600 dark:text-amber-400"
-                          title="Administration / Faculty Coordinator is finalizing roster verification before issuing certificates"
-                        >
-                          <Lock className="size-3.5" />
-                          <span>Cert Pending Admin Release</span>
-                        </span>
-                      )}
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => setFeedbackEvent(event)}
-                        className="h-9 gap-1 rounded-xl text-xs font-semibold text-amber-600 dark:text-amber-400 hover:bg-amber-500/10"
-                      >
-                        <Star className="size-3.5 fill-current" />
-                        <span>Review</span>
-                      </Button>
-                    </>
-                  ) : (
-                    <>
-                      {onOpenPunchModal && (
-                        <Button
-                          size="sm"
-                          onClick={() => onOpenPunchModal(event)}
-                          className={cn(
-                            "h-9 gap-1.5 rounded-xl text-xs font-bold shadow-md",
-                            isPunchedIn
-                              ? "bg-gradient-to-r from-amber-600 to-rose-600 text-white"
-                              : "bg-gradient-to-r from-emerald-600 to-[#1A3C6E] text-white"
-                          )}
-                        >
-                          <MapPin className="size-3.5 text-[#F2A93B]" />
-                          {isPunchedIn ? "Punch Out (Exit Attendance)" : "Punch In (Mark Attendance)"}
-                        </Button>
-                      )}
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => onSelectEvent(event)}
-                        className="h-9 rounded-xl text-xs font-semibold"
-                      >
-                        View Pass & Details
-                      </Button>
-                    </>
-                  )}
+                      </>
+                    )}
+                  </div>
                 </div>
+
+                {/* Additional Row for Registered Events: Calendar Sync & Team details */}
+                {!isAttended && (
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/50 pt-2 text-[11px] text-muted-foreground">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-foreground">📅 Calendar Sync:</span>
+                      <a
+                        href={getGoogleCalendarUrl(event)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="font-bold text-brand hover:underline"
+                      >
+                        Google Calendar
+                      </a>
+                      <span>·</span>
+                      <button
+                        type="button"
+                        onClick={() => downloadIcsFile(event)}
+                        className="font-bold text-brand hover:underline"
+                      >
+                        iCal (.ics)
+                      </button>
+                    </div>
+
+                    {reg?.teamMembers && reg.teamMembers.length > 0 && (
+                      <div className="flex items-center gap-1.5 font-medium">
+                        <Users className="size-3 text-muted-foreground" />
+                        <span>Teammates:</span>
+                        <span className="font-bold text-foreground">
+                          {reg.teamMembers.map((m) => m.name.split(" ")[0]).join(", ")}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })
@@ -329,7 +371,7 @@ export function MyEventsView({ state, onSelectEvent, onOpenPunchModal }: MyEvent
       </div>
 
       {feedbackEvent && (
-        <FeedbackModal
+        <EventFeedbackModal
           event={feedbackEvent}
           onClose={() => setFeedbackEvent(null)}
         />

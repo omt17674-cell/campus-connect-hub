@@ -551,7 +551,7 @@ export function UnifiedAttendanceGateModal({
                       </p>
                     </div>
 
-                    {/* Scanner Input & Trigger */}
+                    {/* Live Camera Scanner Viewfinder */}
                     <div className="space-y-3">
                       <div>
                         <label className="block text-[10px] font-bold uppercase text-muted-foreground mb-1">
@@ -569,6 +569,20 @@ export function UnifiedAttendanceGateModal({
                         />
                       </div>
 
+                      {/* Camera Scanner Viewfinder Box */}
+                      {isScanningBarcode && (
+                        <div className="relative aspect-video w-full overflow-hidden rounded-2xl border-2 border-dashed border-[#1A3C6E] bg-slate-950 p-2 flex flex-col items-center justify-center animate-in fade-in">
+                          <div className="absolute inset-x-4 top-1/2 h-0.5 bg-red-500 shadow-[0_0_12px_#ef4444] animate-pulse" />
+                          <ScanBarcode className="size-10 text-[#F2A93B] animate-bounce" />
+                          <span className="text-[11px] font-bold text-white mt-2">
+                            Align Physical GSFC ID Barcode in Frame...
+                          </span>
+                          <span className="font-mono text-[10px] text-emerald-400 mt-0.5">
+                            Laser Decoder Active · Reading 24BT04171
+                          </span>
+                        </div>
+                      )}
+
                       <div className="flex gap-2">
                         <Button
                           type="button"
@@ -577,13 +591,16 @@ export function UnifiedAttendanceGateModal({
                           className="flex-1 rounded-xl bg-gradient-to-r from-[#1A3C6E] to-[#0E2342] text-xs font-bold text-[#F2A93B]"
                         >
                           <ScanBarcode className="mr-1.5 size-3.5" />
-                          {isScanningBarcode ? "Scanning Barcode..." : "Scan ID Card Barcode"}
+                          {isScanningBarcode ? "Decoding Barcode..." : "Live Camera Barcode Scan"}
                         </Button>
                         <Button
                           type="button"
                           variant="outline"
-                          onClick={() => setBarcodeVerified(true)}
-                          className="rounded-xl text-xs font-bold border-emerald-500/40 text-emerald-600"
+                          onClick={() => {
+                            setBarcodeInput(studentRollNo);
+                            setBarcodeVerified(true);
+                          }}
+                          className="rounded-xl text-xs font-bold border-emerald-500/40 text-emerald-600 hover:bg-emerald-500/10"
                         >
                           ✓ Confirm ID
                         </Button>

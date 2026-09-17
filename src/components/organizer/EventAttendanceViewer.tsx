@@ -13,6 +13,7 @@ import {
   LogIn,
   LogOut,
   MapPin,
+  Megaphone,
   Search,
   ShieldCheck,
   UserCheck,
@@ -24,6 +25,9 @@ import { CampusEvent, Registration, AttendanceRecord } from "@/lib/types";
 import { campusStore, CampusState } from "@/lib/campus-store";
 import { generateEventAttendanceRosterPdf } from "@/lib/attendance-roster-pdf";
 import { generateCertificatePdf } from "@/lib/certificate-generator";
+import { generateEventCompletionReportPdf } from "@/lib/report-generator";
+import { LiveHeadcountTicker } from "@/components/faculty/LiveHeadcountTicker";
+import { EventBroadcastModal } from "@/components/faculty/EventBroadcastModal";
 import { cn } from "@/lib/utils";
 
 interface EventAttendanceViewerProps {
@@ -53,6 +57,8 @@ export function EventAttendanceViewer({
   const [departmentFilter, setDepartmentFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<"all" | "punched_in" | "attended" | "pending">("all");
   const [downloadingCertUserId, setDownloadingCertUserId] = useState<string | null>(null);
+  const [showBroadcastModal, setShowBroadcastModal] = useState(false);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 
   const activeEvent = state.events.find((e) => e.id === currentEventId) || state.events[0];
 
@@ -248,6 +254,43 @@ export function EventAttendanceViewer({
             ))}
           </select>
 
+          {/* Broadcast Alert Button */}
+          {activeEvent && (
+            <Button
+              size="sm"
+              onClick={() => setShowBroadcastModal(true)}
+              className="h-9 gap-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-700 text-xs font-bold text-white shadow-md hover:opacity-95"
+            >
+              <Megaphone className="size-3.5" />
+              Broadcast Alert
+            </Button>
+          )}
+
+          {/* Official Summary Report PDF */}
+          {activeEvent && (
+            <Button
+              size="sm"
+              disabled={isGeneratingReport}
+              onClick={async () => {
+                setIsGeneratingReport(true);
+                try {
+                  await generateEventCompletionReportPdf({
+                    event: activeEvent,
+                    attendanceRecords: eventAttendanceRecords,
+                    registrations: eventRegistrations,
+                    coordinatorName: state.currentUser.name,
+                  });
+                } finally {
+                  setIsGeneratingReport(false);
+                }
+              }}
+              className="h-9 gap-1.5 rounded-xl bg-gradient-to-r from-[#1A3C6E] to-[#0E2342] text-xs font-black text-[#F2A93B] shadow-md hover:opacity-95"
+            >
+              <FileText className="size-3.5" />
+              {isGeneratingReport ? "Generating..." : "Dean Summary Report (PDF)"}
+            </Button>
+          )}
+
           {/* Admin Certificate Release Button */}
           {activeEvent && (
             <Button
@@ -284,15 +327,6 @@ export function EventAttendanceViewer({
           )}
 
           <Button
-            onClick={handleExportPdf}
-            size="sm"
-            className="h-9 gap-1.5 rounded-xl bg-gradient-to-r from-[#1A3C6E] to-[#0E2342] text-xs font-black text-[#F2A93B] shadow-md hover:opacity-95"
-          >
-            <FileText className="size-3.5" />
-            Download PDF Roster
-          </Button>
-
-          <Button
             onClick={handleExportCsv}
             size="sm"
             variant="outline"
@@ -303,6 +337,11 @@ export function EventAttendanceViewer({
           </Button>
         </div>
       </div>
+
+      {/* Live In-Session Headcount Ticker */}
+      {activeEvent && (
+        <LiveHeadcountTicker event={activeEvent} />
+      )}
 
       {/* Active Event Banner & Key Metrics */}
       {activeEvent && (
@@ -594,6 +633,13 @@ export function EventAttendanceViewer({
           </tbody>
         </table>
       </div>
+
+      {showBroadcastModal && activeEvent && (
+        <EventBroadcastModal
+          event={activeEvent}
+          onClose={() => setShowBroadcastModal(false)}
+        />
+      )}
     </div>
   );
 }

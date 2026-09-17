@@ -191,9 +191,38 @@ export interface EventFeedback {
   eventId: string;
   userId: string;
   userName: string;
+  userRollNo?: string;
   rating: number; // 1 to 5
   comment: string;
   createdAt: string;
+}
+
+export interface EventBroadcast {
+  id: string;
+  eventId: string;
+  eventTitle: string;
+  authorName: string;
+  message: string;
+  priority: "high" | "normal" | "urgent";
+  createdAt: string;
+}
+
+export interface ActivityPointsCategory {
+  earned: number;
+  max: number;
+  color: string;
+  label: string;
+  iconName: string;
+}
+
+export interface ActivityPointsBreakdown {
+  technical: ActivityPointsCategory;
+  cultural: ActivityPointsCategory;
+  sports: ActivityPointsCategory;
+  social: ActivityPointsCategory;
+  totalEarned: number;
+  totalMax: number;
+  percentage: number;
 }
 
 export interface NotificationItem {
@@ -215,3 +244,4 @@ export interface AuditLogEntry {
   timestamp: string;
   details: string;
 }
+
