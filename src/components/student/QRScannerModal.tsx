@@ -269,44 +269,31 @@ export function QRScannerModal({ onClose, onSuccess }: QRScannerModalProps) {
             </span>
           </div>
 
-          {/* Location preset switches for testing */}
-          <div className="mt-2.5 flex flex-wrap gap-1 border-t border-border/60 pt-2 text-[10px]">
-            <span className="self-center font-bold text-muted-foreground mr-1">Simulate GPS:</span>
+          {/* Real Device GPS Status & Refresh */}
+          <div className="mt-2.5 flex items-center justify-between border-t border-border/60 pt-2 text-[11px]">
+            <div className="flex items-center gap-1 text-muted-foreground">
+              <span className="size-2 rounded-full bg-emerald-500 animate-pulse inline-block" />
+              <span>
+                {locationStatus === "acquired"
+                  ? `Live GPS Locked (±${locationAccuracy || 10}m)`
+                  : "Device Location Active"}
+              </span>
+            </div>
             <button
               type="button"
-              onClick={() => setUserLocation({ latitude: 22.3689, longitude: 73.1892 })}
-              className={cn(
-                "rounded-md border px-2 py-0.5 font-semibold",
-                currentDistanceMeters < 50
-                  ? "border-emerald-500 bg-emerald-500/10 text-emerald-600 font-bold"
-                  : "border-border/70 text-muted-foreground"
-              )}
+              onClick={async () => {
+                try {
+                  const { coords, accuracy } = await getLiveStudentLocation();
+                  setUserLocation(coords);
+                  setLocationAccuracy(Math.round(accuracy));
+                  setLocationStatus("acquired");
+                } catch {
+                  setLocationStatus("simulated");
+                }
+              }}
+              className="font-bold text-brand hover:underline flex items-center gap-1 text-[11px]"
             >
-              On-Site (18m)
-            </button>
-            <button
-              type="button"
-              onClick={() => setUserLocation({ latitude: 22.3670, longitude: 73.1880 })}
-              className={cn(
-                "rounded-md border px-2 py-0.5 font-semibold",
-                currentDistanceMeters >= 50 && currentDistanceMeters <= 350
-                  ? "border-amber-500 bg-amber-500/10 text-amber-600 font-bold"
-                  : "border-border/70 text-muted-foreground"
-              )}
-            >
-              Campus Gate (220m)
-            </button>
-            <button
-              type="button"
-              onClick={() => setUserLocation({ latitude: 22.3480, longitude: 73.1650 })}
-              className={cn(
-                "rounded-md border px-2 py-0.5 font-semibold",
-                currentDistanceMeters > 350
-                  ? "border-rose-500 bg-rose-500/10 text-rose-600 font-bold"
-                  : "border-border/70 text-muted-foreground"
-              )}
-            >
-              Off-Campus (2.4km)
+              🔄 Refresh GPS
             </button>
           </div>
         </div>

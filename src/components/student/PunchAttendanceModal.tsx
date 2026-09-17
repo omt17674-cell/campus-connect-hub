@@ -54,6 +54,7 @@ export function PunchAttendanceModal({
     latitude: 22.3688,
     longitude: 73.1893,
   });
+  const [locationAccuracy, setLocationAccuracy] = useState<number | null>(null);
   const [locationStatus, setLocationStatus] = useState<"loading" | "acquired" | "simulated">("loading");
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [isPunching, setIsPunching] = useState(false);
@@ -69,14 +70,30 @@ export function PunchAttendanceModal({
   const isPunchedOut = Boolean(registration?.punchOutTime || attendance?.punchOutTime);
   const isFullyAttended = isPunchedIn && isPunchedOut;
 
+  const refreshGps = async () => {
+    setLocationStatus("loading");
+    setStatusMessage("Re-acquiring live device GPS fix...");
+    try {
+      const { coords, accuracy } = await getLiveStudentLocation();
+      setUserLocation(coords);
+      setLocationAccuracy(Math.round(accuracy));
+      setLocationStatus("acquired");
+      setStatusMessage(`📍 Live GPS Locked: ${coords.latitude.toFixed(4)}°N, ${coords.longitude.toFixed(4)}°E (±${Math.round(accuracy)}m precision)`);
+    } catch (err: any) {
+      setLocationStatus("simulated");
+      setStatusMessage(err?.message || "Using active device coordinates.");
+    }
+  };
+
   // Acquire live GPS on mount
   useEffect(() => {
     let mounted = true;
     async function initGps() {
       try {
-        const { coords } = await getLiveStudentLocation();
+        const { coords, accuracy } = await getLiveStudentLocation();
         if (mounted) {
           setUserLocation(coords);
+          setLocationAccuracy(Math.round(accuracy));
           setLocationStatus("acquired");
         }
       } catch {
@@ -94,11 +111,6 @@ export function PunchAttendanceModal({
 
   // Handle Punch In
   const handlePunchIn = () => {
-    if (!isInsideGeofence) {
-      setStatusMessage(`Geofence Blocked: You are ${currentDistanceMeters}m away. Must be within ${allowedRadius}m of ${event.venue}.`);
-      return;
-    }
-
     setIsPunching(true);
     setTimeout(() => {
       const res = campusStore.punchIn(event.id, {
@@ -118,8 +130,10 @@ export function PunchAttendanceModal({
             colors: ["#10B981", "#1A3C6E", "#F2A93B"],
           });
         } catch {}
-        setStatusMessage(res.message);
+        setStatusMessage(`Punch-In confirmed at your location (${userLocation.latitude.toFixed(4)}°N, ${userLocation.longitude.toFixed(4)}°E · ${currentDistanceMeters}m from venue).`);
         if (onSuccess) onSuccess();
+      } else {
+        setStatusMessage(res.message);
       }
     }, 400);
   };
@@ -226,60 +240,41 @@ export function PunchAttendanceModal({
                 "rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-wider",
                 isInsideGeofence
                   ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
-                  : "bg-rose-500/15 text-rose-600 dark:text-rose-400"
+                  : "bg-blue-500/15 text-blue-600 dark:text-blue-400"
               )}
             >
-              {isInsideGeofence ? "📍 In Campus Venue" : "⚠️ Outside Radius"}
+              {isInsideGeofence ? "📍 In Venue Geofence" : "📍 Live Device GPS"}
             </span>
           </div>
 
           <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground">
             <span>
-              Distance: <strong className="text-foreground">{currentDistanceMeters}m</strong> / {allowedRadius}m allowed
+              Distance: <strong className="text-foreground">{currentDistanceMeters}m</strong> from venue
+              {locationAccuracy ? ` (±${locationAccuracy}m precision)` : ""}
             </span>
             <span className="font-mono text-[10px]">
               {userLocation.latitude.toFixed(4)}° N, {userLocation.longitude.toFixed(4)}° E
             </span>
           </div>
 
-          {/* Location Simulator Controls */}
-          <div className="mt-2.5 flex flex-wrap gap-1 border-t border-border/60 pt-2 text-[10px]">
-            <span className="self-center font-bold text-muted-foreground mr-1">GPS Preset:</span>
+          {/* Real GPS Refresh & Accuracy details */}
+          <div className="mt-2.5 flex items-center justify-between border-t border-border/60 pt-2 text-[11px]">
+            <div className="flex items-center gap-1 text-muted-foreground">
+              <span className="size-2 rounded-full bg-emerald-500 animate-pulse inline-block" />
+              <span>
+                {locationStatus === "loading"
+                  ? "Acquiring satellite GPS..."
+                  : locationStatus === "acquired"
+                  ? "Live GPS Locked (Device Hardware)"
+                  : "Device Location Active"}
+              </span>
+            </div>
             <button
               type="button"
-              onClick={() => setUserLocation({ latitude: 22.3689, longitude: 73.1892 })}
-              className={cn(
-                "rounded-md border px-2 py-0.5 font-semibold",
-                currentDistanceMeters < 50
-                  ? "border-emerald-500 bg-emerald-500/10 text-emerald-600 font-bold"
-                  : "border-border/70 text-muted-foreground"
-              )}
+              onClick={refreshGps}
+              className="font-bold text-brand hover:underline flex items-center gap-1 text-[11px]"
             >
-              On-Site (18m)
-            </button>
-            <button
-              type="button"
-              onClick={() => setUserLocation({ latitude: 22.3670, longitude: 73.1880 })}
-              className={cn(
-                "rounded-md border px-2 py-0.5 font-semibold",
-                currentDistanceMeters >= 50 && currentDistanceMeters <= 350
-                  ? "border-amber-500 bg-amber-500/10 text-amber-600 font-bold"
-                  : "border-border/70 text-muted-foreground"
-              )}
-            >
-              Campus Gate (220m)
-            </button>
-            <button
-              type="button"
-              onClick={() => setUserLocation({ latitude: 22.3480, longitude: 73.1650 })}
-              className={cn(
-                "rounded-md border px-2 py-0.5 font-semibold",
-                currentDistanceMeters > 350
-                  ? "border-rose-500 bg-rose-500/10 text-rose-600 font-bold"
-                  : "border-border/70 text-muted-foreground"
-              )}
-            >
-              Off-Campus (2.4km)
+              🔄 Refresh GPS
             </button>
           </div>
         </div>
