@@ -272,12 +272,18 @@ CREATE TABLE IF NOT EXISTS public.audit_logs (
 );
 
 -- ==============================================================================
--- INDEXES & ROW LEVEL SECURITY
+-- HIGH-CONCURRENCY INDEXES (OPTIMIZED FOR 1,000+ SIMULTANEOUS LOGINS & CHECK-INS)
 -- ==============================================================================
+CREATE INDEX IF NOT EXISTS idx_accounts_email ON public.accounts(email);
+CREATE INDEX IF NOT EXISTS idx_accounts_roll ON public.accounts(roll_no);
 CREATE INDEX IF NOT EXISTS idx_new_students_roll ON public.new_registered_students(roll_no);
+CREATE INDEX IF NOT EXISTS idx_new_students_email ON public.new_registered_students(email);
+CREATE INDEX IF NOT EXISTS idx_new_students_mobile ON public.new_registered_students(mobile_number);
 CREATE INDEX IF NOT EXISTS idx_events_date ON public.events(date);
+CREATE INDEX IF NOT EXISTS idx_events_status ON public.events(status);
 CREATE INDEX IF NOT EXISTS idx_registrations_user ON public.registrations(user_id, event_id);
 CREATE INDEX IF NOT EXISTS idx_attendance_user ON public.attendance(user_id, event_id);
+CREATE INDEX IF NOT EXISTS idx_attendance_event ON public.attendance(event_id);
 
 ALTER TABLE public.accounts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.new_registered_students ENABLE ROW LEVEL SECURITY;
