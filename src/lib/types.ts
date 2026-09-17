@@ -98,7 +98,7 @@ export interface AttendanceRecord {
   timestamp: string;
   punchInTime?: string;
   punchOutTime?: string;
-  verifiedMethod: "qr_scan" | "manual_admin" | "offline_sync" | "live_punch";
+  verifiedMethod: "qr_scan" | "manual_admin" | "offline_sync" | "live_punch" | "unified_otp_barcode";
   tokenUsed: string;
   synced: boolean;
   certificateId?: string;
@@ -107,6 +107,59 @@ export interface AttendanceRecord {
   userLongitude?: number;
   distanceFromVenueMeters?: number;
   locationVerified?: boolean;
+  mobileNumber?: string;
+  otpVerified?: boolean;
+  barcodeScanned?: boolean;
+  barcodeValue?: string;
+  vehicleId?: string;
+  vehicleNumber?: string;
+}
+
+export type VehicleType = "2_wheeler" | "4_wheeler" | "ev" | "commercial";
+
+export interface VehicleRecord {
+  id: string;
+  vehicleNumber: string; // e.g. GJ-06-AB-1234
+  vehicleType: VehicleType;
+  ownerType: "student" | "faculty" | "visitor";
+  ownerName: string;
+  ownerContact: string;
+  ownerRollOrVisitorId: string;
+  parkingBay: string; // e.g. "Zone A - South Gate", "Zone B - Student Parking", "VIP Bay - Admin Block"
+  entryTime: string;
+  exitTime?: string;
+  status: "parked" | "exited";
+  gatePassId: string;
+  verifiedBy: string;
+}
+
+export interface VisitorRecord {
+  id: string; // e.g. VIS-2026-00125
+  fullName: string;
+  mobile: string;
+  email?: string;
+  organization: string; // e.g. "Tata Consultancy Services", "L&T Ltd.", "Guest Speaker"
+  purpose: "Campus Event Attendance" | "Placement & Industry Meeting" | "Guest Lecture / Workshop" | "Official Campus Visit" | "Vendor / Contractor";
+  personToMeet: string; // e.g. "Prof. Rajiv Mehta (TPC)", "Dr. Ananya Sharma (Dean)", "Dr. Suresh Rao"
+  departmentToMeet: string;
+  idProofType: "Aadhaar Card" | "Driving License" | "Voter ID / Gov ID" | "Corporate Work ID" | "Passport";
+  idProofNumber?: string;
+  otpVerified: boolean;
+  otpVerifiedAt?: string;
+  locationVerified: boolean;
+  userLatitude?: number;
+  userLongitude?: number;
+  distanceMeters?: number;
+  entryTime: string;
+  exitTime?: string;
+  status: "active" | "exited";
+  hasVehicle: boolean;
+  vehicleId?: string;
+  vehicleNumber?: string;
+  vehicleType?: VehicleType;
+  qrPassCode: string;
+  assignedEventId?: string;
+  assignedEventTitle?: string;
 }
 
 export interface PendingCheckin {

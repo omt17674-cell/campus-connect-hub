@@ -6,6 +6,7 @@ import {
   LogOut,
   Moon,
   RefreshCw,
+  ScanBarcode,
   ShieldCheck,
   Smartphone,
   Sun,
@@ -34,6 +35,7 @@ interface HeaderProps {
   onToggleTheme: () => void;
   onOpenNotifications: () => void;
   onOpenMobileInstall?: () => void;
+  onOpenUnifiedCheckIn?: () => void;
 }
 
 export function Header({
@@ -42,6 +44,7 @@ export function Header({
   onToggleTheme,
   onOpenNotifications,
   onOpenMobileInstall,
+  onOpenUnifiedCheckIn,
 }: HeaderProps) {
   const t = translations[state.language];
   const [syncing, setSyncing] = useState(false);
@@ -85,6 +88,18 @@ export function Header({
 
         {/* Action Controls */}
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* Unified Gate Pass & Visitor Check-In Button */}
+          {onOpenUnifiedCheckIn && (
+            <Button
+              size="sm"
+              onClick={onOpenUnifiedCheckIn}
+              className="h-9 gap-1.5 rounded-full bg-gradient-to-r from-emerald-600 via-[#1A3C6E] to-[#0E2342] px-3.5 text-xs font-black text-white shadow-md hover:opacity-95 hidden xs:flex"
+            >
+              <ScanBarcode className="size-3.5 text-[#F2A93B]" />
+              <span>Gate & Attendance Check-In</span>
+            </Button>
+          )}
+
           {/* Mobile App (Android & Apple) Install Button */}
           {onOpenMobileInstall && (
             <Button

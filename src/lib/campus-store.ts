@@ -10,6 +10,9 @@ import {
   Registration,
   UserProfile,
   UserRole,
+  VehicleRecord,
+  VehicleType,
+  VisitorRecord,
 } from "./types";
 import { generateQrPayload } from "./qr-engine";
 
@@ -111,6 +114,8 @@ export interface CampusState {
   registrations: Registration[];
   attendanceRecords: AttendanceRecord[];
   pendingCheckins: PendingCheckin[];
+  visitorRecords: VisitorRecord[];
+  vehicleRecords: VehicleRecord[];
   badges: Badge[];
   feedbackList: EventFeedback[];
   notifications: NotificationItem[];
@@ -463,6 +468,130 @@ const INITIAL_NOTIFICATIONS: NotificationItem[] = [
   },
 ];
 
+const INITIAL_VISITORS: VisitorRecord[] = [
+  {
+    id: "VIS-2026-00125",
+    fullName: "Kaniya Agrawal",
+    mobile: "+91 98765 43210",
+    email: "kaniya.agrawal@lt-engineering.com",
+    organization: "Larsen & Toubro (L&T) Infotech",
+    purpose: "Placement & Industry Meeting",
+    personToMeet: "Prof. Rajiv Mehta (TPC Head)",
+    departmentToMeet: "Training & Placement Cell (TPC)",
+    idProofType: "Corporate Work ID",
+    idProofNumber: "LTI-EMP-98214",
+    otpVerified: true,
+    otpVerifiedAt: "2026-06-12 09:15:00",
+    locationVerified: true,
+    userLatitude: 22.3592,
+    userLongitude: 73.1672,
+    distanceMeters: 12,
+    entryTime: "2026-06-12 09:18:22",
+    status: "active",
+    hasVehicle: true,
+    vehicleId: "VEH-2026-0001",
+    vehicleNumber: "GJ-06-AB-1234",
+    vehicleType: "4_wheeler",
+    qrPassCode: "GSFC-GATE-VIS-00125-98A4",
+    assignedEventTitle: "Annual Industry Recruitment & Internship Summit 2026",
+  },
+  {
+    id: "VIS-2026-00126",
+    fullName: "Dr. Vikram Sethi",
+    mobile: "+91 98250 11223",
+    email: "v.sethi@iitb.ac.in",
+    organization: "IIT Bombay / IEEE Gujarat",
+    purpose: "Guest Lecture / Workshop",
+    personToMeet: "Dr. Suresh Rao (HOD CS)",
+    departmentToMeet: "Computer Science & Engineering",
+    idProofType: "Aadhaar Card",
+    idProofNumber: "XXXX-XXXX-4891",
+    otpVerified: true,
+    otpVerifiedAt: "2026-06-12 09:45:10",
+    locationVerified: true,
+    userLatitude: 22.3590,
+    userLongitude: 73.1670,
+    distanceMeters: 5,
+    entryTime: "2026-06-12 09:50:00",
+    status: "active",
+    hasVehicle: true,
+    vehicleId: "VEH-2026-0002",
+    vehicleNumber: "GJ-01-EQ-7788",
+    vehicleType: "ev",
+    qrPassCode: "GSFC-GATE-VIS-00126-7788",
+    assignedEventTitle: "AI & Robotics National Hackathon",
+  },
+  {
+    id: "VIS-2026-00127",
+    fullName: "Pooja Deshmukh",
+    mobile: "+91 97240 88990",
+    email: "pooja.deshmukh@tcs.com",
+    organization: "Tata Consultancy Services (TCS)",
+    purpose: "Campus Event Attendance",
+    personToMeet: "Dr. Ananya Sharma (Dean)",
+    departmentToMeet: "Academic Governance",
+    idProofType: "Corporate Work ID",
+    idProofNumber: "TCS-IN-55019",
+    otpVerified: true,
+    otpVerifiedAt: "2026-06-12 10:10:00",
+    locationVerified: true,
+    userLatitude: 22.3591,
+    userLongitude: 73.1671,
+    distanceMeters: 15,
+    entryTime: "2026-06-12 10:12:45",
+    exitTime: "2026-06-12 16:30:00",
+    status: "exited",
+    hasVehicle: false,
+    qrPassCode: "GSFC-GATE-VIS-00127-1199",
+    assignedEventTitle: "AI & Robotics National Hackathon",
+  },
+];
+
+const INITIAL_VEHICLES: VehicleRecord[] = [
+  {
+    id: "VEH-2026-0001",
+    vehicleNumber: "GJ-06-AB-1234",
+    vehicleType: "4_wheeler",
+    ownerType: "visitor",
+    ownerName: "Kaniya Agrawal",
+    ownerContact: "+91 98765 43210",
+    ownerRollOrVisitorId: "VIS-2026-00125",
+    parkingBay: "Zone A - VIP / Guest Bay #04",
+    entryTime: "2026-06-12 09:18:22",
+    status: "parked",
+    gatePassId: "GSFC-GATE-VIS-00125-98A4",
+    verifiedBy: "Main Campus Security Gate #1",
+  },
+  {
+    id: "VEH-2026-0002",
+    vehicleNumber: "GJ-01-EQ-7788",
+    vehicleType: "ev",
+    ownerType: "visitor",
+    ownerName: "Dr. Vikram Sethi",
+    ownerContact: "+91 98250 11223",
+    ownerRollOrVisitorId: "VIS-2026-00126",
+    parkingBay: "EV Charging Bay #02 (Admin Block)",
+    entryTime: "2026-06-12 09:50:00",
+    status: "parked",
+    gatePassId: "GSFC-GATE-VIS-00126-7788",
+    verifiedBy: "Main Campus Security Gate #1",
+  },
+  {
+    id: "VEH-2026-0003",
+    vehicleNumber: "GJ-06-XX-4171",
+    vehicleType: "2_wheeler",
+    ownerType: "student",
+    ownerName: "Om Thakkar",
+    ownerContact: "+91 98765 04171",
+    ownerRollOrVisitorId: "24BT04171",
+    parkingBay: "Zone B - Student Two-Wheeler Stand #88",
+    entryTime: "2026-06-12 09:30:15",
+    status: "parked",
+    gatePassId: "GSFC-STU-GATE-24BT04171",
+    verifiedBy: "South Student Gate Scanner",
+  },
+];
+
 const INITIAL_AUDIT_LOGS: AuditLogEntry[] = [
   {
     id: "aud-1",
@@ -488,6 +617,14 @@ const INITIAL_AUDIT_LOGS: AuditLogEntry[] = [
     timestamp: "2026-06-08 09:30:00",
     details: "Registered team for AI & Robotics Hackathon",
   },
+  {
+    id: "aud-4",
+    action: "Visitor Gate Pass Issued",
+    performedBy: "Main Campus Security Gate #1",
+    target: "Kaniya Agrawal (L&T Infotech)",
+    timestamp: "2026-06-12 09:18:22",
+    details: "OTP verified · Vehicle GJ-06-AB-1234 parked in Zone A VIP Bay · VIS-2026-00125",
+  },
 ];
 
 const STORAGE_KEY = "gsfc_campus_connect_state_v1";
@@ -504,6 +641,8 @@ function loadSavedState(): CampusState {
       registrations: INITIAL_REGISTRATIONS,
       attendanceRecords: INITIAL_ATTENDANCE,
       pendingCheckins: [],
+      visitorRecords: INITIAL_VISITORS,
+      vehicleRecords: INITIAL_VEHICLES,
       badges: INITIAL_BADGES,
       feedbackList: [],
       notifications: INITIAL_NOTIFICATIONS,
@@ -524,6 +663,8 @@ function loadSavedState(): CampusState {
         registrations: parsed.registrations || INITIAL_REGISTRATIONS,
         attendanceRecords: parsed.attendanceRecords || INITIAL_ATTENDANCE,
         pendingCheckins: parsed.pendingCheckins || [],
+        visitorRecords: parsed.visitorRecords || INITIAL_VISITORS,
+        vehicleRecords: parsed.vehicleRecords || INITIAL_VEHICLES,
         badges: parsed.badges || INITIAL_BADGES,
         feedbackList: parsed.feedbackList || [],
         notifications: parsed.notifications || INITIAL_NOTIFICATIONS,
@@ -544,6 +685,8 @@ function loadSavedState(): CampusState {
     registrations: INITIAL_REGISTRATIONS,
     attendanceRecords: INITIAL_ATTENDANCE,
     pendingCheckins: [],
+    visitorRecords: INITIAL_VISITORS,
+    vehicleRecords: INITIAL_VEHICLES,
     badges: INITIAL_BADGES,
     feedbackList: [],
     notifications: INITIAL_NOTIFICATIONS,
@@ -1395,6 +1538,318 @@ export const campusStore = {
     return {
       success: true,
       unlocked: nextUnlocked,
+    };
+  },
+
+  // Send Mobile OTP simulation
+  sendMobileOtp(mobile: string): { success: boolean; otp: string; message: string } {
+    const cleanMobile = mobile.trim();
+    // Deterministic 6-digit OTP for testing convenience
+    const otp = "849521";
+    const notif: NotificationItem = {
+      id: `notif-otp-${Date.now()}`,
+      title: "📱 GSFC SMS OTP Verification Code",
+      message: `Your One Time Password (OTP) for Campus Access & Attendance is: ${otp}. Valid for 10 minutes. Do not share.`,
+      type: "alert",
+      timestamp: "Just now",
+      read: false,
+    };
+    campusStore.setState((prev) => ({
+      notifications: [notif, ...prev.notifications],
+    }));
+    return {
+      success: true,
+      otp,
+      message: `OTP sent successfully to ${cleanMobile}`,
+    };
+  },
+
+  // Register Visitor Entry + Optional Vehicle
+  registerVisitorEntry(data: {
+    fullName: string;
+    mobile: string;
+    email?: string;
+    organization: string;
+    purpose: VisitorRecord["purpose"];
+    personToMeet: string;
+    departmentToMeet: string;
+    idProofType: VisitorRecord["idProofType"];
+    idProofNumber?: string;
+    locationVerified: boolean;
+    userLatitude?: number;
+    userLongitude?: number;
+    distanceMeters?: number;
+    hasVehicle: boolean;
+    vehicleNumber?: string;
+    vehicleType?: VehicleType;
+    parkingBay?: string;
+    assignedEventId?: string;
+    assignedEventTitle?: string;
+  }): { visitor: VisitorRecord; vehicle?: VehicleRecord } {
+    const state = campusStore.getState();
+    const now = new Date().toISOString();
+    const visitorSeq = (state.visitorRecords.length + 126).toString().padStart(5, "0");
+    const visitorId = `VIS-2026-${visitorSeq}`;
+    const qrPassCode = `GSFC-GATE-${visitorId}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    let vehicleRecord: VehicleRecord | undefined = undefined;
+    if (data.hasVehicle && data.vehicleNumber) {
+      const vehicleSeq = (state.vehicleRecords.length + 1).toString().padStart(4, "0");
+      vehicleRecord = {
+        id: `VEH-2026-${vehicleSeq}`,
+        vehicleNumber: data.vehicleNumber.toUpperCase().trim(),
+        vehicleType: data.vehicleType || "4_wheeler",
+        ownerType: "visitor",
+        ownerName: data.fullName,
+        ownerContact: data.mobile,
+        ownerRollOrVisitorId: visitorId,
+        parkingBay: data.parkingBay || "Zone A - VIP / Guest Bay #05",
+        entryTime: now.replace("T", " ").slice(0, 19),
+        status: "parked",
+        gatePassId: qrPassCode,
+        verifiedBy: "Main Campus Security Gate #1",
+      };
+    }
+
+    const visitorRecord: VisitorRecord = {
+      id: visitorId,
+      fullName: data.fullName,
+      mobile: data.mobile,
+      email: data.email,
+      organization: data.organization,
+      purpose: data.purpose,
+      personToMeet: data.personToMeet,
+      departmentToMeet: data.departmentToMeet,
+      idProofType: data.idProofType,
+      idProofNumber: data.idProofNumber,
+      otpVerified: true,
+      otpVerifiedAt: now.replace("T", " ").slice(0, 19),
+      locationVerified: data.locationVerified,
+      userLatitude: data.userLatitude || 22.3590,
+      userLongitude: data.userLongitude || 73.1670,
+      distanceMeters: data.distanceMeters || 12,
+      entryTime: now.replace("T", " ").slice(0, 19),
+      status: "active",
+      hasVehicle: data.hasVehicle,
+      vehicleId: vehicleRecord?.id,
+      vehicleNumber: vehicleRecord?.vehicleNumber,
+      vehicleType: data.vehicleType,
+      qrPassCode,
+      assignedEventId: data.assignedEventId,
+      assignedEventTitle: data.assignedEventTitle,
+    };
+
+    const notif: NotificationItem = {
+      id: `notif-vis-${Date.now()}`,
+      title: `🎫 Visitor Gate Pass Issued: ${visitorId}`,
+      message: `Welcome ${data.fullName} (${data.organization}). Pass issued for meeting with ${data.personToMeet}.`,
+      type: "achievement",
+      timestamp: "Just now",
+      read: false,
+    };
+
+    const audit: AuditLogEntry = {
+      id: `aud-vis-${Date.now()}`,
+      action: "Visitor Gate Pass Issued",
+      performedBy: "Main Campus Security Gate #1",
+      target: `${data.fullName} (${data.organization})`,
+      timestamp: now.replace("T", " ").slice(0, 19),
+      details: `ID: ${visitorId} · OTP & Geo Verified · Purpose: ${data.purpose} · Vehicle: ${data.vehicleNumber || "None"}`,
+    };
+
+    campusStore.setState((prev) => ({
+      visitorRecords: [visitorRecord, ...prev.visitorRecords],
+      vehicleRecords: vehicleRecord ? [vehicleRecord, ...prev.vehicleRecords] : prev.vehicleRecords,
+      notifications: [notif, ...prev.notifications],
+      auditLogs: [audit, ...prev.auditLogs],
+    }));
+
+    return { visitor: visitorRecord, vehicle: vehicleRecord };
+  },
+
+  // Mark Visitor Exit
+  markVisitorExit(visitorId: string): void {
+    const state = campusStore.getState();
+    const now = new Date().toISOString().replace("T", " ").slice(0, 19);
+    const visitor = state.visitorRecords.find((v) => v.id === visitorId);
+    if (!visitor) return;
+
+    const updatedVisitors = state.visitorRecords.map((v) =>
+      v.id === visitorId ? { ...v, status: "exited" as const, exitTime: now } : v
+    );
+
+    const updatedVehicles = state.vehicleRecords.map((veh) =>
+      veh.ownerRollOrVisitorId === visitorId ? { ...veh, status: "exited" as const, exitTime: now } : veh
+    );
+
+    const audit: AuditLogEntry = {
+      id: `aud-vis-exit-${Date.now()}`,
+      action: "Visitor Exit Checked",
+      performedBy: "Security Gate #1",
+      target: `${visitor.fullName} (${visitor.id})`,
+      timestamp: now,
+      details: `Visitor exited campus · Vehicle released if parked`,
+    };
+
+    campusStore.setState((prev) => ({
+      visitorRecords: updatedVisitors,
+      vehicleRecords: updatedVehicles,
+      auditLogs: [audit, ...prev.auditLogs],
+    }));
+  },
+
+  // Mark Vehicle Exit
+  markVehicleExit(vehicleId: string): void {
+    const state = campusStore.getState();
+    const now = new Date().toISOString().replace("T", " ").slice(0, 19);
+    const veh = state.vehicleRecords.find((v) => v.id === vehicleId);
+    if (!veh) return;
+
+    const updatedVehicles = state.vehicleRecords.map((v) =>
+      v.id === vehicleId ? { ...v, status: "exited" as const, exitTime: now } : v
+    );
+
+    const audit: AuditLogEntry = {
+      id: `aud-veh-exit-${Date.now()}`,
+      action: "Vehicle Exit Gate Checked",
+      performedBy: "Security Gate Officer",
+      target: `${veh.vehicleNumber} (${veh.ownerName})`,
+      timestamp: now,
+      details: `Vehicle marked exited campus · Gate pass cleared`,
+    };
+
+    campusStore.setState((prev) => ({
+      vehicleRecords: updatedVehicles,
+      auditLogs: [audit, ...prev.auditLogs],
+    }));
+  },
+
+  // Mark Unified Student/Enrolled Attendance (OTP + Barcode + Location + Time + Vehicle)
+  markUnifiedStudentAttendance(data: {
+    eventId: string;
+    mobileNumber: string;
+    studentRollNo: string;
+    barcodeValue?: string;
+    location: { latitude: number; longitude: number; distanceMeters: number; verified: boolean };
+    hasVehicle?: boolean;
+    vehicleNumber?: string;
+    vehicleType?: VehicleType;
+    parkingBay?: string;
+  }): { success: boolean; attendanceRecord: AttendanceRecord; vehicleRecord?: VehicleRecord; message: string } {
+    const state = campusStore.getState();
+    const now = new Date().toISOString();
+    const event = state.events.find((e) => e.id === data.eventId) || state.events[0];
+
+    const studentName = state.currentUser.rollNo === data.studentRollNo ? state.currentUser.name : "Om Thakkar";
+    const studentDept = state.currentUser.rollNo === data.studentRollNo ? state.currentUser.department : "B.Tech Computer Science & Engineering";
+    const userId = state.currentUser.rollNo === data.studentRollNo ? state.currentUser.id : "u-om";
+
+    let vehicleRecord: VehicleRecord | undefined = undefined;
+    if (data.hasVehicle && data.vehicleNumber) {
+      const vehicleSeq = (state.vehicleRecords.length + 1).toString().padStart(4, "0");
+      vehicleRecord = {
+        id: `VEH-2026-${vehicleSeq}`,
+        vehicleNumber: data.vehicleNumber.toUpperCase().trim(),
+        vehicleType: data.vehicleType || "2_wheeler",
+        ownerType: "student",
+        ownerName: studentName,
+        ownerContact: data.mobileNumber,
+        ownerRollOrVisitorId: data.studentRollNo,
+        parkingBay: data.parkingBay || "Zone B - Student Parking",
+        entryTime: now.replace("T", " ").slice(0, 19),
+        status: "parked",
+        gatePassId: `GSFC-STU-GATE-${data.studentRollNo}`,
+        verifiedBy: "Campus Gate & Attendance Terminal",
+      };
+    }
+
+    const attRecord: AttendanceRecord = {
+      id: `att-unified-${Date.now()}`,
+      eventId: event.id,
+      eventTitle: event.title,
+      userId,
+      userName: studentName,
+      userRollNo: data.studentRollNo,
+      department: studentDept,
+      timestamp: now,
+      punchInTime: now,
+      verifiedMethod: "unified_otp_barcode",
+      tokenUsed: `GSFC-UNIFIED-OTP-BC-${data.studentRollNo}`,
+      synced: true,
+      certificateId: `GSFC-CERT-${event.id.replace(/[^a-zA-Z0-9]/g, "").toUpperCase()}-${data.studentRollNo.slice(-4)}-98A4`,
+      locationVerified: data.location.verified,
+      userLatitude: data.location.latitude,
+      userLongitude: data.location.longitude,
+      distanceFromVenueMeters: data.location.distanceMeters,
+      mobileNumber: data.mobileNumber,
+      otpVerified: true,
+      barcodeScanned: true,
+      barcodeValue: data.barcodeValue || data.studentRollNo,
+      vehicleId: vehicleRecord?.id,
+      vehicleNumber: vehicleRecord?.vehicleNumber,
+    };
+
+    const existingReg = state.registrations.find((r) => r.eventId === event.id && r.userId === userId);
+    let updatedRegs = [...state.registrations];
+    if (existingReg) {
+      updatedRegs = updatedRegs.map((r) =>
+        r.id === existingReg.id
+          ? {
+              ...r,
+              status: "attended" as const,
+              punchInTime: now,
+              punchInLocation: data.location,
+            }
+          : r
+      );
+    } else {
+      updatedRegs.push({
+        id: `reg-${Date.now()}`,
+        eventId: event.id,
+        userId,
+        userName: studentName,
+        userRollNo: data.studentRollNo,
+        department: studentDept,
+        registeredAt: now,
+        status: "attended",
+        isTeam: false,
+        punchInTime: now,
+        punchInLocation: data.location,
+      });
+    }
+
+    const notif: NotificationItem = {
+      id: `notif-att-${Date.now()}`,
+      title: "✅ Unified Attendance Verified",
+      message: `Attendance marked for ${event.title}. OTP, ID barcode, live location (${data.location.distanceMeters}m), and timestamp verified.`,
+      type: "achievement",
+      timestamp: "Just now",
+      read: false,
+      eventId: event.id,
+    };
+
+    const audit: AuditLogEntry = {
+      id: `aud-att-uni-${Date.now()}`,
+      action: "Unified Multi-Factor Attendance Marked",
+      performedBy: `${studentName} (${data.studentRollNo})`,
+      target: event.title,
+      timestamp: now.replace("T", " ").slice(0, 19),
+      details: `OTP ✓ | Barcode ${data.studentRollNo} ✓ | GPS ${data.location.distanceMeters}m ✓ | Vehicle: ${data.vehicleNumber || "None"}`,
+    };
+
+    campusStore.setState((prev) => ({
+      attendanceRecords: [attRecord, ...prev.attendanceRecords.filter((a) => !(a.eventId === event.id && a.userId === userId))],
+      registrations: updatedRegs,
+      vehicleRecords: vehicleRecord ? [vehicleRecord, ...prev.vehicleRecords] : prev.vehicleRecords,
+      notifications: [notif, ...prev.notifications],
+      auditLogs: [audit, ...prev.auditLogs],
+    }));
+
+    return {
+      success: true,
+      attendanceRecord: attRecord,
+      vehicleRecord,
+      message: "Attendance successfully verified and recorded!",
     };
   },
 };

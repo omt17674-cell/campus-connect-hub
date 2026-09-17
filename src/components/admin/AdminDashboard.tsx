@@ -31,17 +31,22 @@ import { Button } from "@/components/ui/button";
 import { CampusState, campusStore } from "@/lib/campus-store";
 import { translations } from "@/lib/i18n";
 import { EventAttendanceViewer } from "@/components/organizer/EventAttendanceViewer";
+import { VisitorVehicleSecurityViewer } from "@/components/admin/VisitorVehicleSecurityViewer";
 import { cn } from "@/lib/utils";
 
 interface AdminDashboardProps {
   state: CampusState;
+  onOpenGateModal?: () => void;
 }
 
-export function AdminDashboard({ state }: AdminDashboardProps) {
+export function AdminDashboard({ state, onOpenGateModal }: AdminDashboardProps) {
   const t = translations[state.language];
-  const [adminTab, setAdminTab] = useState<"overview" | "roster" | "approvals" | "alerts" | "audit">("overview");
+  const [adminTab, setAdminTab] = useState<
+    "overview" | "roster" | "security" | "approvals" | "alerts" | "audit"
+  >("overview");
 
   const pendingApprovals = state.events.filter((e) => e.status === "pending_approval");
+  const activeVisitors = state.visitorRecords.filter((v) => v.status === "active");
 
   // Chart data
   const departmentData = [
@@ -165,6 +170,21 @@ export function AdminDashboard({ state }: AdminDashboardProps) {
         <Button
           variant="ghost"
           size="sm"
+          onClick={() => setAdminTab("security")}
+          className={cn(
+            "rounded-xl text-xs font-bold",
+            adminTab === "security"
+              ? "bg-[#1A3C6E] text-white"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <ShieldCheck className="mr-1.5 size-3.5 text-emerald-500" />
+          Visitor & Vehicle Gate Security ({activeVisitors.length})
+        </Button>
+
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={() => setAdminTab("approvals")}
           className={cn(
             "rounded-xl text-xs font-bold",
@@ -213,6 +233,14 @@ export function AdminDashboard({ state }: AdminDashboardProps) {
         <EventAttendanceViewer
           state={state}
           titlePrefix="TPC Admin & University Governance Roster"
+        />
+      )}
+
+      {/* Visitor & Vehicle Gate Security Governance View */}
+      {adminTab === "security" && (
+        <VisitorVehicleSecurityViewer
+          state={state}
+          onOpenGateModal={onOpenGateModal}
         />
       )}
 

@@ -4,6 +4,7 @@ import {
   CalendarDays,
   Flame,
   QrCode,
+  ScanBarcode,
   ScanLine,
   TicketCheck,
   Trophy,
@@ -23,6 +24,7 @@ import { QRScannerModal } from "@/components/student/QRScannerModal";
 import { PunchAttendanceModal } from "@/components/student/PunchAttendanceModal";
 import { NotificationsModal } from "@/components/student/NotificationsModal";
 import { MobileInstallModal } from "@/components/mobile/MobileInstallModal";
+import { UnifiedAttendanceGateModal } from "@/components/attendance/UnifiedAttendanceGateModal";
 import { OrganizerDashboard } from "@/components/organizer/OrganizerDashboard";
 import { AdminDashboard } from "@/components/admin/AdminDashboard";
 import { LoginPage } from "@/components/auth/LoginPage";
@@ -55,6 +57,7 @@ function CampusConnectApp() {
   const [showScanner, setShowScanner] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showMobileModal, setShowMobileModal] = useState(false);
+  const [showGateModal, setShowGateModal] = useState(false);
   const [isDark, setIsDark] = useState(false);
 
   // Subscribe to reactive store
@@ -93,6 +96,7 @@ function CampusConnectApp() {
           onToggleTheme={() => setIsDark(!isDark)}
           onOpenNotifications={() => setShowNotifications(true)}
           onOpenMobileInstall={() => setShowMobileModal(true)}
+          onOpenUnifiedCheckIn={() => setShowGateModal(true)}
         />
 
         {/* Dynamic Workspace based on Role */}
@@ -163,13 +167,24 @@ function CampusConnectApp() {
                   </Button>
                 </div>
 
-                <Button
-                  onClick={() => setShowScanner(true)}
-                  className="h-9 gap-1.5 rounded-2xl bg-gradient-to-r from-[#1A3C6E] to-[#0E2342] font-display text-xs font-black text-[#F2A93B] shadow-lg shadow-[#1A3C6E]/25 hover:from-[#1A3C6E]/90 hover:to-[#0E2342]/90"
-                >
-                  <ScanLine className="size-4" />
-                  Scan Attendance QR
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    onClick={() => setShowGateModal(true)}
+                    className="h-9 gap-1.5 rounded-2xl bg-gradient-to-r from-emerald-600 via-[#1A3C6E] to-[#0E2342] font-display text-xs font-black text-white shadow-md hover:opacity-95"
+                  >
+                    <ScanBarcode className="size-4 text-[#F2A93B]" />
+                    Multi-Factor Check-In (OTP + ID + GPS)
+                  </Button>
+
+                  <Button
+                    onClick={() => setShowScanner(true)}
+                    variant="outline"
+                    className="h-9 gap-1.5 rounded-2xl border-[#1A3C6E]/40 font-display text-xs font-black text-[#1A3C6E] dark:text-[#F2A93B]"
+                  >
+                    <ScanLine className="size-4" />
+                    Scan QR
+                  </Button>
+                </div>
               </div>
 
               {/* Student View Router */}
@@ -185,6 +200,7 @@ function CampusConnectApp() {
                     state={state}
                     onOpenScanner={() => setShowScanner(true)}
                     onSelectEvent={setSelectedEvent}
+                    onOpenUnifiedCheckIn={() => setShowGateModal(true)}
                   />
                 </div>
               )}
@@ -212,7 +228,10 @@ function CampusConnectApp() {
           )}
 
           {state.currentRole === "admin" && (
-            <AdminDashboard state={state} />
+            <AdminDashboard
+              state={state}
+              onOpenGateModal={() => setShowGateModal(true)}
+            />
           )}
         </main>
 
@@ -228,6 +247,15 @@ function CampusConnectApp() {
       </div>
 
       {/* Global Modals */}
+      {showGateModal && (
+        <UnifiedAttendanceGateModal
+          state={state}
+          initialEvent={selectedEvent}
+          onClose={() => setShowGateModal(false)}
+          onSuccess={() => setShowGateModal(false)}
+        />
+      )}
+
       {selectedEvent && (
         <EventDetailModal
           event={selectedEvent}

@@ -4,7 +4,9 @@ import {
   Calendar,
   Flame,
   QrCode,
+  ScanBarcode,
   ScanLine,
+  ShieldCheck,
   Sparkles,
   TrendingUp,
   WifiOff,
@@ -19,12 +21,14 @@ interface AttendanceHubProps {
   state: CampusState;
   onOpenScanner: () => void;
   onSelectEvent: (event: CampusEvent) => void;
+  onOpenUnifiedCheckIn?: () => void;
 }
 
 export function AttendanceHub({
   state,
   onOpenScanner,
   onSelectEvent,
+  onOpenUnifiedCheckIn,
 }: AttendanceHubProps) {
   const t = translations[state.language];
   const user = state.currentUser;
@@ -150,13 +154,25 @@ export function AttendanceHub({
             </p>
           </div>
 
-          <Button
-            onClick={onOpenScanner}
-            className="rounded-2xl bg-[#F2A93B] font-display font-black text-[#1A3C6E] shadow-lg shadow-[#F2A93B]/30 hover:bg-[#F2A93B]/90"
-          >
-            <ScanLine className="mr-1.5 size-4" />
-            Open Scanner
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-2">
+            {onOpenUnifiedCheckIn && (
+              <Button
+                onClick={onOpenUnifiedCheckIn}
+                className="rounded-2xl bg-gradient-to-r from-emerald-500 to-emerald-600 font-display font-black text-white shadow-lg shadow-emerald-500/20 hover:opacity-95"
+              >
+                <ScanBarcode className="mr-1.5 size-4 text-[#F2A93B]" />
+                OTP + ID Barcode
+              </Button>
+            )}
+
+            <Button
+              onClick={onOpenScanner}
+              className="rounded-2xl bg-[#F2A93B] font-display font-black text-[#1A3C6E] shadow-lg shadow-[#F2A93B]/30 hover:bg-[#F2A93B]/90"
+            >
+              <ScanLine className="mr-1.5 size-4" />
+              Scan QR
+            </Button>
+          </div>
         </div>
 
         {state.isOffline && (
