@@ -495,7 +495,7 @@ const STORAGE_KEY = "gsfc_campus_connect_state_v1";
 function loadSavedState(): CampusState {
   if (typeof window === "undefined") {
     return {
-      isAuthenticated: true,
+      isAuthenticated: false,
       currentUser: INITIAL_USER,
       currentRole: "student",
       language: "en",
@@ -518,7 +518,7 @@ function loadSavedState(): CampusState {
       const parsed = JSON.parse(saved);
       return {
         ...parsed,
-        isAuthenticated: parsed.isAuthenticated !== undefined ? parsed.isAuthenticated : true,
+        isAuthenticated: parsed.isAuthenticated !== undefined ? parsed.isAuthenticated : false,
         // Ensure critical structures are arrays
         events: parsed.events || INITIAL_EVENTS,
         registrations: parsed.registrations || INITIAL_REGISTRATIONS,
@@ -535,7 +535,7 @@ function loadSavedState(): CampusState {
   }
 
   return {
-    isAuthenticated: true,
+    isAuthenticated: false,
     currentUser: INITIAL_USER,
     currentRole: "student",
     language: "en",
