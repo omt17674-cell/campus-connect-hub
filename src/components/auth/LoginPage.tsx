@@ -292,33 +292,19 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
           </p>
         </div>
 
-        {/* Background Architectural Sketch / Illustration Overlay */}
-        <div className="pointer-events-none absolute inset-x-0 bottom-12 top-20 flex items-center justify-between opacity-15 overflow-hidden">
-          {/* Left Campus Sketch */}
-          <div className="hidden lg:block w-1/3 pl-8">
-            <svg viewBox="0 0 500 300" className="w-full text-[#1A3C6E]" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <rect x="50" y="80" width="380" height="180" rx="4" />
-              <line x1="50" y1="120" x2="430" y2="120" />
-              <line x1="50" y1="180" x2="430" y2="180" />
-              <rect x="190" y="180" width="100" height="80" />
-              <line x1="240" y1="180" x2="240" y2="260" />
-              <line x1="100" y1="80" x2="100" y2="260" />
-              <line x1="150" y1="80" x2="150" y2="260" />
-              <line x1="330" y1="80" x2="330" y2="260" />
-              <line x1="380" y1="80" x2="380" y2="260" />
-              <text x="140" y="60" fill="currentColor" fontSize="14" fontWeight="bold">GSFC SCHOOL OF SCIENCE</text>
-            </svg>
-          </div>
-
-          {/* Right Campus Entrance Arch */}
-          <div className="hidden lg:block w-1/3 pr-8 text-right">
-            <svg viewBox="0 0 500 300" className="w-full text-[#1A3C6E]" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <rect x="80" y="50" width="340" height="210" rx="6" />
-              <rect x="130" y="90" width="240" height="170" rx="4" />
-              <text x="170" y="160" fill="currentColor" fontSize="22" fontWeight="900">GSFC</text>
-              <text x="145" y="185" fill="currentColor" fontSize="14" fontWeight="600">UNIVERSITY</text>
-              <text x="80" y="285" fill="currentColor" fontSize="12" fontWeight="bold">GSFC UNIVERSITY CAMPUS - VADODARA, INDIA</text>
-            </svg>
+        {/* High-Resolution GSFC Campus Architectural Sketch Background */}
+        <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
+          <img
+            src="/gsfc-campus-bg.jpg"
+            alt="GSFC University Campus Sketch"
+            className="size-full object-cover object-center opacity-35 filter saturate-[0.85] contrast-[1.05]"
+          />
+          {/* Subtle lighting overlay */}
+          <div className="absolute inset-0 bg-gradient-to-t from-white/90 via-white/40 to-white/70" />
+          
+          {/* Campus Location Caption */}
+          <div className="absolute bottom-16 right-8 hidden font-display text-xs font-black tracking-widest text-[#1A3C6E]/60 uppercase md:block">
+            GSFC UNIVERSITY CAMPUS - VADODARA, INDIA
           </div>
         </div>
 
@@ -1008,6 +994,13 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
           </div>
         </div>
       )}
+
+      {/* Sweeping Orange Wave Curve Graphic (Bottom Left Corner) */}
+      <div className="pointer-events-none absolute bottom-9 left-0 z-10 h-24 w-80 overflow-hidden sm:h-32 sm:w-[420px]">
+        <svg viewBox="0 0 400 120" className="h-full w-full" preserveAspectRatio="none">
+          <path d="M0,120 L0,30 Q140,-10 260,60 Q340,100 400,120 Z" fill="#EA580C" opacity="0.95" />
+        </svg>
+      </div>
 
       {/* Bottom Footer Banner (Matching Screenshot) */}
       <footer className="relative z-20 flex flex-wrap items-center justify-between gap-2 bg-[#0284C7] px-6 py-2.5 text-xs font-bold text-white sm:px-8">
