@@ -1,4 +1,5 @@
 import { db } from "./db";
+import { supabaseSync } from "./supabase-sync";
 import { CampusEvent, Registration, AttendanceRecord, ClubMember, CampusAnnouncement, VisitorRecord, VehicleRecord } from "../lib/types";
 
 // Helper for standardized JSON HTTP responses
@@ -45,13 +46,20 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
     return null;
   }
 
-  // 1. Health Check
+  // 1. Health Check & Supabase Status
   if (path === "/api/health" && method === "GET") {
+    const supabaseStatus = await supabaseSync.pingSupabase();
     return jsonResponse({
       status: "online",
       institution: "GSFC University, Vadodara",
       service: "Campus Connect Hub REST API Gateway",
       version: "2.6.0",
+      database: {
+        engine: "Supabase PostgreSQL",
+        projectRef: "llhfumrtotectnbpeabu",
+        connected: supabaseStatus.connected,
+        note: supabaseStatus.connected ? "Active & Synchronized" : "Ready (Run supabase-schema.sql if tables uncreated)",
+      },
       totalEvents: db.events.length,
       totalStudents: db.accounts.filter((a) => a.role === "student").length,
       timestamp: new Date().toISOString(),
