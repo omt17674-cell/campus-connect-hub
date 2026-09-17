@@ -24,6 +24,7 @@ import {
   VisitorRecord,
 } from "./types";
 import { generateQrPayload } from "./qr-engine";
+import { supabase } from "./supabase";
 
 export interface CampusAccount {
   role: UserRole;
@@ -1277,10 +1278,37 @@ function loadSavedState(): CampusState {
   };
 }
 
+export async function syncStateToSupabase(state: CampusState): Promise<void> {
+  if (typeof window === "undefined" || !navigator.onLine) return;
+  try {
+    // 1. Sync events asynchronously
+    if (state.events && state.events.length > 0) {
+      await supabase.from("events").upsert(state.events).then(() => {});
+    }
+    // 2. Sync registrations
+    if (state.registrations && state.registrations.length > 0) {
+      await supabase.from("registrations").upsert(state.registrations).then(() => {});
+    }
+    // 3. Sync attendance
+    if (state.attendanceRecords && state.attendanceRecords.length > 0) {
+      await supabase.from("attendance").upsert(state.attendanceRecords).then(() => {});
+    }
+    // 4. Sync announcements
+    if (state.announcements && state.announcements.length > 0) {
+      await supabase.from("announcements").upsert(state.announcements).then(() => {});
+    }
+  } catch (err) {
+    // Non-blocking background sync
+    console.debug("Supabase background sync:", err);
+  }
+}
+
 export function saveState(state: CampusState): void {
   if (typeof window === "undefined") return;
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    // Asynchronously push to Supabase PostgreSQL
+    syncStateToSupabase(state);
   } catch (e) {
     console.error("Failed to save state to localStorage", e);
   }
@@ -1306,6 +1334,39 @@ export const campusStore = {
     globalState = { ...globalState, ...nextUpdates };
     saveState(globalState);
     listeners.forEach((l) => l(globalState));
+  },
+
+  async loadFromSupabase(): Promise<void> {
+    if (typeof window === "undefined" || !navigator.onLine) return;
+    try {
+      const { data: supaEvents } = await supabase.from("events").select("*");
+      if (supaEvents && supaEvents.length > 0) {
+        campusStore.setState((prev) => {
+          const merged = [...prev.events];
+          for (const ev of supaEvents as CampusEvent[]) {
+            if (!merged.some((e) => e.id === ev.id)) {
+              merged.push(ev);
+            }
+          }
+          return { events: merged };
+        });
+      }
+
+      const { data: supaAnnouncements } = await supabase.from("announcements").select("*");
+      if (supaAnnouncements && supaAnnouncements.length > 0) {
+        campusStore.setState((prev) => {
+          const merged = [...prev.announcements];
+          for (const ann of supaAnnouncements as CampusAnnouncement[]) {
+            if (!merged.some((a) => a.id === ann.id)) {
+              merged.push(ann);
+            }
+          }
+          return { announcements: merged };
+        });
+      }
+    } catch (e) {
+      console.debug("Initial Supabase load note:", e);
+    }
   },
 
   registerNewAccount(account: CampusAccount) {

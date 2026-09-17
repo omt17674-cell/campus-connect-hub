@@ -71,8 +71,9 @@ function CampusConnectApp() {
   const [showAiAssistant, setShowAiAssistant] = useState(false);
   const [isDark, setIsDark] = useState(false);
 
-  // Subscribe to reactive store
+  // Subscribe to reactive store & fetch Supabase updates
   useEffect(() => {
+    campusStore.loadFromSupabase();
     const unsubscribe = campusStore.subscribe((nextState) => {
       setState(nextState);
     });
