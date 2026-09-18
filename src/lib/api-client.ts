@@ -75,6 +75,32 @@ export const apiClient = {
     }
   },
 
+  async sendRegistrationOtp(email: string, mobileNumber?: string, rollNo?: string) {
+    try {
+      const res = await fetch("/api/auth/registration-otp/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, mobileNumber, rollNo }),
+      });
+      return await res.json();
+    } catch (e) {
+      return { success: false, message: "Failed to dispatch registration verification code." };
+    }
+  },
+
+  async verifyRegistrationOtp(email: string, code: string) {
+    try {
+      const res = await fetch("/api/auth/registration-otp/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, code }),
+      });
+      return await res.json();
+    } catch (e) {
+      return { success: false, message: "Failed to verify registration code." };
+    }
+  },
+
   async fetchEvents(category?: string) {
     try {
       const url = category ? `/api/events?category=${encodeURIComponent(category)}` : "/api/events";
@@ -176,6 +202,8 @@ export const apiClient = {
 
   async updateStudentProfile(payload: {
     studentId: string;
+    fullName?: string;
+    mobileNumber?: string;
     school?: string;
     department?: string;
     degree?: string;

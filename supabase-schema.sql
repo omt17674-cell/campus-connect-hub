@@ -22,12 +22,13 @@ CREATE TABLE IF NOT EXISTS public.accounts (
   streak_days INT DEFAULT 1,
   volunteer_hours INT DEFAULT 0,
   avatar TEXT,
+  mobile_number TEXT,
   is_verified BOOLEAN DEFAULT TRUE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 2. NEW REGISTERED STUDENTS TABLE (LOCKED IDENTITY: NAME & MOBILE CANNOT BE ALTERED)
+-- 2. NEW REGISTERED STUDENTS TABLE (LOCKED IDENTITY: NAME & ROLL NUMBER CANNOT BE ALTERED)
 CREATE TABLE IF NOT EXISTS public.new_registered_students (
   id TEXT PRIMARY KEY,
   full_name TEXT NOT NULL,
@@ -49,18 +50,13 @@ CREATE TABLE IF NOT EXISTS public.new_registered_students (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- STRICT DATABASE TRIGGER: PREVENTS ANY MODIFICATION TO NAME, MOBILE NUMBER, OR ROLL NUMBER
+-- STRICT DATABASE TRIGGER: PREVENTS ANY MODIFICATION TO FULL NAME OR ROLL NUMBER
 CREATE OR REPLACE FUNCTION lock_student_name_and_number()
 RETURNS TRIGGER AS $$
 BEGIN
   -- Check if full_name was modified
   IF NEW.full_name <> OLD.full_name THEN
     RAISE EXCEPTION 'SECURITY POLICY: Student Full Name is permanently locked and cannot be changed after registration.';
-  END IF;
-
-  -- Check if mobile_number was modified
-  IF NEW.mobile_number <> OLD.mobile_number THEN
-    RAISE EXCEPTION 'SECURITY POLICY: Student Mobile Number is permanently locked and cannot be changed after registration.';
   END IF;
 
   -- Check if roll_no was modified
@@ -380,9 +376,8 @@ BEGIN
   IF OLD.is_locked = true THEN
     IF NEW.full_name IS DISTINCT FROM OLD.full_name OR
        NEW.roll_no IS DISTINCT FROM OLD.roll_no OR
-       NEW.mobile_number IS DISTINCT FROM OLD.mobile_number OR
        NEW.email IS DISTINCT FROM OLD.email THEN
-      RAISE EXCEPTION 'Identity fields (Full Name, Roll Number, Mobile Number, Email) are strictly locked after verification and cannot be modified directly.';
+      RAISE EXCEPTION 'Identity fields (Full Name, Roll Number, Email) are strictly locked after verification and cannot be modified directly.';
     END IF;
   END IF;
   RETURN NEW;

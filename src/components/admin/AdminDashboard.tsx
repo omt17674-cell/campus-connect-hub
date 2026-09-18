@@ -214,7 +214,7 @@ export function AdminDashboard({ state, onOpenGateModal }: AdminDashboardProps) 
           variant="ghost"
           size="sm"
           onClick={() => {
-            setView("student_registry");
+            setAdminTab("students");
             campusStore.loadFromSupabase();
           }}
           className={cn(

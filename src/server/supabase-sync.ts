@@ -327,6 +327,7 @@ export const supabaseSync = {
         streak_days: account.streak_days || account.streakDays || 1,
         volunteer_hours: account.volunteer_hours || account.volunteerHours || 0,
         avatar: account.avatar || account.name?.slice(0, 2).toUpperCase() || "ST",
+        mobile_number: account.mobile_number || account.mobileNumber || null,
         updated_at: new Date().toISOString(),
       };
       const { error } = await supabaseAdmin.from("accounts").upsert(payload, { onConflict: "roll_no" });
@@ -470,6 +471,8 @@ export const supabaseSync = {
   async updateStudentProfile(
     studentId: string,
     updates: {
+      fullName?: string;
+      mobileNumber?: string;
       school?: string;
       department?: string;
       degree?: string;
@@ -489,6 +492,7 @@ export const supabaseSync = {
       const dbPayload: any = {
         updated_at: new Date().toISOString(),
       };
+      if (updates.mobileNumber !== undefined) dbPayload.mobile_number = updates.mobileNumber;
       if (updates.school !== undefined) dbPayload.school = updates.school;
       if (updates.department !== undefined) dbPayload.department = updates.department;
       if (updates.degree !== undefined) dbPayload.degree = updates.degree;
@@ -508,10 +512,11 @@ export const supabaseSync = {
       }
 
       // Also update accounts table if exists
-      if (updates.department !== undefined || updates.semester !== undefined) {
-        const accountUpdates: any = {};
-        if (updates.department !== undefined) accountUpdates.department = updates.department;
-        if (updates.semester !== undefined) accountUpdates.semester = updates.semester;
+      const accountUpdates: any = {};
+      if (updates.mobileNumber !== undefined) accountUpdates.mobile_number = updates.mobileNumber;
+      if (updates.department !== undefined) accountUpdates.department = updates.department;
+      if (updates.semester !== undefined) accountUpdates.semester = updates.semester;
+      if (Object.keys(accountUpdates).length > 0) {
         await supabaseAdmin
           .from("accounts")
           .update(accountUpdates)
@@ -520,6 +525,7 @@ export const supabaseSync = {
 
       const updatedStudent: NewRegisteredStudent = {
         ...current,
+        mobileNumber: updates.mobileNumber ?? current.mobileNumber,
         school: updates.school ?? current.school,
         department: updates.department ?? current.department,
         degree: updates.degree ?? current.degree,

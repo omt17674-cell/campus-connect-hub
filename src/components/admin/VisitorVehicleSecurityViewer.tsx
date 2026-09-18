@@ -29,7 +29,7 @@ import { cn } from "@/lib/utils";
 
 interface VisitorVehicleSecurityViewerProps {
   state: CampusState;
-  onOpenGateModal?: () => void;
+  onOpenGateModal?: (() => void) | undefined;
 }
 
 export function VisitorVehicleSecurityViewer({

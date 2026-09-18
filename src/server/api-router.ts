@@ -1,5 +1,6 @@
 import { supabaseSync } from "./supabase-sync";
 import { supabaseAdmin } from "./supabase-admin";
+import { confirmUserEmailInAuth } from "./postgres";
 import { CampusEvent, Registration, AttendanceRecord, ClubMember, CampusAnnouncement, VisitorRecord, VehicleRecord } from "../lib/types";
 
 // In-Memory OTP Store with 5-minute expiration & attempt throttling
@@ -14,6 +15,18 @@ interface OtpEntry {
 
 const otpStore = new Map<string, OtpEntry>();
 
+interface RegistrationOtpEntry {
+  code: string;
+  email: string;
+  rollNo?: string;
+  mobileNumber?: string;
+  expiresAt: number;
+  attempts: number;
+  createdAt: number;
+}
+
+const registrationOtpStore = new Map<string, RegistrationOtpEntry>();
+
 function normalizeMobile(phone: string): string {
   if (!phone) return "";
   const digits = phone.replace(/[^0-9]/g, "");
@@ -22,7 +35,13 @@ function normalizeMobile(phone: string): string {
 
 // Optional SMS Provider Dispatcher (Twilio / MSG91 / Fast2SMS)
 async function dispatchSms(mobile: string, otp: string, purpose: string): Promise<{ dispatched: boolean; provider: string; note: string }> {
-  const message = `[GSFC University] Your verification code for ${purpose === "login" ? "Portal Sign-In" : "Event Attendance Check-In"} is: ${otp}. Valid for 5 minutes. Do not share this OTP with anyone.`;
+  const purposeText =
+    purpose === "login"
+      ? "Portal Sign-In"
+      : purpose === "registration"
+      ? "Student Account Registration"
+      : "Event Attendance Check-In";
+  const message = `[GSFC University] Your verification code for ${purposeText} is: ${otp}. Valid for 10 minutes. Do not share this OTP with anyone.`;
   
   // Check if Twilio is configured
   const twilioSid = process.env.TWILIO_ACCOUNT_SID;
@@ -342,6 +361,104 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
       success: true,
       message: "Mobile number verified successfully via OTP.",
     });
+  }
+
+  // 1d. Registration OTP Send (Email & SMS)
+  if (path === "/api/auth/registration-otp/send" && method === "POST") {
+    const body = await parseBody<{ email: string; mobileNumber?: string; rollNo?: string }>(request);
+    if (!body || !body.email) {
+      return jsonResponse({ success: false, message: "Email is required to generate registration verification OTP." }, 400);
+    }
+    const cleanEmail = body.email.trim().toLowerCase();
+
+    // Generate real cryptographically secure random 6-digit numeric OTP
+    const randomBuffer = new Uint32Array(1);
+    crypto.getRandomValues(randomBuffer);
+    const generatedOtp = (100000 + (randomBuffer[0] % 900000)).toString();
+    const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
+
+    registrationOtpStore.set(cleanEmail, {
+      code: generatedOtp,
+      email: cleanEmail,
+      rollNo: body.rollNo?.trim().toUpperCase(),
+      mobileNumber: body.mobileNumber,
+      expiresAt,
+      attempts: 0,
+      createdAt: Date.now(),
+    });
+
+    let smsNote = "";
+    if (body.mobileNumber) {
+      const cleanMobile = normalizeMobile(body.mobileNumber);
+      if (cleanMobile.length >= 10) {
+        const smsRes = await dispatchSms(cleanMobile, generatedOtp, "registration");
+        smsNote = smsRes.note;
+      }
+    }
+
+    return jsonResponse({
+      success: true,
+      message: `Verification code generated for ${cleanEmail}. Valid for 10 minutes.`,
+      otp: generatedOtp,
+      expiresAt,
+      email: cleanEmail,
+      smsNote,
+    }, 200);
+  }
+
+  // 1e. Registration OTP Verify
+  if (path === "/api/auth/registration-otp/verify" && method === "POST") {
+    const body = await parseBody<{ email: string; code: string }>(request);
+    if (!body || !body.email || !body.code) {
+      return jsonResponse({ success: false, message: "Email and 6-digit verification code are required." }, 400);
+    }
+
+    const cleanEmail = body.email.trim().toLowerCase();
+    const entry = registrationOtpStore.get(cleanEmail);
+
+    if (!entry) {
+      return jsonResponse({
+        success: false,
+        message: "No active verification code found for this email or it has expired. Please click Resend OTP.",
+      }, 400);
+    }
+
+    if (Date.now() > entry.expiresAt) {
+      registrationOtpStore.delete(cleanEmail);
+      return jsonResponse({
+        success: false,
+        message: "Verification code has expired. Please request a new code.",
+      }, 400);
+    }
+
+    if (entry.attempts >= 5) {
+      registrationOtpStore.delete(cleanEmail);
+      return jsonResponse({
+        success: false,
+        message: "Maximum verification attempts exceeded. Please request a new code.",
+      }, 400);
+    }
+
+    if (body.code.trim() !== entry.code) {
+      entry.attempts += 1;
+      return jsonResponse({
+        success: false,
+        message: `Invalid verification code. Please check the code (${5 - entry.attempts} attempts remaining).`,
+      }, 400);
+    }
+
+    // Code matches! Consume the single-use OTP
+    registrationOtpStore.delete(cleanEmail);
+
+    // Confirm user in Supabase auth.users directly via PostgreSQL
+    const confirmed = await confirmUserEmailInAuth(cleanEmail);
+
+    return jsonResponse({
+      success: true,
+      message: "Email verified successfully.",
+      verified: true,
+      confirmedInAuth: confirmed,
+    }, 200);
   }
 
   // 2. Authentication: Login with Credentials
@@ -821,6 +938,7 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
       name: newStudent.fullName,
       roll_no: cleanRoll,
       email: cleanEmail,
+      mobile_number: cleanMobile,
       role: "student",
       department: newStudent.department,
       semester: newStudent.semester,
@@ -833,9 +951,12 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
       is_verified: true,
     });
 
+    // Ensure email is confirmed in auth.users
+    await confirmUserEmailInAuth(cleanEmail);
+
     return jsonResponse({
       success: true,
-      message: "Student registration saved to Supabase and permanently locked. Full Name and Mobile Number cannot be modified.",
+      message: "Student registration saved to Supabase and permanently locked. Full Name and Roll Number cannot be modified.",
       student: newStudent,
       identityLocked: true,
       supabaseSyncStatus: "synced",
@@ -849,11 +970,10 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
       success: true,
       count: students.length,
       students,
-      policy: "Full Name, Mobile Number, and Roll No are immutable.",
     });
   }
 
-  // Profile Update Guard - strictly prevent changing full_name, mobile_number, or roll_no
+  // 13. Update Student Profile (Enforces Academic Integrity while allowing contact & attribute updates)
   if (path === "/api/students/profile/update" && method === "POST") {
     const body = await parseBody<{
       studentId: string;
@@ -880,21 +1000,34 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
       return jsonResponse({ success: false, message: "Student record not found in Supabase." }, 404);
     }
 
-    // Check if attempt is made to mutate locked fields
+    // Check if attempt is made to mutate immutable core academic identity fields (Full Name and Roll Number)
     if (
       (body.fullName && body.fullName.trim() !== currentStudent.fullName) ||
-      (body.mobileNumber && body.mobileNumber.trim() !== currentStudent.mobileNumber) ||
       (body.rollNo && body.rollNo.trim().toUpperCase() !== currentStudent.rollNo)
     ) {
       return jsonResponse({
         success: false,
         error: "IMMUTABLE_FIELD_MODIFICATION_BLOCKED",
-        message: "SECURITY POLICY VIOLATION: Student Full Name, Mobile Number, and Roll Number are permanently locked after registration and cannot be modified under any circumstances.",
-        lockedFields: ["fullName", "mobileNumber", "rollNo"],
+        message: "SECURITY POLICY VIOLATION: Student Full Name and Enrolment Roll Number are permanently locked after registration and cannot be modified under any circumstances.",
+        lockedFields: ["fullName", "rollNo"],
       }, 403);
     }
 
+    // Validate mobile number if supplied
+    let cleanMobile: string | undefined = undefined;
+    if (body.mobileNumber !== undefined) {
+      cleanMobile = body.mobileNumber.trim();
+      const digitsOnly = cleanMobile.replace(/[^0-9]/g, "");
+      if (digitsOnly.length < 10) {
+        return jsonResponse({
+          success: false,
+          message: "Please enter a valid 10-digit mobile number.",
+        }, 400);
+      }
+    }
+
     const updateRes = await supabaseSync.updateStudentProfile(currentStudent.rollNo, {
+      mobileNumber: cleanMobile,
       school: body.school,
       department: body.department,
       degree: body.degree,
@@ -914,11 +1047,10 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
 
     return jsonResponse({
       success: true,
-      message: "Student record updated in Supabase. Core identity remains locked.",
+      message: "Student record updated in Supabase. Core academic identity remains locked.",
       student: updateRes.student,
     });
   }
 
   return jsonResponse({ error: "Route not found in GSFC API Gateway" }, 404);
 }
-

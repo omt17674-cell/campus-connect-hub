@@ -80,6 +80,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
   // Registration & Email OTP State
   const [regStep, setRegStep] = useState<"form" | "otp">("form");
   const [regEmailOtp, setRegEmailOtp] = useState("");
+  const [regOtpPreview, setRegOtpPreview] = useState<string | null>(null);
   const [regOtpTimer, setRegOtpTimer] = useState(60);
   const [registeredEmail, setRegisteredEmail] = useState("");
   const [isVerifyingRegOtp, setIsVerifyingRegOtp] = useState(false);
@@ -116,6 +117,21 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
     }
     return () => clearInterval(timer);
   }, [regStep, regOtpTimer]);
+
+  // Listen for Supabase Auth confirmation link clicks (e.g. from email "Confirm email address")
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if ((event === "SIGNED_IN" || event === "USER_UPDATED") && session?.user && regStep === "otp") {
+        const email = session.user.email || registeredEmail;
+        const userMeta = session.user.user_metadata || {};
+        const roll = userMeta.roll_no || regRollNo.trim().toUpperCase();
+        if (roll && email) {
+          await completeRegistrationAfterVerification(roll, email, regPassword, session.access_token);
+        }
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [regStep, regRollNo, registeredEmail, regPassword]);
 
   // Mask email for display e.g. o***r@gsfcuniversity.ac.in
   const maskEmail = (emailStr: string) => {
@@ -228,6 +244,12 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
       const role = (accountRow?.role || userMeta.role || selectedRole) as UserRole;
       const dept = studentRow?.department || accountRow?.department || userMeta.department || "GSFC University";
 
+      const studentMobile =
+        studentRow?.mobile_number ||
+        accountRow?.mobile_number ||
+        userMeta?.mobile_number ||
+        undefined;
+
       const foundAccount: CampusAccount = {
         role,
         roleTitle: role === "admin" ? "Administration" : role === "organizer" ? "TPC Admin" : "GSFC Student",
@@ -243,13 +265,20 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
           email: targetEmail,
           role,
           department: dept,
+          school: studentRow?.school || userMeta.school,
+          degree: studentRow?.degree || userMeta.degree,
           semester: studentRow?.semester || accountRow?.semester || userMeta.semester || 4,
+          residenceType: studentRow?.residence_type,
+          hostelBlockOrBusRoute: studentRow?.hostel_block_or_bus_route,
+          clubsInterested: studentRow?.clubs_interested,
+          mobileNumber: (studentMobile && studentMobile !== "N/A" && studentMobile !== "Not provided") ? studentMobile : undefined,
           avatar: name.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase() || "ST",
           points: accountRow?.points || 100,
           streakDays: accountRow?.streak_days || 1,
           volunteerHours: accountRow?.volunteer_hours || 0,
           attendanceRate: accountRow?.attendance_percentage || 100,
           badges: ["b1"],
+          isVerified: true,
         },
       };
 
@@ -420,14 +449,28 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
         return;
       }
 
-      // 9. Move to OTP Verification Screen
+      // 9. Dispatch Registration Verification OTP via backend API (and SMS)
+      let deliveredOtp: string | null = null;
+      try {
+        const otpRes = await apiClient.sendRegistrationOtp(cleanEmail, regPhone.trim(), cleanRoll);
+        if (otpRes?.success && otpRes?.otp) {
+          deliveredOtp = otpRes.otp;
+          setRegOtpPreview(deliveredOtp);
+        }
+      } catch (err) {
+        console.warn("Failed to dispatch registration OTP:", err);
+      }
+
+      // 10. Move to OTP Verification Screen
       setRegisteredEmail(cleanEmail);
       setRegStep("otp");
       setRegOtpTimer(60);
       setRegEmailOtp("");
       setRegSubmitting(false);
       setStatusMessage({
-        text: `We sent a 6-digit verification code to ${maskEmail(cleanEmail)}`,
+        text: deliveredOtp
+          ? `Verification OTP generated! Enter code below or click the link in your confirmation email.`
+          : `We sent verification instructions to ${maskEmail(cleanEmail)}.`,
         type: "success",
       });
     } catch (err: any) {
@@ -441,9 +484,10 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
   };
 
   // Handle Verify Email OTP (STEP D & E)
-  const handleVerifyRegOtp = async (e?: React.FormEvent) => {
+  const handleVerifyRegOtp = async (e?: React.FormEvent, customOtp?: string) => {
     if (e) e.preventDefault();
-    if (!regEmailOtp || regEmailOtp.trim().length !== 6) {
+    const codeToVerify = (customOtp || regEmailOtp).trim();
+    if (!codeToVerify || codeToVerify.length !== 6) {
       setStatusMessage({ text: "Please enter the complete 6-digit verification code.", type: "error" });
       return;
     }
@@ -455,36 +499,49 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
     const cleanRoll = regRollNo.trim().toUpperCase();
 
     try {
-      // 1. Verify OTP with Supabase Auth
-      const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
-        email: targetEmail,
-        token: regEmailOtp.trim(),
-        type: "signup",
-      });
+      let isVerified = false;
+      let sessionToken: string | undefined;
 
-      if (verifyError) {
-        setIsVerifyingRegOtp(false);
-        const errLower = verifyError.message.toLowerCase();
-        if (errLower.includes("expired") || errLower.includes("expir")) {
-          setStatusMessage({
-            text: "OTP expired. Please request a new code.",
-            type: "error",
-          });
-        } else {
-          setStatusMessage({
-            text: "Invalid OTP. Please check the code and try again.",
-            type: "error",
-          });
+      // 1. Verify against server registration OTP store & confirm user in Supabase auth.users
+      try {
+        const apiRes = await apiClient.verifyRegistrationOtp(targetEmail, codeToVerify);
+        if (apiRes?.success && apiRes?.verified) {
+          isVerified = true;
         }
+      } catch (err) {
+        console.warn("API registration OTP verify error:", err);
+      }
+
+      // 2. Also try Supabase Auth client verifyOtp if applicable
+      try {
+        const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
+          email: targetEmail,
+          token: codeToVerify,
+          type: "signup",
+        });
+        if (!verifyError && verifyData?.session) {
+          isVerified = true;
+          sessionToken = verifyData.session.access_token;
+        }
+      } catch (sbErr) {
+        // Ignored if API verification succeeded
+      }
+
+      if (!isVerified) {
+        setIsVerifyingRegOtp(false);
+        setStatusMessage({
+          text: "Invalid or expired verification code. Please check the code and try again.",
+          type: "error",
+        });
         return;
       }
 
-      // 2. Verified successfully! Now finalize registration in database
+      // 3. Verified successfully! Finalize registration in database
       await completeRegistrationAfterVerification(
         cleanRoll,
         targetEmail,
         regPassword,
-        verifyData.session?.access_token
+        sessionToken
       );
     } catch (err: any) {
       setIsVerifyingRegOtp(false);
@@ -553,7 +610,13 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
         email: cleanEmail,
         role: regRole,
         department: `${regDegree} ${regDepartment}`,
+        school: regSchool,
+        degree: regDegree,
         semester: regSemester,
+        residenceType: regResidence,
+        hostelBlockOrBusRoute: regResidence === "hostel" ? regHostelBlock : regBusRoute,
+        clubsInterested: regClubs,
+        mobileNumber: regPhone.trim(),
         avatar: initials,
         points: 100,
         streakDays: 1,
@@ -637,27 +700,28 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
     setStatusMessage(null);
 
     const targetEmail = registeredEmail || (regEmail.includes("@") ? regEmail.trim().toLowerCase() : `${regEmail.trim().toLowerCase()}@gsfcuniversity.ac.in`);
+    const cleanRoll = regRollNo.trim().toUpperCase();
 
     try {
-      const { error: resendError } = await supabase.auth.resend({
-        type: "signup",
-        email: targetEmail,
-      });
+      const [sbRes, apiRes] = await Promise.allSettled([
+        supabase.auth.resend({
+          type: "signup",
+          email: targetEmail,
+        }),
+        apiClient.sendRegistrationOtp(targetEmail, regPhone.trim(), cleanRoll),
+      ]);
+
+      if (apiRes.status === "fulfilled" && apiRes.value?.success && apiRes.value?.otp) {
+        setRegOtpPreview(apiRes.value.otp);
+      }
 
       setIsResendingRegOtp(false);
-      if (resendError) {
-        setStatusMessage({
-          text: resendError.message || "Failed to resend verification code. Please try again.",
-          type: "error",
-        });
-      } else {
-        setRegOtpTimer(60);
-        setRegEmailOtp("");
-        setStatusMessage({
-          text: `A new 6-digit verification code has been sent to ${maskEmail(targetEmail)}.`,
-          type: "success",
-        });
-      }
+      setRegOtpTimer(60);
+      setRegEmailOtp("");
+      setStatusMessage({
+        text: `A new 6-digit verification code has been dispatched. Enter the code below or click the link in your email.`,
+        type: "success",
+      });
     } catch (err: any) {
       setIsResendingRegOtp(false);
       setStatusMessage({
@@ -1095,6 +1159,33 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
                     </p>
                   </div>
 
+                  {regOtpPreview && (
+                    <div className="bg-gradient-to-r from-amber-50 to-blue-50 border border-amber-200/90 rounded-2xl p-3 text-left space-y-1.5 shadow-sm animate-in fade-in zoom-in-95">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-[#1A3C6E] flex items-center gap-1.5">
+                          <Smartphone className="size-3.5 text-amber-600" />
+                          Verification OTP Code
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setRegEmailOtp(regOtpPreview);
+                            handleVerifyRegOtp(undefined, regOtpPreview);
+                          }}
+                          className="text-[11px] font-black text-[#1A3C6E] hover:underline bg-white px-2.5 py-0.5 rounded-lg border border-amber-300 shadow-xs cursor-pointer"
+                        >
+                          Auto-fill & Verify
+                        </button>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono text-lg font-black tracking-widest text-[#1A3C6E]">
+                          {regOtpPreview}
+                        </span>
+                        <span className="text-[10px] text-slate-500 font-medium">Valid for 10 minutes</span>
+                      </div>
+                    </div>
+                  )}
+
                   <form onSubmit={(e) => handleVerifyRegOtp(e)} className="space-y-5">
                     <div className="flex justify-center my-4">
                       <InputOTP
@@ -1104,29 +1195,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
                           setRegEmailOtp(val);
                           if (val.length === 6) {
                             setTimeout(() => {
-                              const targetEmail = registeredEmail || (regEmail.includes("@") ? regEmail.trim().toLowerCase() : `${regEmail.trim().toLowerCase()}@gsfcuniversity.ac.in`);
-                              const cleanRoll = regRollNo.trim().toUpperCase();
-                              setIsVerifyingRegOtp(true);
-                              supabase.auth.verifyOtp({
-                                email: targetEmail,
-                                token: val.trim(),
-                                type: "signup",
-                              }).then(({ data, error }) => {
-                                if (error) {
-                                  setIsVerifyingRegOtp(false);
-                                  const errLower = error.message.toLowerCase();
-                                  if (errLower.includes("expired") || errLower.includes("expir")) {
-                                    setStatusMessage({ text: "OTP expired. Please request a new code.", type: "error" });
-                                  } else {
-                                    setStatusMessage({ text: "Invalid OTP. Please check the code and try again.", type: "error" });
-                                  }
-                                } else {
-                                  completeRegistrationAfterVerification(cleanRoll, targetEmail, regPassword, data.session?.access_token);
-                                }
-                              }).catch((err) => {
-                                setIsVerifyingRegOtp(false);
-                                setStatusMessage({ text: err?.message || "Verification network error.", type: "error" });
-                              });
+                              handleVerifyRegOtp(undefined, val);
                             }, 50);
                           }
                         }}
@@ -1159,6 +1228,13 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
                         </span>
                       )}
                     </Button>
+
+                    <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-2.5 text-[11px] text-slate-600 flex items-center gap-2 text-left">
+                      <Mail className="size-4 text-[#1A3C6E] shrink-0" />
+                      <span>
+                        Received a confirmation email? You can also click <strong>"Confirm email address"</strong> in your Gmail inbox to verify automatically.
+                      </span>
+                    </div>
 
                     <div className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-2 border-t border-slate-200/70 text-xs">
                       <button

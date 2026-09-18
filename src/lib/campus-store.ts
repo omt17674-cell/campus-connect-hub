@@ -853,6 +853,7 @@ export async function syncStateToSupabase(state: CampusState): Promise<void> {
         streak_days: u.streakDays || 1,
         volunteer_hours: u.volunteerHours || 0,
         avatar: u.avatar || u.name?.slice(0, 2).toUpperCase() || "ST",
+        mobile_number: u.mobileNumber || null,
         updated_at: new Date().toISOString(),
       };
       await supabase.from("accounts").upsert(dbAcc, { onConflict: "roll_no" });
@@ -925,6 +926,7 @@ export const campusStore = {
           streak_days: 1,
           volunteer_hours: 0,
           avatar: initials,
+          mobile_number: student.mobileNumber,
           updated_at: new Date().toISOString(),
         };
         const { error: accErr } = await supabase.from("accounts").upsert(dbAccount, { onConflict: "roll_no" });
@@ -1079,7 +1081,7 @@ export const campusStore = {
               studentMap.set(roll, {
                 id: `stu-${roll.toLowerCase()}`,
                 fullName: acc.name,
-                mobileNumber: "N/A",
+                mobileNumber: acc.mobile_number || "Not provided",
                 rollNo: roll,
                 email: acc.email,
                 school: "School of Technology (SOT)",
@@ -1098,9 +1100,33 @@ export const campusStore = {
           });
         }
 
-        campusStore.setState(() => ({
-          newRegisteredStudents: Array.from(studentMap.values()),
-        }));
+        const studentList = Array.from(studentMap.values());
+        campusStore.setState((prev) => {
+          let updatedCurrentUser = prev.currentUser;
+          if (prev.isAuthenticated && prev.currentRole === "student" && prev.currentUser.rollNo) {
+            const myRecord = studentMap.get(prev.currentUser.rollNo.toUpperCase());
+            if (myRecord) {
+              updatedCurrentUser = {
+                ...prev.currentUser,
+                name: myRecord.fullName || prev.currentUser.name,
+                mobileNumber: (myRecord.mobileNumber && myRecord.mobileNumber !== "N/A" && myRecord.mobileNumber !== "Not provided")
+                  ? myRecord.mobileNumber
+                  : prev.currentUser.mobileNumber,
+                school: myRecord.school || prev.currentUser.school,
+                degree: myRecord.degree || prev.currentUser.degree,
+                department: myRecord.department || prev.currentUser.department,
+                semester: myRecord.semester || prev.currentUser.semester,
+                residenceType: myRecord.residenceType || prev.currentUser.residenceType,
+                hostelBlockOrBusRoute: myRecord.hostelBlockOrBusRoute || prev.currentUser.hostelBlockOrBusRoute,
+                clubsInterested: myRecord.clubsInterested || prev.currentUser.clubsInterested,
+              };
+            }
+          }
+          return {
+            newRegisteredStudents: studentList,
+            currentUser: updatedCurrentUser,
+          };
+        });
       }
 
       // 5. Pull announcements
@@ -1146,11 +1172,52 @@ export const campusStore = {
   },
 
   loginWithAccount(account: CampusAccount) {
-    campusStore.registerNewAccount(account);
-    campusStore.setState(() => ({
+    const currentState = campusStore.getState();
+    const cleanRoll = (account.profile?.rollNo || account.idOrRoll || "").toUpperCase();
+    const cleanEmail = (account.email || account.profile?.email || "").toLowerCase();
+    const matchedStudent = currentState.newRegisteredStudents?.find(
+      (s) =>
+        (cleanRoll && s.rollNo?.toUpperCase() === cleanRoll) ||
+        (cleanEmail && s.email?.toLowerCase() === cleanEmail)
+    );
+
+    const mergedProfile: UserProfile = {
+      ...account.profile,
+      mobileNumber:
+        account.profile?.mobileNumber ||
+        (matchedStudent?.mobileNumber && matchedStudent.mobileNumber !== "N/A" && matchedStudent.mobileNumber !== "Not provided"
+          ? matchedStudent.mobileNumber
+          : undefined),
+      school: matchedStudent?.school || account.profile?.school,
+      degree: matchedStudent?.degree || account.profile?.degree,
+      residenceType: matchedStudent?.residenceType || account.profile?.residenceType,
+      hostelBlockOrBusRoute: matchedStudent?.hostelBlockOrBusRoute || account.profile?.hostelBlockOrBusRoute,
+      clubsInterested: matchedStudent?.clubsInterested || account.profile?.clubsInterested,
+    };
+
+    const accountToSave: CampusAccount = {
+      ...account,
+      profile: mergedProfile,
+    };
+
+    campusStore.registerNewAccount(accountToSave);
+    campusStore.setState((prev) => ({
       isAuthenticated: true,
       currentRole: account.role,
-      currentUser: account.profile,
+      currentUser: mergedProfile,
+      digitalId:
+        account.role === "student"
+          ? {
+              ...prev.digitalId,
+              name: mergedProfile.name,
+              rollNo: mergedProfile.rollNo,
+              department: mergedProfile.department,
+              semester: mergedProfile.semester,
+              qrVerificationCode: `GSFCU:DIGITAL_ID:${mergedProfile.rollNo}`,
+              barcode: mergedProfile.rollNo,
+              photoUrl: mergedProfile.avatar || prev.digitalId.photoUrl,
+            }
+          : prev.digitalId,
     }));
     // Load fresh data from Supabase after login
     if (typeof window !== "undefined") {
@@ -1180,8 +1247,14 @@ export const campusStore = {
   },
 
   logout() {
+    try {
+      supabase.auth.signOut().catch(() => {});
+    } catch {}
     campusStore.setState(() => ({
       isAuthenticated: false,
+      currentUser: INITIAL_USER,
+      currentRole: "student",
+      digitalId: INITIAL_DIGITAL_ID,
     }));
   },
 
@@ -2994,25 +3067,39 @@ export const campusStore = {
       (a) => a.email.toLowerCase() === email.toLowerCase() || a.idOrRoll.toLowerCase() === rollNo.toLowerCase()
     );
 
+    // Look up in registered students to fetch exact registered phone & details
+    const existingStudent = campusStore.getState().newRegisteredStudents?.find(
+      (s) =>
+        (s.email && s.email.toLowerCase() === email.toLowerCase()) ||
+        (s.rollNo && s.rollNo.toUpperCase() === rollNo.toUpperCase())
+    );
+
     if (!matchedAccount) {
       // Create new verified GSFC student account
       matchedAccount = {
         idOrRoll: rollNo,
         email,
-        name,
+        name: existingStudent?.fullName || name,
         role: "student",
         roleTitle: "GSFC Student",
         roleBadge: rollNo,
         password: "",
         profile: {
           id: `u-${rollNo.toLowerCase()}`,
-          name,
+          name: existingStudent?.fullName || name,
           rollNo,
           email,
           role: "student",
-          department: "Computer Science & Engineering",
-          year: 1,
-          semester: 1,
+          department: existingStudent?.department || "Computer Science & Engineering",
+          school: existingStudent?.school || "School of Technology (SOT)",
+          degree: existingStudent?.degree || "B.Tech",
+          semester: existingStudent?.semester || 1,
+          residenceType: existingStudent?.residenceType || "dayscholar",
+          hostelBlockOrBusRoute: existingStudent?.hostelBlockOrBusRoute || "",
+          clubsInterested: existingStudent?.clubsInterested || [],
+          mobileNumber: (existingStudent?.mobileNumber && existingStudent.mobileNumber !== "N/A" && existingStudent.mobileNumber !== "Not provided")
+            ? existingStudent.mobileNumber
+            : undefined,
           attendanceRate: 100,
           points: 0,
           streakDays: 0,
@@ -3022,12 +3109,20 @@ export const campusStore = {
         },
       };
       campusStore.registerNewAccount(matchedAccount);
+    } else if (existingStudent) {
+      matchedAccount.profile = {
+        ...matchedAccount.profile,
+        mobileNumber: (existingStudent.mobileNumber && existingStudent.mobileNumber !== "N/A" && existingStudent.mobileNumber !== "Not provided")
+          ? existingStudent.mobileNumber
+          : matchedAccount.profile.mobileNumber,
+        school: existingStudent.school || matchedAccount.profile.school,
+        degree: existingStudent.degree || matchedAccount.profile.degree,
+      };
     }
 
-    campusStore.setState(() => ({
-      isAuthenticated: true,
-      currentRole: matchedAccount!.role,
-      currentUser: matchedAccount!.profile,
+    campusStore.loginWithAccount(matchedAccount);
+
+    campusStore.setState((prev) => ({
       auditLogs: [
         {
           id: `aud-google-${Date.now()}`,
@@ -3037,11 +3132,86 @@ export const campusStore = {
           timestamp: new Date().toISOString().replace("T", " ").slice(0, 19),
           details: `Authenticated via Google Workspace SSO · Role: ${matchedAccount!.role.toUpperCase()}`,
         },
-        ...campusStore.getState().auditLogs,
+        ...prev.auditLogs,
       ],
     }));
 
-    return { success: true, message: `Successfully authenticated via Google as ${matchedAccount.name} (${matchedAccount.email})` };
+    return { success: true, message: `Welcome back via Google SSO, ${matchedAccount.name}!` };
+  },
+
+  async updateStudentMobileNumber(rollNo: string, newMobile: string): Promise<{ success: boolean; message?: string }> {
+    const cleanNumber = newMobile.trim();
+    const digits = cleanNumber.replace(/[^0-9]/g, "");
+    if (digits.length < 10) {
+      return { success: false, message: "Please enter a valid 10-digit mobile number." };
+    }
+
+    // 1. Call backend API
+    try {
+      const res = await fetch("/api/students/profile/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          studentId: rollNo,
+          mobileNumber: cleanNumber,
+        }),
+      });
+      const data = await res.json().catch(() => null);
+      if (res.ok && data?.student) {
+        // Success via backend API
+      }
+    } catch (e: any) {
+      console.warn("API phone update network note:", e);
+    }
+
+    // 2. Direct Supabase update for zero-downtime resilience
+    try {
+      await supabase
+        .from("new_registered_students")
+        .update({ mobile_number: cleanNumber, updated_at: new Date().toISOString() })
+        .ilike("roll_no", rollNo);
+
+      await supabase
+        .from("accounts")
+        .update({ mobile_number: cleanNumber })
+        .ilike("roll_no", rollNo);
+    } catch (e) {
+      console.warn("Direct Supabase update note:", e);
+    }
+
+    // 3. Update local state
+    campusStore.setState((prev) => {
+      const updatedStudents = prev.newRegisteredStudents.map((s) =>
+        s.rollNo.toUpperCase() === rollNo.toUpperCase() ? { ...s, mobileNumber: cleanNumber } : s
+      );
+      const isCurrent = prev.currentUser.rollNo.toUpperCase() === rollNo.toUpperCase();
+      const updatedUser: UserProfile = isCurrent
+        ? { ...prev.currentUser, mobileNumber: cleanNumber }
+        : prev.currentUser;
+
+      return {
+        newRegisteredStudents: updatedStudents,
+        currentUser: updatedUser,
+      };
+    });
+
+    // 4. Update stored accounts in localStorage
+    const allAccounts = getStoredAccounts();
+    const updatedAccounts = allAccounts.map((acc) => {
+      if (acc.idOrRoll.toUpperCase() === rollNo.toUpperCase() || acc.email.toLowerCase() === campusStore.getState().currentUser.email.toLowerCase()) {
+        return {
+          ...acc,
+          profile: {
+            ...acc.profile,
+            mobileNumber: cleanNumber,
+          },
+        };
+      }
+      return acc;
+    });
+    saveStoredAccounts(updatedAccounts);
+
+    return { success: true, message: "Mobile phone number updated successfully." };
   },
 
   // --- AI Campus Assistant (Role-Scoped & Privacy-Preserving) ---

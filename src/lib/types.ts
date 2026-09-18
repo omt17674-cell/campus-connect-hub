@@ -17,6 +17,13 @@ export interface UserProfile {
   attendanceRate: number; // percentage, e.g. 86
   badges: string[]; // Badge IDs
   isVerified?: boolean;
+  mobileNumber?: string;
+  school?: string;
+  degree?: string;
+  residenceType?: "hostel" | "dayscholar";
+  hostelBlockOrBusRoute?: string;
+  clubsInterested?: string[];
+  bloodGroup?: string;
 }
 
 export type EventCategory = 
