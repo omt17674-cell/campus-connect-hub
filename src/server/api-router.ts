@@ -582,6 +582,7 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
       residenceType?: "hostel" | "dayscholar";
       hostelBlockOrBusRoute?: string;
       clubsInterested?: string[];
+      verifiedByUniversity?: boolean;
     }>(request);
 
     if (!body || !body.studentId) {
@@ -616,6 +617,7 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
       residenceType: body.residenceType,
       hostelBlockOrBusRoute: body.hostelBlockOrBusRoute,
       clubsInterested: body.clubsInterested,
+      verifiedByUniversity: body.verifiedByUniversity,
     });
 
     if (!updateRes.success) {

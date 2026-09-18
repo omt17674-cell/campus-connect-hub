@@ -473,6 +473,7 @@ export const supabaseSync = {
       residenceType?: "hostel" | "dayscholar";
       hostelBlockOrBusRoute?: string;
       clubsInterested?: string[];
+      verifiedByUniversity?: boolean;
     }
   ): Promise<{ success: boolean; message?: string; student?: NewRegisteredStudent }> {
     try {
@@ -491,6 +492,7 @@ export const supabaseSync = {
       if (updates.residenceType !== undefined) dbPayload.residence_type = updates.residenceType;
       if (updates.hostelBlockOrBusRoute !== undefined) dbPayload.hostel_block_or_bus_route = updates.hostelBlockOrBusRoute;
       if (updates.clubsInterested !== undefined) dbPayload.clubs_interested = updates.clubsInterested;
+      if (updates.verifiedByUniversity !== undefined) dbPayload.verified_by_university = updates.verifiedByUniversity;
 
       const { error } = await supabaseAdmin
         .from("new_registered_students")
@@ -521,6 +523,7 @@ export const supabaseSync = {
         residenceType: updates.residenceType ?? current.residenceType,
         hostelBlockOrBusRoute: updates.hostelBlockOrBusRoute ?? current.hostelBlockOrBusRoute,
         clubsInterested: updates.clubsInterested ?? current.clubsInterested,
+        verifiedByUniversity: updates.verifiedByUniversity ?? current.verifiedByUniversity,
       };
 
       return { success: true, message: "Student profile updated successfully in Supabase.", student: updatedStudent };

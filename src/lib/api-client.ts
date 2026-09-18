@@ -144,6 +144,7 @@ export const apiClient = {
     residenceType?: "hostel" | "dayscholar";
     hostelBlockOrBusRoute?: string;
     clubsInterested?: string[];
+    verifiedByUniversity?: boolean;
   }) {
     try {
       const res = await fetch("/api/students/profile/update", {

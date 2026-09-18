@@ -306,15 +306,21 @@ export function StudentRegistryViewer({ state }: StudentRegistryViewerProps) {
 
                     {/* Actions: Edit Student */}
                     <td className="py-3.5 pl-4 pr-6 text-right">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setEditingStudent(stu)}
-                        className="h-8 gap-1.5 rounded-xl border-blue-200 bg-blue-50/60 px-3 text-[11px] font-bold text-[#1A3C6E] hover:bg-blue-100 hover:text-[#1A3C6E] dark:bg-slate-800 dark:border-slate-700 dark:text-blue-300"
-                      >
-                        <Edit className="size-3 text-[#F2A93B]" />
-                        Edit Student
-                      </Button>
+                      {state.currentRole === "admin" || state.currentRole === "organizer" ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setEditingStudent(stu)}
+                          className="h-8 gap-1.5 rounded-xl border-blue-200 bg-blue-50/60 px-3 text-[11px] font-bold text-[#1A3C6E] hover:bg-blue-100 hover:text-[#1A3C6E] dark:bg-slate-800 dark:border-slate-700 dark:text-blue-300"
+                        >
+                          <Edit className="size-3 text-[#F2A93B]" />
+                          Edit Student
+                        </Button>
+                      ) : (
+                        <span className="text-[11px] font-semibold text-muted-foreground italic">
+                          Locked (View Only)
+                        </span>
+                      )}
                     </td>
                   </tr>
                 ))

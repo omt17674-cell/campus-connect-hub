@@ -26,6 +26,15 @@ import {
 } from "./types";
 import { generateQrPayload } from "./qr-engine";
 import { supabase } from "./supabase";
+import { toast } from "sonner";
+import {
+  serializeEventForDb,
+  serializeRegistrationForDb,
+  serializeAttendanceForDb,
+  serializeStudentForDb,
+  serializeAnnouncementForDb,
+  logSupabaseError,
+} from "./supabase-mappers";
 
 export interface CampusAccount {
   role: UserRole;
@@ -827,44 +836,36 @@ export async function syncStateToSupabase(state: CampusState): Promise<void> {
   try {
     // 1. Sync events asynchronously
     if (state.events && state.events.length > 0) {
-      await supabase.from("events").upsert(state.events).then(() => {});
+      const mappedEvents = state.events.map(serializeEventForDb);
+      const { error: evErr } = await supabase.from("events").upsert(mappedEvents);
+      if (evErr) logSupabaseError("upsert", "events", evErr);
     }
     // 2. Sync registrations
     if (state.registrations && state.registrations.length > 0) {
-      await supabase.from("registrations").upsert(state.registrations).then(() => {});
+      const mappedRegs = state.registrations.map(serializeRegistrationForDb);
+      const { error: regErr } = await supabase.from("registrations").upsert(mappedRegs);
+      if (regErr) logSupabaseError("upsert", "registrations", regErr);
     }
     // 3. Sync attendance
     if (state.attendanceRecords && state.attendanceRecords.length > 0) {
-      await supabase.from("attendance").upsert(state.attendanceRecords).then(() => {});
+      const mappedAtt = state.attendanceRecords.map(serializeAttendanceForDb);
+      const { error: attErr } = await supabase.from("attendance").upsert(mappedAtt);
+      if (attErr) logSupabaseError("upsert", "attendance", attErr);
     }
     // 4. Sync announcements
     if (state.announcements && state.announcements.length > 0) {
-      await supabase.from("announcements").upsert(state.announcements).then(() => {});
+      const mappedAnn = state.announcements.map(serializeAnnouncementForDb);
+      const { error: annErr } = await supabase.from("announcements").upsert(mappedAnn);
+      if (annErr) logSupabaseError("upsert", "announcements", annErr);
     }
     // 5. Sync newly registered students
     if (state.newRegisteredStudents && state.newRegisteredStudents.length > 0) {
-      const mapped = state.newRegisteredStudents.map((s) => ({
-        id: s.id,
-        full_name: s.fullName,
-        mobile_number: s.mobileNumber,
-        roll_no: s.rollNo,
-        email: s.email,
-        school: s.school,
-        department: s.department,
-        degree: s.degree,
-        semester: s.semester,
-        residence_type: s.residenceType,
-        hostel_block_or_bus_route: s.hostelBlockOrBusRoute || null,
-        clubs_interested: s.clubsInterested || [],
-        id_card_uploaded: s.idCardUploaded,
-        is_locked: true,
-        verified_by_university: true,
-        created_at: s.createdAt,
-      }));
-      await supabase.from("new_registered_students").upsert(mapped).then(() => {});
+      const mappedStudents = state.newRegisteredStudents.map(serializeStudentForDb);
+      const { error: stuErr } = await supabase.from("new_registered_students").upsert(mappedStudents);
+      if (stuErr) logSupabaseError("upsert", "new_registered_students", stuErr);
     }
   } catch (err) {
-    console.debug("Supabase background sync:", err);
+    logSupabaseError("background_sync", "all_tables", err);
   }
 }
 
@@ -1122,15 +1123,24 @@ export const campusStore = {
     campusStore.setState(() => ({ isOffline }));
   },
 
-  registerForEvent(eventId: string, isTeam = false, teamName?: string, teamMembers?: Array<{ name: string; rollNo: string; email: string }>): { success: boolean; message: string; waitlisted?: boolean } {
+  async registerForEvent(
+    eventId: string,
+    isTeam = false,
+    teamName?: string,
+    teamMembers?: Array<{ name: string; rollNo: string; email: string }>
+  ): Promise<{ success: boolean; message: string; waitlisted?: boolean }> {
     const state = campusStore.getState();
     const event = state.events.find((e) => e.id === eventId);
-    if (!event) return { success: false, message: "Event not found" };
+    if (!event) {
+      toast.error("Registration failed: Event not found");
+      return { success: false, message: "Event not found" };
+    }
 
     const existing = state.registrations.find(
       (r) => r.eventId === eventId && r.userId === state.currentUser.id
     );
     if (existing) {
+      toast.info(`Already registered as ${existing.status}`);
       return { success: false, message: `Already registered as ${existing.status}` };
     }
 
@@ -1151,16 +1161,13 @@ export const campusStore = {
       teamMembers: isTeam ? teamMembers : undefined,
     };
 
-    const updatedEvents = state.events.map((e) => {
-      if (e.id === eventId) {
-        return {
-          ...e,
-          registeredCount: !isFull && regStatus === "confirmed" ? e.registeredCount + 1 : e.registeredCount,
-          waitlistCount: isFull ? e.waitlistCount + 1 : e.waitlistCount,
-        };
-      }
-      return e;
-    });
+    const targetEv: CampusEvent = {
+      ...event,
+      registeredCount: !isFull && regStatus === "confirmed" ? event.registeredCount + 1 : event.registeredCount,
+      waitlistCount: isFull ? event.waitlistCount + 1 : event.waitlistCount,
+    };
+
+    const updatedEvents = state.events.map((e) => (e.id === eventId ? targetEv : e));
 
     const newNotification: NotificationItem = {
       id: `notif-${Date.now()}`,
@@ -1183,8 +1190,51 @@ export const campusStore = {
       details: `Status: ${regStatus} · Team: ${isTeam ? teamName : "Individual"}`,
     };
 
-    // Immediate write-through to Supabase & API Gateway
+    // Save snapshot for rollback if database write fails
+    const previousState = {
+      registrations: [...state.registrations],
+      events: [...state.events],
+      notifications: [...state.notifications],
+      auditLogs: [...state.auditLogs],
+    };
+
+    // 1. Optimistically update local store
+    campusStore.setState((prev) => ({
+      registrations: [newRegistration, ...prev.registrations],
+      events: updatedEvents,
+      notifications: [newNotification, ...prev.notifications],
+      auditLogs: [auditEntry, ...prev.auditLogs],
+    }));
+
+    // 2. Perform Database Writes to Supabase
     try {
+      // Step A: Upsert EVENT first and confirm it succeeded (parent record for FK constraint)
+      const serializedEv = serializeEventForDb(targetEv);
+      const { error: evError } = await supabase.from("events").upsert(serializedEv);
+
+      if (evError) {
+        logSupabaseError("upsert", "events", evError, { targetEv, serializedEv });
+        // Rollback optimistic update
+        campusStore.setState(() => previousState);
+        const errMsg = `Registration failed: Could not update event capacity (${evError.message})`;
+        toast.error(errMsg);
+        return { success: false, message: errMsg };
+      }
+
+      // Step B: Upsert REGISTRATION record
+      const serializedReg = serializeRegistrationForDb(newRegistration);
+      const { error: regError } = await supabase.from("registrations").upsert(serializedReg);
+
+      if (regError) {
+        logSupabaseError("upsert", "registrations", regError, { newRegistration, serializedReg });
+        // Rollback optimistic update
+        campusStore.setState(() => previousState);
+        const errMsg = `Registration failed: Database write rejected (${regError.message})`;
+        toast.error(errMsg);
+        return { success: false, message: errMsg };
+      }
+
+      // Step C: Also notify REST API gateway for server-side persistence
       fetch("/api/events/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1198,40 +1248,26 @@ export const campusStore = {
           teamName: newRegistration.teamName,
           teamMembers: newRegistration.teamMembers,
         }),
-      }).catch(() => {});
+      }).catch((e) => console.debug("API Gateway registration background sync notice:", e));
 
-      supabase.from("registrations").upsert({
-        id: newRegistration.id,
-        event_id: newRegistration.eventId,
-        user_id: newRegistration.userId,
-        user_roll_no: newRegistration.userRollNo,
-        user_name: newRegistration.userName,
-        department: newRegistration.department,
-        registered_at: newRegistration.registeredAt,
-        status: newRegistration.status,
-        is_team: newRegistration.isTeam,
-        team_name: newRegistration.teamName || null,
-        team_members: newRegistration.teamMembers || null,
-      }).then(() => {});
+      toast.success(
+        isFull
+          ? `Added to waitlist for ${event.title}`
+          : `🎉 Successfully registered for ${event.title}!`
+      );
 
-      const targetEv = updatedEvents.find((e) => e.id === eventId);
-      if (targetEv) {
-        supabase.from("events").upsert(targetEv).then(() => {});
-      }
-    } catch {}
-
-    campusStore.setState((prev) => ({
-      registrations: [newRegistration, ...prev.registrations],
-      events: updatedEvents,
-      notifications: [newNotification, ...prev.notifications],
-      auditLogs: [auditEntry, ...prev.auditLogs],
-    }));
-
-    return {
-      success: true,
-      message: isFull ? "Added to waitlist" : "Registration successful!",
-      waitlisted: isFull,
-    };
+      return {
+        success: true,
+        message: isFull ? "Added to waitlist" : "Registration successful!",
+        waitlisted: isFull,
+      };
+    } catch (err: any) {
+      logSupabaseError("registerForEvent", "registrations/events", err);
+      campusStore.setState(() => previousState);
+      const errMsg = `Registration failed: ${err?.message || "Unexpected network error"}`;
+      toast.error(errMsg);
+      return { success: false, message: errMsg };
+    }
   },
 
   recordCheckIn(
@@ -1310,26 +1346,16 @@ export const campusStore = {
 
     // Immediate write-through to Supabase
     try {
-      supabase.from("attendance").upsert({
-        id: newRecord.id,
-        event_id: newRecord.eventId,
-        event_title: newRecord.eventTitle,
-        user_id: newRecord.userId,
-        user_name: newRecord.userName,
-        user_roll_no: newRecord.userRollNo,
-        department: newRecord.department,
-        timestamp: newRecord.timestamp,
-        punch_in_time: newRecord.timestamp,
-        verified_method: newRecord.verifiedMethod,
-        token_used: newRecord.tokenUsed,
-        certificate_id: newRecord.certificateId,
-        user_latitude: newRecord.userLatitude || null,
-        user_longitude: newRecord.userLongitude || null,
-        distance_from_venue_meters: newRecord.distanceFromVenueMeters || null,
-        location_verified: newRecord.locationVerified ?? true,
-        synced: true,
-      }).then(() => {});
-    } catch {}
+      const mappedAtt = serializeAttendanceForDb(newRecord);
+      supabase.from("attendance").upsert(mappedAtt).then(({ error }) => {
+        if (error) {
+          logSupabaseError("upsert", "attendance", error, { newRecord, mappedAtt });
+          toast.error(`Check-in sync warning: ${error.message}`);
+        }
+      });
+    } catch (err) {
+      logSupabaseError("recordCheckIn", "attendance", err);
+    }
 
     // Award +50 XP and volunteer hours if applicable (+10 bonus XP if GPS verified!)
     const earnedXp = locationData?.verified ? 60 : 50;
@@ -1844,17 +1870,25 @@ export const campusStore = {
     try {
       const concludedEv = updatedEvents.find((e) => e.id === eventId);
       if (concludedEv) {
-        supabase.from("events").upsert(concludedEv).then(() => {});
+        supabase.from("events").upsert(serializeEventForDb(concludedEv)).then(({ error }) => {
+          if (error) logSupabaseError("upsert", "events", error);
+        });
       }
       const relevantAtt = updatedAttendance.filter((a) => a.eventId === eventId);
       if (relevantAtt.length > 0) {
-        supabase.from("attendance").upsert(relevantAtt).then(() => {});
+        supabase.from("attendance").upsert(relevantAtt.map(serializeAttendanceForDb)).then(({ error }) => {
+          if (error) logSupabaseError("upsert", "attendance", error);
+        });
       }
       const relevantRegs = updatedRegs.filter((r) => r.eventId === eventId);
       if (relevantRegs.length > 0) {
-        supabase.from("registrations").upsert(relevantRegs).then(() => {});
+        supabase.from("registrations").upsert(relevantRegs.map(serializeRegistrationForDb)).then(({ error }) => {
+          if (error) logSupabaseError("upsert", "registrations", error);
+        });
       }
-    } catch {}
+    } catch (err) {
+      logSupabaseError("concludeEvent", "multiple_tables", err);
+    }
 
     campusStore.setState((prev) => ({
       events: updatedEvents,

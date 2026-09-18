@@ -18,6 +18,9 @@ import { Button } from "@/components/ui/button";
 import { NewRegisteredStudent } from "@/lib/types";
 import { apiClient } from "@/lib/api-client";
 import { campusStore } from "@/lib/campus-store";
+import { supabase } from "@/lib/supabase";
+import { serializeStudentForDb, logSupabaseError } from "@/lib/supabase-mappers";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 interface EditStudentModalProps {
@@ -61,6 +64,7 @@ export function EditStudentModal({ student, onClose, onSuccess }: EditStudentMod
   const [residenceType, setResidenceType] = useState<"hostel" | "dayscholar">(student.residenceType || "dayscholar");
   const [hostelBlockOrBusRoute, setHostelBlockOrBusRoute] = useState(student.hostelBlockOrBusRoute || "");
   const [clubsInterested, setClubsInterested] = useState<string[]>(student.clubsInterested || []);
+  const [verifiedByUniversity, setVerifiedByUniversity] = useState<boolean>(student.verifiedByUniversity ?? true);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -81,23 +85,6 @@ export function EditStudentModal({ student, onClose, onSuccess }: EditStudentMod
     setIsSubmitting(true);
 
     try {
-      const res = await apiClient.updateStudentProfile({
-        studentId: student.rollNo,
-        school,
-        department,
-        degree,
-        semester: Number(semester),
-        residenceType,
-        hostelBlockOrBusRoute,
-        clubsInterested,
-      });
-
-      if (!res.success) {
-        setErrorMessage(res.message || "Failed to update student profile in Supabase.");
-        setIsSubmitting(false);
-        return;
-      }
-
       const updatedStudent: NewRegisteredStudent = {
         ...student,
         school,
@@ -107,10 +94,39 @@ export function EditStudentModal({ student, onClose, onSuccess }: EditStudentMod
         residenceType,
         hostelBlockOrBusRoute,
         clubsInterested,
+        verifiedByUniversity,
       };
 
+      // 1. Call REST API endpoint
+      const res = await apiClient.updateStudentProfile({
+        studentId: student.rollNo,
+        school,
+        department,
+        degree,
+        semester: Number(semester),
+        residenceType,
+        hostelBlockOrBusRoute,
+        clubsInterested,
+        verifiedByUniversity,
+      });
+
+      if (!res.success) {
+        setErrorMessage(res.message || "Failed to update student profile in Supabase.");
+        setIsSubmitting(false);
+        return;
+      }
+
+      // 2. Direct Supabase Table Upsert for instant Realtime broadcast to other sessions
+      const serialized = serializeStudentForDb(updatedStudent);
+      const { error: supaErr } = await supabase.from("new_registered_students").upsert(serialized);
+      if (supaErr) {
+        logSupabaseError("upsert", "new_registered_students", supaErr, { updatedStudent, serialized });
+      }
+
+      // 3. Update local store
       campusStore.updateStudentProfile(updatedStudent);
       setSuccessMessage("Student identity record updated in Supabase database!");
+      toast.success(`Updated record for ${student.fullName} (${student.rollNo})`);
       setIsSubmitting(false);
 
       setTimeout(() => {
@@ -118,6 +134,7 @@ export function EditStudentModal({ student, onClose, onSuccess }: EditStudentMod
         onClose();
       }, 700);
     } catch (err: any) {
+      logSupabaseError("handleSave", "new_registered_students", err);
       setErrorMessage(err.message || "An unexpected error occurred.");
       setIsSubmitting(false);
     }
@@ -397,6 +414,25 @@ export function EditStudentModal({ student, onClose, onSuccess }: EditStudentMod
                 );
               })}
             </div>
+          </div>
+
+          {/* Section 5: Verification & Governance Standing */}
+          <div className="rounded-2xl border border-border/80 bg-card p-4 space-y-2">
+            <label className="flex items-center justify-between font-display font-bold text-foreground cursor-pointer">
+              <span className="flex items-center gap-2">
+                <CheckCircle2 className="size-4 text-emerald-600" />
+                <span>University Bona Fide Verified Status</span>
+              </span>
+              <input
+                type="checkbox"
+                checked={verifiedByUniversity}
+                onChange={(e) => setVerifiedByUniversity(e.target.checked)}
+                className="size-4 rounded border-input text-[#1A3C6E] focus:ring-[#1A3C6E]"
+              />
+            </label>
+            <p className="text-[11px] text-muted-foreground">
+              Marks the student candidate as actively verified by GSFC University academic administration and registry authority.
+            </p>
           </div>
 
           {/* Footer Actions */}
