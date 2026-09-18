@@ -147,7 +147,12 @@ export function EventAttendanceViewer({
 
   // Merge fetched registrations from Supabase with state.registrations
   const storeEventRegs = state.registrations.filter((r) => r.eventId === (activeEvent?.id || currentEventId));
-  const eventRegistrations = fetchedRegistrations !== null ? fetchedRegistrations : storeEventRegs;
+  const regMap = new Map<string, Registration>();
+  storeEventRegs.forEach((r) => regMap.set(r.id || `${r.eventId}-${r.userId}`, r));
+  if (fetchedRegistrations) {
+    fetchedRegistrations.forEach((r) => regMap.set(r.id || `${r.eventId}-${r.userId}`, r));
+  }
+  const eventRegistrations = Array.from(regMap.values());
   const eventAttendanceRecords = state.attendanceRecords.filter((a) => a.eventId === (activeEvent?.id || currentEventId));
 
   // Compute distinct departments

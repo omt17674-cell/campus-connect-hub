@@ -36,6 +36,45 @@ export const apiClient = {
     }
   },
 
+  async checkAccountExists(rollNo: string, email: string) {
+    try {
+      const res = await fetch("/api/auth/check-exists", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rollNo, email }),
+      });
+      return await res.json();
+    } catch (e) {
+      return { exists: false, message: "Network error checking account." };
+    }
+  },
+
+  async sendOtp(mobileNumber: string, purpose: "login" | "attendance" = "login") {
+    try {
+      const res = await fetch("/api/auth/otp/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mobileNumber, purpose }),
+      });
+      return await res.json();
+    } catch (e) {
+      return { success: false, message: "Failed to send OTP. Check network connection." };
+    }
+  },
+
+  async verifyOtp(mobileNumber: string, code: string, purpose: "login" | "attendance" = "login", role?: string) {
+    try {
+      const res = await fetch("/api/auth/otp/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mobileNumber, code, purpose, role }),
+      });
+      return await res.json();
+    } catch (e) {
+      return { success: false, message: "Failed to verify OTP. Check network connection." };
+    }
+  },
+
   async fetchEvents(category?: string) {
     try {
       const url = category ? `/api/events?category=${encodeURIComponent(category)}` : "/api/events";

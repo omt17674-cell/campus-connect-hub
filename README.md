@@ -88,5 +88,12 @@ npx cap open ios
 
 ---
 
+## 📄 License
+
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
+
+---
+
 **All Rights Reserved © 2026 GSFC University, Vadodara**  
 *Developed & Managed by OM THAKKAR*
+

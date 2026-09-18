@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS public.accounts (
   streak_days INT DEFAULT 1,
   volunteer_hours INT DEFAULT 0,
   avatar TEXT,
+  is_verified BOOLEAN DEFAULT TRUE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -43,6 +44,7 @@ CREATE TABLE IF NOT EXISTS public.new_registered_students (
   id_card_uploaded BOOLEAN DEFAULT TRUE,
   is_locked BOOLEAN DEFAULT TRUE,
   verified_by_university BOOLEAN DEFAULT TRUE,
+  is_verified BOOLEAN DEFAULT TRUE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -378,3 +380,26 @@ EXCEPTION WHEN OTHERS THEN
   NULL;
 END $$;
 
+-- ==============================================================================
+-- LOCKED STUDENT IDENTITY INTEGRITY TRIGGER
+-- ==============================================================================
+CREATE OR REPLACE FUNCTION public.prevent_locked_student_mutation()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF OLD.is_locked = true THEN
+    IF NEW.full_name IS DISTINCT FROM OLD.full_name OR
+       NEW.roll_no IS DISTINCT FROM OLD.roll_no OR
+       NEW.mobile_number IS DISTINCT FROM OLD.mobile_number OR
+       NEW.email IS DISTINCT FROM OLD.email THEN
+      RAISE EXCEPTION 'Identity fields (Full Name, Roll Number, Mobile Number, Email) are strictly locked after verification and cannot be modified directly.';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_prevent_locked_student_mutation ON public.new_registered_students;
+CREATE TRIGGER trg_prevent_locked_student_mutation
+BEFORE UPDATE ON public.new_registered_students
+FOR EACH ROW
+EXECUTE FUNCTION public.prevent_locked_student_mutation();

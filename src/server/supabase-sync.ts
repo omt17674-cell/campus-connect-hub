@@ -356,6 +356,7 @@ export const supabaseSync = {
         id_card_uploaded: student.idCardUploaded,
         is_locked: true,
         verified_by_university: student.verifiedByUniversity ?? true,
+        is_verified: student.isVerified ?? true,
         created_at: student.createdAt || new Date().toISOString(),
       };
 
@@ -394,6 +395,7 @@ export const supabaseSync = {
           idCardUploaded: d.id_card_uploaded,
           isLocked: d.is_locked,
           verifiedByUniversity: d.verified_by_university,
+          isVerified: d.is_verified ?? true,
           createdAt: d.created_at,
         }));
       }
@@ -426,6 +428,7 @@ export const supabaseSync = {
           idCardUploaded: d.id_card_uploaded,
           isLocked: d.is_locked,
           verifiedByUniversity: d.verified_by_university,
+          isVerified: d.is_verified ?? true,
           createdAt: d.created_at,
         };
       }
@@ -453,6 +456,7 @@ export const supabaseSync = {
             idCardUploaded: d.id_card_uploaded,
             isLocked: d.is_locked,
             verifiedByUniversity: d.verified_by_university,
+            isVerified: d.is_verified ?? true,
             createdAt: d.created_at,
           };
         }

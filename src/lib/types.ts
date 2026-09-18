@@ -16,6 +16,7 @@ export interface UserProfile {
   volunteerHours: number;
   attendanceRate: number; // percentage, e.g. 86
   badges: string[]; // Badge IDs
+  isVerified?: boolean;
 }
 
 export type EventCategory = 
@@ -379,6 +380,7 @@ export interface NewRegisteredStudent {
   idCardUploaded: boolean;
   isLocked: boolean;
   verifiedByUniversity: boolean;
+  isVerified?: boolean;
   createdAt: string;
 }
 

@@ -2138,19 +2138,28 @@ export const campusStore = {
       const concludedEv = updatedEvents.find((e) => e.id === eventId);
       if (concludedEv) {
         supabase.from("events").upsert(serializeEventForDb(concludedEv)).then(({ error }) => {
-          if (error) logSupabaseError("upsert", "events", error);
+          if (error) {
+            logSupabaseError("upsert", "events", error);
+            toast.error(`Event conclude sync error: ${error.message}`);
+          }
         });
       }
       const relevantAtt = updatedAttendance.filter((a) => a.eventId === eventId);
       if (relevantAtt.length > 0) {
         supabase.from("attendance").upsert(relevantAtt.map(serializeAttendanceForDb)).then(({ error }) => {
-          if (error) logSupabaseError("upsert", "attendance", error);
+          if (error) {
+            logSupabaseError("upsert", "attendance", error);
+            toast.error(`Attendance finalize sync error: ${error.message}`);
+          }
         });
       }
       const relevantRegs = updatedRegs.filter((r) => r.eventId === eventId);
       if (relevantRegs.length > 0) {
         supabase.from("registrations").upsert(relevantRegs.map(serializeRegistrationForDb)).then(({ error }) => {
-          if (error) logSupabaseError("upsert", "registrations", error);
+          if (error) {
+            logSupabaseError("upsert", "registrations", error);
+            toast.error(`Registration finalize sync error: ${error.message}`);
+          }
         });
       }
     } catch (err) {
@@ -3143,12 +3152,18 @@ export const campusStore = {
 
     // Sync to Supabase accounts table
     try {
-      supabaseAdmin
+      supabase
         .from("accounts")
         .update({ avatar: photoUrl })
         .eq("email", currentProfile.email)
-        .then(() => {})
-        .catch(() => {});
+        .then(({ error }) => {
+          if (error) {
+            console.warn("Failed to sync avatar to Supabase:", error);
+          }
+        })
+        .catch((e) => {
+          console.warn("Failed to sync avatar to Supabase:", e);
+        });
     } catch (e) {
       console.warn("Failed to sync avatar to Supabase:", e);
     }

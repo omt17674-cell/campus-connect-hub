@@ -12,6 +12,9 @@ export interface GeofenceResult {
 }
 
 // GSFC University Vadodara Campus Benchmark Coordinates
+export const GSFC_CAMPUS_CENTER: Coordinates = { latitude: 22.3685, longitude: 73.1895 };
+export const DEFAULT_ALLOWED_RADIUS_METERS = 350;
+
 export const GSFC_CAMPUS_VENUES: Record<string, Coordinates> = {
   "Innovation Lab, Block C": { latitude: 22.3689, longitude: 73.1892 },
   "Main Amphitheatre & Central Lawns": { latitude: 22.3681, longitude: 73.1901 },
@@ -21,6 +24,24 @@ export const GSFC_CAMPUS_VENUES: Record<string, Coordinates> = {
   "Computer Center, Lab 4": { latitude: 22.3691, longitude: 73.1896 },
   "Default GSFC Campus": { latitude: 22.3685, longitude: 73.1895 },
 };
+
+/**
+ * Retrieves the coordinates for a given GSFC venue name or defaults to campus center
+ */
+export function getVenueCoordinates(venueName?: string): Coordinates {
+  if (!venueName) return GSFC_CAMPUS_CENTER;
+  if (GSFC_CAMPUS_VENUES[venueName]) {
+    return GSFC_CAMPUS_VENUES[venueName];
+  }
+  // Try partial case-insensitive match
+  const matchedKey = Object.keys(GSFC_CAMPUS_VENUES).find((key) =>
+    key.toLowerCase().includes(venueName.toLowerCase()) || venueName.toLowerCase().includes(key.toLowerCase())
+  );
+  if (matchedKey) {
+    return GSFC_CAMPUS_VENUES[matchedKey];
+  }
+  return GSFC_CAMPUS_CENTER;
+}
 
 /**
  * Calculates Great-Circle distance between two coordinates using Haversine formula (in meters)

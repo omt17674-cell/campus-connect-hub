@@ -11,28 +11,14 @@ const supabaseAnonKey =
   "";
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn("Supabase credentials missing. Ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set in environment variables.");
-} else {
-  console.log(`[Supabase Init] Connecting to: ${supabaseUrl}`);
+  console.warn("[Supabase] Environment variables VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY are missing.");
 }
 
-export const supabase = createClient(supabaseUrl || "https://placeholder.supabase.co", supabaseAnonKey || "placeholder-key", {
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
   },
 });
-console.log(`[Supabase Client Ready] URL: ${supabaseUrl || "placeholder"}`);
 
-// Admin / Service Role client for backend server operations
-const supabaseServiceKey =
-  (typeof process !== "undefined" ? process.env?.SUPABASE_SERVICE_ROLE_KEY : undefined) ||
-  supabaseAnonKey;
-
-export const supabaseAdmin = createClient(supabaseUrl || "https://placeholder.supabase.co", supabaseServiceKey || supabaseAnonKey || "placeholder-key", {
-  auth: {
-    persistSession: false,
-    autoRefreshToken: false,
-  },
-});
 

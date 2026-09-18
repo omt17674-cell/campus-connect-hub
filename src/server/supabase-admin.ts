@@ -1,13 +1,14 @@
 import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl =
-  process.env.VITE_SUPABASE_URL ||
-  "https://llhfumrtotectnbpeabu.supabase.co";
-
+const supabaseUrl = process.env.VITE_SUPABASE_URL || "";
 const supabaseServiceKey =
   process.env.SUPABASE_SERVICE_ROLE_KEY ||
   process.env.VITE_SUPABASE_ANON_KEY ||
-  "sb_secret_gWl2b05pD9aoDJqcevWRsg_wQDKkwLV";
+  "";
+
+if (!supabaseUrl || !supabaseServiceKey) {
+  console.warn("[Supabase Server Admin] Environment variables for Supabase admin connection are missing.");
+}
 
 export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
   auth: {
@@ -15,3 +16,4 @@ export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
     autoRefreshToken: false,
   },
 });
+
