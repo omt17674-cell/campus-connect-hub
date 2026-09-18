@@ -1555,6 +1555,28 @@ export const campusStore = {
       details: `Status: ${regStatus} · Team: ${isTeam ? teamName : "Individual"}`,
     };
 
+    // Immediate write-through to Supabase
+    try {
+      supabase.from("registrations").upsert({
+        id: newRegistration.id,
+        event_id: newRegistration.eventId,
+        user_id: newRegistration.userId,
+        user_roll_no: newRegistration.userRollNo,
+        user_name: newRegistration.userName,
+        department: newRegistration.department,
+        registered_at: newRegistration.registeredAt,
+        status: newRegistration.status,
+        is_team: newRegistration.isTeam,
+        team_name: newRegistration.teamName || null,
+        team_members: newRegistration.teamMembers || null,
+      }).then(() => {});
+
+      const targetEv = updatedEvents.find((e) => e.id === eventId);
+      if (targetEv) {
+        supabase.from("events").upsert(targetEv).then(() => {});
+      }
+    } catch {}
+
     campusStore.setState((prev) => ({
       registrations: [newRegistration, ...prev.registrations],
       events: updatedEvents,
@@ -1643,6 +1665,29 @@ export const campusStore = {
       locationVerified: locationData?.verified,
     };
 
+    // Immediate write-through to Supabase
+    try {
+      supabase.from("attendance").upsert({
+        id: newRecord.id,
+        event_id: newRecord.eventId,
+        event_title: newRecord.eventTitle,
+        user_id: newRecord.userId,
+        user_name: newRecord.userName,
+        user_roll_no: newRecord.userRollNo,
+        department: newRecord.department,
+        timestamp: newRecord.timestamp,
+        punch_in_time: newRecord.timestamp,
+        verified_method: newRecord.verifiedMethod,
+        token_used: newRecord.tokenUsed,
+        certificate_id: newRecord.certificateId,
+        user_latitude: newRecord.userLatitude || null,
+        user_longitude: newRecord.userLongitude || null,
+        distance_from_venue_meters: newRecord.distanceFromVenueMeters || null,
+        location_verified: newRecord.locationVerified ?? true,
+        synced: true,
+      }).then(() => {});
+    } catch {}
+
     // Award +50 XP and volunteer hours if applicable (+10 bonus XP if GPS verified!)
     const earnedXp = locationData?.verified ? 60 : 50;
     const earnedVolHours = event.volunteerHoursReward || 0;
@@ -1658,6 +1703,7 @@ export const campusStore = {
     const updatedRegs = state.registrations.map((r) =>
       r.eventId === eventId && r.userId === state.currentUser.id ? { ...r, status: "attended" as const } : r
     );
+
 
     const auditEntry: AuditLogEntry = {
       id: `aud-${Date.now()}`,
@@ -2151,6 +2197,22 @@ export const campusStore = {
       };
     }
 
+    // Immediate write-through to Supabase
+    try {
+      const concludedEv = updatedEvents.find((e) => e.id === eventId);
+      if (concludedEv) {
+        supabase.from("events").upsert(concludedEv).then(() => {});
+      }
+      const relevantAtt = updatedAttendance.filter((a) => a.eventId === eventId);
+      if (relevantAtt.length > 0) {
+        supabase.from("attendance").upsert(relevantAtt).then(() => {});
+      }
+      const relevantRegs = updatedRegs.filter((r) => r.eventId === eventId);
+      if (relevantRegs.length > 0) {
+        supabase.from("registrations").upsert(relevantRegs).then(() => {});
+      }
+    } catch {}
+
     campusStore.setState((prev) => ({
       events: updatedEvents,
       registrations: updatedRegs,
@@ -2159,6 +2221,7 @@ export const campusStore = {
       auditLogs: [audit, ...prev.auditLogs],
       currentUser: updatedCurrentUser,
     }));
+
 
     return {
       success: true,
