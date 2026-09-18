@@ -1,16 +1,24 @@
 import { useState, useEffect } from "react";
 import {
   AlertTriangle,
+  Award,
   BarChart3,
   Calendar,
   Check,
+  CheckCircle2,
+  Clock,
   Download,
   FileText,
   GraduationCap,
   History,
   Mail,
+  PauseCircle,
   PieChart as PieIcon,
+  PlayCircle,
+  Plus,
+  QrCode,
   RefreshCw,
+  Search,
   ShieldAlert,
   ShieldCheck,
   TrendingUp,
@@ -35,6 +43,9 @@ import { translations } from "@/lib/i18n";
 import { EventAttendanceViewer } from "@/components/organizer/EventAttendanceViewer";
 import { VisitorVehicleSecurityViewer } from "@/components/admin/VisitorVehicleSecurityViewer";
 import { StudentRegistryViewer } from "@/components/admin/StudentRegistryViewer";
+import { CreateEventModal } from "@/components/organizer/CreateEventModal";
+import { LiveAttendanceModal } from "@/components/organizer/LiveAttendanceModal";
+import { CampusEvent, EventCategory, EventStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 interface AdminDashboardProps {
@@ -45,9 +56,15 @@ interface AdminDashboardProps {
 export function AdminDashboard({ state, onOpenGateModal }: AdminDashboardProps) {
   const t = translations[state.language];
   const [adminTab, setAdminTab] = useState<
-    "overview" | "students" | "roster" | "security" | "approvals" | "alerts" | "audit"
+    "overview" | "events" | "students" | "roster" | "security" | "approvals" | "alerts" | "audit"
   >("overview");
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [liveEventModal, setLiveEventModal] = useState<CampusEvent | null>(null);
+  const [selectedRosterEventId, setSelectedRosterEventId] = useState<string | undefined>(undefined);
+  const [eventSearchQuery, setEventSearchQuery] = useState("");
+  const [eventStatusFilter, setEventStatusFilter] = useState<string>("all");
+  const [eventCategoryFilter, setEventCategoryFilter] = useState<string>("all");
 
   // Sync fresh records directly from Supabase on load
   useEffect(() => {
@@ -156,6 +173,54 @@ export function AdminDashboard({ state, onOpenGateModal }: AdminDashboardProps) 
     alert("Warning emails & mentor notifications dispatched successfully!");
   };
 
+  const handleMarkAsHeld = (event: CampusEvent) => {
+    if (
+      confirm(
+        `Mark event "${event.title}" as Held?\n\nThis will conclude the session, digitally verify attendance, and generate official participation certificates for all registered attendees.`
+      )
+    ) {
+      const res = campusStore.endAndConcludeEvent(event.id);
+      alert(`🎓 ${res.message}`);
+    }
+  };
+
+  const handleHoldLiveSession = (event: CampusEvent) => {
+    setLiveEventModal(event);
+  };
+
+  const handleViewRoster = (event: CampusEvent) => {
+    setSelectedRosterEventId(event.id);
+    setAdminTab("roster");
+  };
+
+  const handleToggleHoldEvent = (event: CampusEvent) => {
+    if (event.status === "cancelled") {
+      campusStore.updateEventStatus(event.id, "upcoming");
+      alert(`✅ Event "${event.title}" has been resumed as Upcoming.`);
+    } else {
+      if (confirm(`Are you sure you want to put event "${event.title}" on hold (cancelled)?`)) {
+        campusStore.updateEventStatus(event.id, "cancelled");
+        alert(`⏸️ Event "${event.title}" is now on hold.`);
+      }
+    }
+  };
+
+  const filteredEvents = state.events.filter((evt) => {
+    const matchesSearch =
+      evt.title.toLowerCase().includes(eventSearchQuery.toLowerCase()) ||
+      evt.venue.toLowerCase().includes(eventSearchQuery.toLowerCase()) ||
+      evt.organizerName.toLowerCase().includes(eventSearchQuery.toLowerCase()) ||
+      evt.department.toLowerCase().includes(eventSearchQuery.toLowerCase());
+
+    const matchesStatus =
+      eventStatusFilter === "all" || evt.status === eventStatusFilter;
+
+    const matchesCategory =
+      eventCategoryFilter === "all" || evt.category === eventCategoryFilter;
+
+    return matchesSearch && matchesStatus && matchesCategory;
+  });
+
   return (
     <div className="flex flex-col gap-6">
       {/* Header */}
@@ -172,7 +237,15 @@ export function AdminDashboard({ state, onOpenGateModal }: AdminDashboardProps) 
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            onClick={() => setShowCreateModal(true)}
+            className="h-10 gap-2 rounded-2xl bg-gradient-to-r from-[#1A3C6E] to-[#0E2342] text-xs font-black text-white shadow-md shadow-[#1A3C6E]/20 hover:opacity-95"
+          >
+            <Plus className="size-4 text-[#F2A93B]" />
+            <span>Generate Event</span>
+          </Button>
+
           <Button
             onClick={handleManualRefresh}
             variant="outline"
@@ -208,6 +281,24 @@ export function AdminDashboard({ state, onOpenGateModal }: AdminDashboardProps) 
           )}
         >
           <BarChart3 className="mr-1.5 size-3.5" /> Analytics Overview
+        </Button>
+
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            setAdminTab("events");
+            campusStore.loadFromSupabase();
+          }}
+          className={cn(
+            "rounded-xl text-xs font-bold",
+            adminTab === "events"
+              ? "bg-[#1A3C6E] text-white"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <Calendar className="mr-1.5 size-3.5 text-[#F2A93B]" />
+          Events & Live Sessions ({state.events.length})
         </Button>
 
         <Button
@@ -307,6 +398,274 @@ export function AdminDashboard({ state, onOpenGateModal }: AdminDashboardProps) 
         </Button>
       </div>
 
+      {/* University Events & Session Controls View */}
+      {adminTab === "events" && (
+        <div className="space-y-6">
+          {/* Top Banner with Stats */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-3xl border border-blue-200/80 bg-gradient-to-r from-blue-50/90 via-white to-amber-50/80 p-5 shadow-sm">
+            <div className="flex items-center gap-3.5">
+              <div className="flex size-12 items-center justify-center rounded-2xl bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20">
+                <Calendar className="size-6 text-[#F2A93B]" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-display text-lg font-black text-[#1A3C6E]">
+                    University Event Governance & Controls
+                  </h3>
+                  <span className="flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[10px] font-black uppercase text-emerald-700">
+                    <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live System
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500">
+                  Generate official campus events, host live dynamic QR attendance sessions, or mark events as Held to release verifiable certificates.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2.5">
+              <Button
+                onClick={() => setShowCreateModal(true)}
+                className="h-10 gap-2 rounded-2xl bg-[#1A3C6E] font-display text-xs font-black text-white shadow-md shadow-[#1A3C6E]/25 hover:bg-[#1A3C6E]/90"
+              >
+                <Plus className="size-4 text-[#F2A93B]" />
+                Generate New Event
+              </Button>
+            </div>
+          </div>
+
+          {/* Quick Metrics Grid */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="rounded-2xl border border-border/80 bg-card/60 p-4 backdrop-blur-xl">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Total Events</span>
+              <p className="mt-1 font-display text-2xl font-black text-foreground">{state.events.length}</p>
+              <p className="text-[11px] text-muted-foreground">Across all departments</p>
+            </div>
+            <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-4 backdrop-blur-xl">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">Live Sessions</span>
+              <p className="mt-1 font-display text-2xl font-black text-emerald-600 dark:text-emerald-400">
+                {state.events.filter((e) => e.status === "live").length}
+              </p>
+              <p className="text-[11px] text-emerald-600/80 dark:text-emerald-400/80">Active QR check-in</p>
+            </div>
+            <div className="rounded-2xl border border-blue-500/30 bg-blue-500/5 p-4 backdrop-blur-xl">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#1A3C6E] dark:text-blue-400">Held & Concluded</span>
+              <p className="mt-1 font-display text-2xl font-black text-[#1A3C6E] dark:text-blue-400">
+                {state.events.filter((e) => e.status === "completed").length}
+              </p>
+              <p className="text-[11px] text-muted-foreground">Certificates released</p>
+            </div>
+            <div className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4 backdrop-blur-xl">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">Pending Approval</span>
+              <p className="mt-1 font-display text-2xl font-black text-amber-600 dark:text-amber-400">
+                {pendingApprovals.length}
+              </p>
+              <p className="text-[11px] text-muted-foreground">Proposals awaiting review</p>
+            </div>
+          </div>
+
+          {/* Search & Filters */}
+          <div className="flex flex-col sm:flex-row items-center gap-3 rounded-2xl border border-border/80 bg-card p-3 shadow-xs">
+            <div className="relative flex-1 w-full">
+              <Search className="absolute left-3.5 top-3 size-4 text-muted-foreground" />
+              <input
+                type="text"
+                value={eventSearchQuery}
+                onChange={(e) => setEventSearchQuery(e.target.value)}
+                placeholder="Search events by title, department, venue, organizer..."
+                className="h-10 w-full rounded-xl border border-input bg-background pl-10 pr-4 text-xs font-medium focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20"
+              />
+            </div>
+
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <select
+                value={eventStatusFilter}
+                onChange={(e) => setEventStatusFilter(e.target.value)}
+                className="h-10 rounded-xl border border-input bg-background px-3 text-xs font-bold text-foreground focus:outline-none"
+              >
+                <option value="all">All Statuses</option>
+                <option value="upcoming">Upcoming</option>
+                <option value="live">🔴 Live Now</option>
+                <option value="completed">🎓 Held / Concluded</option>
+                <option value="pending_approval">⏳ Pending Approval</option>
+                <option value="cancelled">⏸️ On Hold / Cancelled</option>
+              </select>
+
+              <select
+                value={eventCategoryFilter}
+                onChange={(e) => setEventCategoryFilter(e.target.value)}
+                className="h-10 rounded-xl border border-input bg-background px-3 text-xs font-bold text-foreground focus:outline-none"
+              >
+                <option value="all">All Categories</option>
+                <option value="Tech">Tech</option>
+                <option value="Culture">Culture</option>
+                <option value="Sports">Sports</option>
+                <option value="Leadership">Leadership</option>
+                <option value="Academic">Academic</option>
+                <option value="Career">Career</option>
+                <option value="Workshop">Workshop</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Events List */}
+          <div className="space-y-3">
+            {filteredEvents.length === 0 ? (
+              <div className="rounded-3xl border border-border/70 bg-card/60 p-12 text-center text-muted-foreground">
+                <Calendar className="mx-auto size-10 text-muted-foreground/40 mb-3" />
+                <p className="font-bold text-base text-foreground">No events found matching your search.</p>
+                <p className="text-xs mt-1">Try adjusting your filters or click Generate Event to schedule one.</p>
+              </div>
+            ) : (
+              filteredEvents.map((event) => {
+                const isLive = event.status === "live";
+                const isHeld = event.status === "completed";
+                const isCancelled = event.status === "cancelled";
+                return (
+                  <div
+                    key={event.id}
+                    className={cn(
+                      "flex flex-col justify-between gap-4 rounded-3xl border p-5 backdrop-blur-xl transition-all sm:flex-row sm:items-center",
+                      isLive
+                        ? "border-emerald-500/50 bg-emerald-500/5 shadow-md shadow-emerald-500/10"
+                        : isHeld
+                        ? "border-blue-200/70 bg-card/70"
+                        : isCancelled
+                        ? "border-border/60 bg-muted/30 opacity-75"
+                        : "border-border/70 bg-card/60 hover:bg-card/80"
+                    )}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span
+                          className={cn(
+                            "rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider",
+                            isLive
+                              ? "animate-pulse bg-emerald-500/20 text-emerald-600 dark:text-emerald-400"
+                              : isHeld
+                              ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
+                              : event.status === "pending_approval"
+                              ? "bg-amber-500/15 text-amber-700 dark:text-amber-400"
+                              : isCancelled
+                              ? "bg-slate-500/20 text-slate-600 dark:text-slate-400"
+                              : "bg-[#1A3C6E]/10 text-[#1A3C6E] dark:text-blue-300"
+                          )}
+                        >
+                          {isLive ? "🔴 LIVE NOW" : isHeld ? "🎓 HELD / CONCLUDED" : isCancelled ? "⏸️ ON HOLD" : event.status.replace("_", " ")}
+                        </span>
+                        <span className="rounded-md bg-accent/20 px-2 py-0.5 text-[10px] font-bold uppercase text-[#1A3C6E] dark:text-[#F2A93B]">
+                          {event.category}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {event.date} · {event.time}
+                        </span>
+                        <span className="text-xs text-muted-foreground">•</span>
+                        <span className="text-xs font-semibold text-foreground">
+                          📍 {event.venue}
+                        </span>
+                      </div>
+
+                      <h4 className="mt-1.5 font-display text-base font-black text-foreground">
+                        {event.title}
+                      </h4>
+
+                      <p className="mt-0.5 text-xs text-muted-foreground line-clamp-1">
+                        {event.description}
+                      </p>
+
+                      <div className="mt-2 flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
+                        <span>
+                          <strong>{event.registeredCount}</strong> / {event.capacity} Registered
+                        </span>
+                        <span>•</span>
+                        <span>Dept: <strong className="text-foreground">{event.department}</strong></span>
+                        <span>•</span>
+                        <span>Organizer: {event.organizerName}</span>
+                      </div>
+                    </div>
+
+                    {/* Admin Action Buttons */}
+                    <div className="flex shrink-0 flex-wrap items-center gap-2">
+                      {/* Hold / Conclude Action */}
+                      {!isHeld ? (
+                        <Button
+                          size="sm"
+                          onClick={() => handleMarkAsHeld(event)}
+                          className="h-9 gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-[#1A3C6E] text-xs font-bold text-white shadow-md hover:opacity-95"
+                          title="Mark event as Held, finalize attendance, and automatically generate verified PDF certificates"
+                        >
+                          <Award className="size-3.5 text-[#F2A93B]" />
+                          <span>Held / Conclude Event</span>
+                        </Button>
+                      ) : (
+                        <span className="flex items-center gap-1 rounded-xl bg-emerald-500/15 border border-emerald-500/30 px-3 py-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                          <CheckCircle2 className="size-3.5" />
+                          Held & Certified
+                        </span>
+                      )}
+
+                      {/* Hold Live Session (QR Attendance) */}
+                      <Button
+                        size="sm"
+                        onClick={() => handleHoldLiveSession(event)}
+                        className={cn(
+                          "h-9 gap-1.5 rounded-xl text-xs font-black shadow-md",
+                          isLive
+                            ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                            : "bg-[#1A3C6E] text-white hover:bg-[#1A3C6E]/90"
+                        )}
+                        title="Display dynamic anti-proxy QR code on projector for student check-ins"
+                      >
+                        <QrCode className="size-3.5 text-[#F2A93B]" />
+                        <span>{isLive ? "Live QR Display" : "Hold Live Session"}</span>
+                      </Button>
+
+                      {/* View Attendance Roster */}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleViewRoster(event)}
+                        className="h-9 gap-1.5 rounded-xl border-[#1A3C6E]/30 text-xs font-bold text-[#1A3C6E] dark:text-[#F2A93B]"
+                      >
+                        <UserCheck className="size-3.5" />
+                        <span>Roster</span>
+                      </Button>
+
+                      {/* Put on Hold / Resume */}
+                      {!isHeld && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleToggleHoldEvent(event)}
+                          className={cn(
+                            "h-9 gap-1 rounded-xl text-xs font-bold",
+                            isCancelled
+                              ? "text-emerald-600 hover:bg-emerald-50"
+                              : "text-rose-600 hover:bg-rose-50"
+                          )}
+                          title={isCancelled ? "Resume event" : "Put event on hold"}
+                        >
+                          {isCancelled ? (
+                            <>
+                              <PlayCircle className="size-3.5" />
+                              <span>Resume</span>
+                            </>
+                          ) : (
+                            <>
+                              <PauseCircle className="size-3.5" />
+                              <span>Put On Hold</span>
+                            </>
+                          )}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Student Identity Registry View */}
       {adminTab === "students" && (
         <StudentRegistryViewer state={state} />
@@ -316,6 +675,8 @@ export function AdminDashboard({ state, onOpenGateModal }: AdminDashboardProps) 
       {adminTab === "roster" && (
         <EventAttendanceViewer
           state={state}
+          selectedEventId={selectedRosterEventId}
+          onSelectEventId={(id) => setSelectedRosterEventId(id)}
           titlePrefix="TPC Admin & University Governance Roster"
         />
       )}
@@ -606,6 +967,26 @@ export function AdminDashboard({ state, onOpenGateModal }: AdminDashboardProps) 
             ))}
           </div>
         </div>
+      )}
+
+      {/* Create Event Modal */}
+      {showCreateModal && (
+        <CreateEventModal
+          onClose={() => setShowCreateModal(false)}
+          onSuccess={() => {
+            setShowCreateModal(false);
+            campusStore.loadFromSupabase();
+          }}
+        />
+      )}
+
+      {/* Live Attendance Dynamic QR Modal */}
+      {liveEventModal && (
+        <LiveAttendanceModal
+          event={liveEventModal}
+          state={state}
+          onClose={() => setLiveEventModal(null)}
+        />
       )}
     </div>
   );

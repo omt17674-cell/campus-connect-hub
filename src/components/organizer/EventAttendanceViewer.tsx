@@ -35,9 +35,9 @@ import { cn } from "@/lib/utils";
 
 interface EventAttendanceViewerProps {
   state: CampusState;
-  selectedEventId?: string;
-  onSelectEventId?: (eventId: string) => void;
-  titlePrefix?: string;
+  selectedEventId?: string | undefined;
+  onSelectEventId?: ((eventId: string) => void) | undefined;
+  titlePrefix?: string | undefined;
 }
 
 export function EventAttendanceViewer({

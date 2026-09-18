@@ -1857,6 +1857,24 @@ export const campusStore = {
     }));
   },
 
+  updateEventStatus(eventId: string, status: EventStatus) {
+    campusStore.setState((prev) => {
+      const event = prev.events.find((e) => e.id === eventId);
+      const audit: AuditLogEntry = {
+        id: `aud-${Date.now()}`,
+        action: `Event Status Changed to ${status.toUpperCase()}`,
+        performedBy: `${prev.currentUser.name} (${prev.currentUser.role})`,
+        target: event?.title || eventId,
+        timestamp: new Date().toISOString().replace("T", " ").slice(0, 19),
+        details: `Administrator updated event status to ${status}`,
+      };
+      return {
+        events: prev.events.map((e) => (e.id === eventId ? { ...e, status } : e)),
+        auditLogs: [audit, ...prev.auditLogs],
+      };
+    });
+  },
+
   updateRegistrationStatus(registrationId: string, status: Registration["status"]) {
     campusStore.setState((prev) => ({
       registrations: prev.registrations.map((r) => (r.id === registrationId ? { ...r, status } : r)),
