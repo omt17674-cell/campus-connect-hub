@@ -149,7 +149,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
             name,
             idOrRoll: roll,
             email: cleanEmail,
-            password: password || "DemoStudent@2026",
+            password: password || "",
             profile: {
               id: accountRow?.id || studentRow?.id || `u-${roll.toLowerCase()}`,
               name,
@@ -196,26 +196,6 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
     }
   };
 
-  // Auto-Fill Sample Registration Form
-  const handleAutoFillSampleRegistration = () => {
-    setRegFullName("Priya Patel");
-    setRegRollNo("24BT04199");
-    setRegEmail("priya.patel@gsfcuniversity.ac.in");
-    setRegPhone("9876543210");
-    setRegSchool("School of Technology (SOT)");
-    setRegDepartment("Computer Science & Engineering");
-    setRegDegree("B.Tech");
-    setRegSemester(4);
-    setRegResidence("hostel");
-    setRegHostelBlock("Kasturba Hostel - Block B");
-    setRegClubs(["Coding & AI Club", "Robotics Club", "Cultural Troupe"]);
-    setRegPassword("DemoStudent@2026");
-    setRegConfirmPassword("DemoStudent@2026");
-    setRegIdUploaded(true);
-    setRegTermsAgreed(true);
-    setStatusMessage({ text: "Sample GSFC Student data auto-filled!", type: "success" });
-  };
-
   // Handle New Student / Faculty Registration Submit
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -224,7 +204,12 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
       return;
     }
 
-    if (regPassword && regConfirmPassword && regPassword !== regConfirmPassword) {
+    if (!regPassword || regPassword.length < 6) {
+      setStatusMessage({ text: "Please create a password with at least 6 characters.", type: "error" });
+      return;
+    }
+
+    if (regPassword !== regConfirmPassword) {
       setStatusMessage({ text: "Passwords do not match.", type: "error" });
       return;
     }
@@ -239,7 +224,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
     try {
       const cleanRoll = regRollNo.trim().toUpperCase();
       const cleanEmail = regEmail.includes("@") ? regEmail.trim().toLowerCase() : `${regEmail.trim().toLowerCase()}@gsfcuniversity.ac.in`;
-      const passToUse = regPassword || "DemoStudent@2026";
+      const passToUse = regPassword;
 
       // 1. Create real Supabase Auth user
       try {
@@ -683,25 +668,12 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
           {/* TAB 2: COMPREHENSIVE NEW REGISTRATION VIEW */}
           {activeTab === "register" && (
             <div className="space-y-4 text-xs">
-              <div className="flex items-center justify-between rounded-2xl bg-amber-500/10 border border-amber-500/20 p-3">
-                <div className="flex items-center gap-2">
-                  <GraduationCap className="size-4 text-amber-600" />
-                  <div>
-                    <p className="font-black text-[#1A3C6E]">GSFC University Portal Onboarding</p>
-                    <p className="text-[10px] text-slate-500">Includes +100 Welcome XP & Smart Timetable Sync</p>
-                  </div>
+              <div className="flex items-center gap-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 p-3">
+                <GraduationCap className="size-5 text-amber-600 shrink-0" />
+                <div>
+                  <p className="font-black text-[#1A3C6E]">GSFC University Portal Onboarding</p>
+                  <p className="text-[10px] text-slate-500">Includes +100 Welcome XP & Smart Timetable Sync</p>
                 </div>
-
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleAutoFillSampleRegistration}
-                  className="h-7 gap-1 rounded-lg border-amber-500/40 bg-white text-[10px] font-bold text-amber-700 hover:bg-amber-50"
-                >
-                  <Sparkles className="size-3 text-amber-500" />
-                  <span>Auto-Fill Demo</span>
-                </Button>
               </div>
 
               <form onSubmit={handleRegisterSubmit} className="space-y-4">
@@ -1102,7 +1074,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
       <footer className="relative z-20 flex flex-wrap items-center justify-between gap-2 bg-[#0284C7] px-6 py-2.5 text-xs font-bold text-white sm:px-8">
         <div>All Rights Reserved ©2026</div>
         <div className="tracking-wide">
-          Developed & Managed By : <span className="font-black text-amber-300">GSFC University IT Operations</span>
+          Developed & Managed By : <span className="font-black text-amber-300">OM THAKKAR</span>
         </div>
       </footer>
     </div>

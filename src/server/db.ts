@@ -118,7 +118,7 @@ class ServerDatabase {
         name: "Dr. Ananya Sharma",
         idOrRoll: "ADM-GSFC-001",
         email: "dean.studentaffairs@gsfcuni.edu",
-        password: "Admin@2026",
+        password: "",
         profile: {
           id: "u-admin",
           name: "Dr. Ananya Sharma",
@@ -142,7 +142,7 @@ class ServerDatabase {
         name: "Prof. Rajiv Mehta",
         idOrRoll: "FAC-TPC-104",
         email: "tpc.admin@gsfcuniversity.ac.in",
-        password: "TPC@2026",
+        password: "",
         profile: {
           id: "u-tpc",
           name: "Prof. Rajiv Mehta",

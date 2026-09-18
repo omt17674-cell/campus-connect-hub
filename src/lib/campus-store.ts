@@ -79,7 +79,7 @@ export const ADMIN_ACCOUNT: CampusAccount = {
   name: "Dr. Ananya Sharma (Dean)",
   idOrRoll: "ADM-DEAN-001",
   email: "admin.dean@gsfcuniversity.ac.in",
-  password: "Admin@2026",
+  password: "",
   profile: {
     id: "u-ananya",
     name: "Dr. Ananya Sharma",
@@ -104,7 +104,7 @@ export const TPC_ADMIN_ACCOUNT: CampusAccount = {
   name: "Prof. Rajiv Mehta (TPC Head)",
   idOrRoll: "TPC-ADMIN-108",
   email: "tpc.admin@gsfcuniversity.ac.in",
-  password: "TPCAdmin@2026",
+  password: "",
   profile: {
     id: "u-tpc",
     name: "Prof. Rajiv Mehta",
@@ -1346,15 +1346,14 @@ export const campusStore = {
     const cleanId = identifier.trim().toLowerCase();
     const allAccounts = getStoredAccounts();
 
-    const account =
-      allAccounts.find(
-        (acc) =>
-          acc.role === role &&
-          (acc.email.toLowerCase() === cleanId ||
-            acc.idOrRoll.toLowerCase() === cleanId ||
-            cleanId.includes(acc.idOrRoll.toLowerCase()) ||
-            cleanId.includes(acc.email.split("@")[0].toLowerCase()))
-      ) || allAccounts.find((acc) => acc.role === role);
+    const account = allAccounts.find(
+      (acc) =>
+        acc.role === role &&
+        (acc.email.toLowerCase() === cleanId ||
+          acc.idOrRoll.toLowerCase() === cleanId ||
+          cleanId.includes(acc.idOrRoll.toLowerCase()) ||
+          cleanId.includes(acc.email.split("@")[0].toLowerCase()))
+    );
 
     if (account) {
       campusStore.loginWithAccount(account);
