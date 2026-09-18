@@ -49,21 +49,21 @@ export interface CampusAccount {
 
 export const STUDENT_ACCOUNT: CampusAccount = {
   role: "student",
-  roleTitle: "GSFC Student (Campus Candidate)",
-  roleBadge: "24BT01001",
-  name: "Demo Student",
-  idOrRoll: "24BT01001",
-  email: "demo.student@gsfcuniversity.ac.in",
+  roleTitle: "GSFC Student",
+  roleBadge: "Student",
+  name: "GSFC Student",
+  idOrRoll: "",
+  email: "",
   password: "",
   profile: {
-    id: "u-demo-student",
-    name: "Demo Student",
-    rollNo: "24BT01001",
-    email: "demo.student@gsfcuniversity.ac.in",
+    id: "",
+    name: "GSFC Student",
+    rollNo: "",
+    email: "",
     role: "student",
-    department: "B.Tech Computer Science & Engineering",
-    semester: 4,
-    avatar: "DS",
+    department: "Computer Science & Engineering",
+    semester: 1,
+    avatar: "ST",
     points: 0,
     streakDays: 0,
     volunteerHours: 0,
@@ -122,7 +122,7 @@ export const TPC_ADMIN_ACCOUNT: CampusAccount = {
   },
 };
 
-export const CAMPUS_ACCOUNTS = [STUDENT_ACCOUNT, ADMIN_ACCOUNT, TPC_ADMIN_ACCOUNT];
+export const CAMPUS_ACCOUNTS = [ADMIN_ACCOUNT, TPC_ADMIN_ACCOUNT];
 
 export interface CampusState {
   isAuthenticated: boolean;
@@ -213,181 +213,7 @@ const INITIAL_BADGES: Badge[] = [
   },
 ];
 
-export const INITIAL_EVENTS: CampusEvent[] = [
-  {
-    id: "evt-1",
-    title: "AI & Robotics National Hackathon",
-    description: "Build cutting-edge agentic AI and autonomous robotics solutions. 24-hour sprint with mentorship from industry leaders and GSFC research faculty.",
-    category: "Tech",
-    department: "Computer Science",
-    date: "2026-06-12",
-    time: "10:00 AM - 05:00 PM",
-    venue: "Innovation Lab, Block C",
-    organizerName: "Dr. Suresh Rao",
-    organizerEmail: "suresh.rao@gsfcuni.edu",
-    capacity: 100,
-    registeredCount: 0,
-    waitlistCount: 0,
-    approvalRequired: false,
-    isTeamEvent: true,
-    minTeamSize: 2,
-    maxTeamSize: 4,
-    volunteerHoursReward: 4,
-    bannerImage: "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?auto=format&fit=crop&w=1200&q=80",
-    status: "live",
-    averageRating: 4.8,
-    reviewCount: 24,
-    rules: [
-      "Inter-college and intra-college teams allowed.",
-      "Bring your own laptops, microcontrollers, and charging accessories.",
-      "Zero plagiarism policy on AI model weights and proprietary codebases.",
-    ],
-  },
-  {
-    id: "evt-2",
-    title: "Cultural Fest — Navratri & Heritage Conclave",
-    description: "Annual cultural extravaganza celebrating Gujarat's heritage, folk music, traditional dance competitions, and fine arts exhibition.",
-    category: "Culture",
-    department: "All Departments",
-    date: "2026-06-14",
-    time: "04:30 PM - 09:30 PM",
-    venue: "Main Amphitheatre & Central Lawns",
-    organizerName: "Prof. Meera Joshi",
-    organizerEmail: "meera.joshi@gsfcuni.edu",
-    capacity: 150,
-    registeredCount: 0,
-    waitlistCount: 0,
-    approvalRequired: false,
-    isTeamEvent: false,
-    volunteerHoursReward: 6,
-    bannerImage: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=1200&q=80",
-    status: "upcoming",
-    averageRating: 4.9,
-    reviewCount: 42,
-    rules: [
-      "Traditional attire encouraged.",
-      "Student digital ID card must be presented for amphitheatre gate entry.",
-    ],
-  },
-  {
-    id: "evt-3",
-    title: "Inter-Faculty Football Championship",
-    description: "Thrilling annual football tournament between Engineering, Science, Management, and Humanities faculties.",
-    category: "Sports",
-    department: "Athletics & Physical Education",
-    date: "2026-06-16",
-    time: "03:00 PM - 07:00 PM",
-    venue: "University Sports Arena, Ground A",
-    organizerName: "Coach Rajesh Solanki",
-    organizerEmail: "sports@gsfcuni.edu",
-    capacity: 32,
-    registeredCount: 0,
-    waitlistCount: 0,
-    approvalRequired: true,
-    isTeamEvent: true,
-    minTeamSize: 7,
-    maxTeamSize: 11,
-    volunteerHoursReward: 3,
-    bannerImage: "https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&w=1200&q=80",
-    status: "upcoming",
-    averageRating: 4.7,
-    reviewCount: 19,
-    rules: [
-      "Appropriate sports shoes/cleats mandatory.",
-      "Faculty endorsement required for team submission.",
-    ],
-  },
-  {
-    id: "evt-4",
-    title: "Prayaas Leadership & Career Summit 2026",
-    description: "Keynote talks with unicorn founders, alumni CXOs, and mock interview workshops. Career accelerator sessions for final and pre-final year students.",
-    category: "Leadership",
-    department: "Student Affairs Office",
-    date: "2026-06-19",
-    time: "11:00 AM - 04:00 PM",
-    venue: "Vigyan Bhavan, Seminar Hall A",
-    organizerName: "Dr. Ananya Sharma",
-    organizerEmail: "dean.studentaffairs@gsfcuni.edu",
-    capacity: 200,
-    registeredCount: 0,
-    waitlistCount: 0,
-    approvalRequired: false,
-    isTeamEvent: false,
-    volunteerHoursReward: 5,
-    bannerImage: "https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=1200&q=80",
-    status: "upcoming",
-    averageRating: 5.0,
-    reviewCount: 0,
-    rules: [
-      "Formal attire required.",
-      "Bring printed copies of your resume for recruiters.",
-    ],
-  },
-  {
-    id: "evt-5",
-    title: "Chemical Process & Sustainable Energy Conclave",
-    description: "Explore industrial safety, green hydrogen synthesis, and polymer engineering with GSFC industrial experts and senior research scientists.",
-    category: "Academic",
-    department: "Chemical Engineering",
-    date: "2026-06-22",
-    time: "09:30 AM - 01:30 PM",
-    venue: "Sardar Patel Auditorium, Block B",
-    organizerName: "Prof. K. N. Patel",
-    organizerEmail: "kn.patel@gsfcuni.edu",
-    capacity: 100,
-    registeredCount: 0,
-    waitlistCount: 0,
-    approvalRequired: false,
-    isTeamEvent: false,
-    volunteerHoursReward: 4,
-    bannerImage: "https://images.unsplash.com/photo-1532094349884-543bc11b234d?auto=format&fit=crop&w=1200&q=80",
-    status: "upcoming",
-    averageRating: 5.0,
-    reviewCount: 0,
-  },
-  {
-    id: "evt-6",
-    title: "Design Systems & Modern Web UI Workshop",
-    description: "Deep dive into building enterprise-grade design tokens, component architecture, and accessibility standards with practical live coding.",
-    category: "Workshop",
-    department: "Computer Science",
-    date: "2026-05-28",
-    time: "10:00 AM - 02:00 PM",
-    venue: "Computer Center, Lab 4",
-    organizerName: "Dr. Suresh Rao",
-    organizerEmail: "suresh.rao@gsfcuni.edu",
-    capacity: 60,
-    registeredCount: 0,
-    waitlistCount: 0,
-    approvalRequired: false,
-    isTeamEvent: false,
-    volunteerHoursReward: 3,
-    bannerImage: "https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?auto=format&fit=crop&w=1200&q=80",
-    status: "upcoming",
-    averageRating: 5.0,
-    reviewCount: 0,
-  },
-  {
-    id: "evt-7",
-    title: "Women in STEM & Engineering Conclave",
-    description: "Panel discussion and mentorship circle supporting women leaders in technology, manufacturing, and research fellowships.",
-    category: "Career",
-    department: "All Departments",
-    date: "2026-06-26",
-    time: "02:00 PM - 05:00 PM",
-    venue: "Conference Room 201",
-    organizerName: "Dr. Neha Trivedi",
-    organizerEmail: "neha.trivedi@gsfcuni.edu",
-    capacity: 80,
-    registeredCount: 0,
-    waitlistCount: 0,
-    approvalRequired: true,
-    isTeamEvent: false,
-    volunteerHoursReward: 3,
-    bannerImage: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=1200&q=80",
-    status: "pending_approval",
-  },
-];
+export const INITIAL_EVENTS: CampusEvent[] = [];
 
 const INITIAL_REGISTRATIONS: Registration[] = [];
 
@@ -405,16 +231,16 @@ const INITIAL_BROADCASTS: EventBroadcast[] = [];
 
 
 const INITIAL_DIGITAL_ID: DigitalStudentIdCard = {
-  rollNo: "24BT01001",
-  name: "Demo Student",
+  rollNo: "",
+  name: "GSFC Student",
   program: "Bachelor of Technology (B.Tech)",
   department: "Computer Science & Engineering",
-  semester: 4,
+  semester: 1,
   validTill: "June 2028",
-  bloodGroup: "B+ (Positive)",
-  qrVerificationCode: "GSFCU:VERIFIED:24BT01001:DEMO_STUDENT:CSE:2024-28",
-  barcode: "24BT01001",
-  photoUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80",
+  bloodGroup: "A+",
+  qrVerificationCode: "GSFCU:DIGITAL_ID:STUDENT",
+  barcode: "STUDENT",
+  photoUrl: "",
   status: "active",
 };
 
@@ -898,17 +724,7 @@ function loadSavedState(): CampusState {
         }
       }
 
-      let cleanCurrentUser = parsed.currentUser || INITIAL_USER;
-      if (cleanCurrentUser.id === "u-demo" || cleanCurrentUser.rollNo === "24BT01001") {
-        cleanCurrentUser = {
-          ...cleanCurrentUser,
-          points: existingAtt.length * 50,
-          streakDays: existingAtt.length > 0 ? (cleanCurrentUser.streakDays || 1) : 0,
-          volunteerHours: cleanCurrentUser.volunteerHours && cleanCurrentUser.volunteerHours !== 18 ? cleanCurrentUser.volunteerHours : 0,
-          attendanceRate: existingRegs.length > 0 ? Math.round((existingAtt.length / existingRegs.length) * 100) : 100,
-          badges: Array.isArray(cleanCurrentUser.badges) ? cleanCurrentUser.badges.filter((b: string) => !["b1", "b2", "b3", "b5"].includes(b)) : [],
-        };
-      }
+      const cleanCurrentUser = parsed.currentUser || INITIAL_USER;
 
       return {
         ...parsed,
@@ -2633,10 +2449,10 @@ export const campusStore = {
     socialPoints += Math.min(12, Math.floor((user.volunteerHours || 0) / 2) * 3);
 
     // Apply category caps
-    const cappedTech = Math.min(40, Math.max(techPoints, 24)); // Default bonus baseline for Om Thakkar
-    const cappedCultural = Math.min(20, Math.max(culturalPoints, 14));
-    const cappedSports = Math.min(20, Math.max(sportsPoints, 10));
-    const cappedSocial = Math.min(20, Math.max(socialPoints, 16));
+    const cappedTech = Math.min(40, techPoints);
+    const cappedCultural = Math.min(20, culturalPoints);
+    const cappedSports = Math.min(20, sportsPoints);
+    const cappedSocial = Math.min(20, socialPoints);
     const totalEarned = cappedTech + cappedCultural + cappedSports + cappedSocial;
 
     return {
@@ -3169,9 +2985,9 @@ export const campusStore = {
     }
   },
   loginWithGoogle(userOverride?: { name?: string; email?: string; rollNo?: string; photo?: string }): { success: boolean; message: string } {
-    const email = userOverride?.email || "demo.student@gsfcuniversity.ac.in";
-    const name = userOverride?.name || "Demo Student";
-    const rollNo = userOverride?.rollNo || "24BT01001";
+    const email = userOverride?.email || "student@gsfcuniversity.ac.in";
+    const name = userOverride?.name || "GSFC Student";
+    const rollNo = userOverride?.rollNo || "STUDENT";
 
     const allAccounts = getStoredAccounts();
     let matchedAccount = allAccounts.find(
@@ -3185,21 +3001,24 @@ export const campusStore = {
         email,
         name,
         role: "student",
-        department: "B.Tech Computer Science & Engineering",
+        roleTitle: "GSFC Student",
+        roleBadge: rollNo,
+        password: "",
         profile: {
           id: `u-${rollNo.toLowerCase()}`,
           name,
           rollNo,
           email,
           role: "student",
-          department: "B.Tech Computer Science & Engineering",
-          year: 2,
-          semester: 4,
-          attendancePercentage: 88,
-          points: 1200,
-          streakDays: 14,
-          volunteerHours: 24,
-          avatar: userOverride?.photo || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80",
+          department: "Computer Science & Engineering",
+          year: 1,
+          semester: 1,
+          attendanceRate: 100,
+          points: 0,
+          streakDays: 0,
+          volunteerHours: 0,
+          badges: ["b1"],
+          avatar: userOverride?.photo || name.slice(0, 2).toUpperCase() || "ST",
         },
       };
       campusStore.registerNewAccount(matchedAccount);

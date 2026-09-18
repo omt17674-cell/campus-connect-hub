@@ -116,10 +116,10 @@ export function OrganizerDashboard({ state }: OrganizerDashboardProps) {
                 <Users className="size-4 text-brand" />
               </div>
               <p className="mt-3 font-display text-3xl font-black text-foreground">
-                {totalRegistrations + 142}
+                {totalRegistrations}
               </p>
               <p className="mt-1 flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                <TrendingUp className="size-3.5" /> +18% engagement this month
+                <TrendingUp className="size-3.5" /> Across managed events
               </p>
             </div>
 
@@ -134,7 +134,7 @@ export function OrganizerDashboard({ state }: OrganizerDashboardProps) {
                 {myEvents.filter((e) => e.status !== "completed").length} Events
               </p>
               <p className="mt-1 text-xs font-semibold text-muted-foreground">
-                {liveEventsCount > 0 ? "1 Event active right now" : "Next session in 2 days"}
+                {liveEventsCount > 0 ? `${liveEventsCount} Event${liveEventsCount > 1 ? "s" : ""} live right now` : "No active live sessions"}
               </p>
             </div>
 
@@ -146,10 +146,10 @@ export function OrganizerDashboard({ state }: OrganizerDashboardProps) {
                 <CheckCircle2 className="size-4 text-emerald-500" />
               </div>
               <p className="mt-3 font-display text-3xl font-black text-foreground">
-                82.4%
+                {totalRegistrations > 0 ? `${Math.round((state.attendanceRecords.length / totalRegistrations) * 100)}%` : "0%"}
               </p>
               <p className="mt-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                +6.2% vs previous semester
+                Verified attendance scans
               </p>
             </div>
           </div>

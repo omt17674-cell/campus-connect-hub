@@ -25,19 +25,19 @@ export function ProfileView({ state }: ProfileViewProps) {
   const [isChangePhotoOpen, setIsChangePhotoOpen] = useState(false);
 
   const user = state?.currentUser || {
-    id: "u-demo-student",
-    name: "Demo Student",
-    rollNo: "24BT01001",
-    email: "demo.student@gsfcuniversity.ac.in",
+    id: "",
+    name: "GSFC Student",
+    rollNo: "",
+    email: "",
     role: "student",
-    department: "B.Tech Computer Science & Engineering",
-    semester: 4,
-    avatar: "DS",
-    points: 640,
-    streakDays: 9,
-    volunteerHours: 18,
-    attendanceRate: 91,
-    badges: ["b1", "b2", "b3", "b5"],
+    department: "Computer Science & Engineering",
+    semester: 1,
+    avatar: "ST",
+    points: 0,
+    streakDays: 0,
+    volunteerHours: 0,
+    attendanceRate: 100,
+    badges: [],
   };
 
   const isPhotoUrl = (url?: string) =>

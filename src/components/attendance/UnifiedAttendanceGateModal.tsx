@@ -650,7 +650,7 @@ export function UnifiedAttendanceGateModal({
                             setStudentRollNo(e.target.value);
                             setBarcodeInput(e.target.value);
                           }}
-                          placeholder="e.g. 24BT01001"
+                          placeholder="e.g. 24BT01089"
                           className="h-9 w-full rounded-xl border border-border/80 bg-background px-3 font-mono text-xs font-bold text-foreground focus:border-[#1A3C6E] focus:outline-none"
                         />
                       </div>
@@ -664,7 +664,7 @@ export function UnifiedAttendanceGateModal({
                             Align Physical GSFC ID Barcode in Frame...
                           </span>
                           <span className="font-mono text-[10px] text-emerald-400 mt-0.5">
-                            Laser Decoder Active · Reading 24BT01001
+                            Laser Decoder Active · Scanning ID Card
                           </span>
                         </div>
                       )}

@@ -49,39 +49,7 @@ class ServerDatabase {
     isLocked: boolean;
     verifiedByUniversity: boolean;
     createdAt: string;
-  }> = [
-    {
-      id: "STU-24BT01001",
-      fullName: "Demo Student",
-      mobileNumber: "+91 98765 00001",
-      rollNo: "24BT01001",
-      email: "demo.student@gsfcuniversity.ac.in",
-      school: "School of Technology (SOT)",
-      department: "Computer Science & Engineering",
-      degree: "B.Tech",
-      semester: 4,
-      residenceType: "hostel",
-      hostelBlockOrBusRoute: "Sardar Patel Boys Hostel - Block A",
-      clubsInterested: ["Coding & AI Club", "Robotics Club"],
-      idCardUploaded: true,
-      isLocked: true,
-      verifiedByUniversity: true,
-      createdAt: "2026-06-01T10:00:00Z",
-    },
-  ];
-  public digitalId: DigitalStudentIdCard = {
-    rollNo: "24BT01001",
-    name: "Demo Student",
-    program: "Bachelor of Technology (B.Tech)",
-    department: "Computer Science & Engineering",
-    semester: 4,
-    validTill: "June 2028",
-    bloodGroup: "B+ (Positive)",
-    qrVerificationCode: "GSFCU:VERIFIED:24BT01001:DEMO_STUDENT:CSE:2024-28",
-    barcode: "24BT01001",
-    photoUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80",
-    status: "active",
-  };
+  }> = [];
 
   constructor() {
     this.seedDatabase();
@@ -89,28 +57,6 @@ class ServerDatabase {
 
   private seedDatabase() {
     this.accounts = [
-      {
-        role: "student",
-        roleTitle: "GSFC Student",
-        roleBadge: "24BT01001",
-        name: "Demo Student",
-        idOrRoll: "24BT01001",
-        email: "demo.student@gsfcuniversity.ac.in",
-        password: "",
-        profile: {
-          id: "u-demo-student",
-          name: "Demo Student",
-          rollNo: "24BT01001",
-          email: "demo.student@gsfcuniversity.ac.in",
-          role: "student",
-          department: "B.Tech Computer Science & Engineering",
-          year: 2,
-          points: 0,
-          streakDays: 0,
-          volunteerHours: 0,
-          avatar: "DS",
-        },
-      },
       {
         role: "admin",
         roleTitle: "GSFC Administration",
@@ -229,7 +175,7 @@ class ServerDatabase {
         departmentTarget: "all",
         priority: "important",
         createdAt: "2026-06-11T09:00:00Z",
-        readBy: ["u-om"],
+        readBy: [],
       },
       {
         id: "ann-2",

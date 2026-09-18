@@ -34,19 +34,19 @@ export const StudentPassportView: React.FC = () => {
 
   const state = campusStore.getState();
   const user = state?.currentUser || {
-    id: "u-demo-student",
-    name: "Demo Student",
-    rollNo: "24BT01001",
-    email: "demo.student@gsfcuniversity.ac.in",
+    id: "",
+    name: "GSFC Student",
+    rollNo: "",
+    email: "",
     role: "student",
-    department: "B.Tech Computer Science & Engineering",
-    semester: 4,
-    avatar: "DS",
-    points: 640,
-    streakDays: 9,
-    volunteerHours: 18,
-    attendanceRate: 91,
-    badges: ["b1", "b2", "b3", "b5"],
+    department: "Computer Science & Engineering",
+    semester: 1,
+    avatar: "ST",
+    points: 0,
+    streakDays: 0,
+    volunteerHours: 0,
+    attendanceRate: 100,
+    badges: [],
   };
 
   const isPhotoUrl = (url?: string) =>
@@ -55,13 +55,13 @@ export const StudentPassportView: React.FC = () => {
   const activitySummary = campusStore.calculateActivityPoints
     ? campusStore.calculateActivityPoints(user.id)
     : {
-        technical: { earned: 24, max: 40, color: "#1A3C6E", label: "Technical & Workshops", iconName: "Code" },
-        cultural: { earned: 14, max: 20, color: "#F2A93B", label: "Cultural & Arts", iconName: "Palette" },
-        sports: { earned: 10, max: 20, color: "#10B981", label: "Sports & Athletics", iconName: "Trophy" },
-        social: { earned: 16, max: 20, color: "#6366F1", label: "NSS & Social Responsibility", iconName: "HeartHandshake" },
-        totalEarned: 64,
+        technical: { earned: 0, max: 40, color: "#1A3C6E", label: "Technical & Workshops", iconName: "Code" },
+        cultural: { earned: 0, max: 20, color: "#F2A93B", label: "Cultural & Arts", iconName: "Palette" },
+        sports: { earned: 0, max: 20, color: "#10B981", label: "Sports & Athletics", iconName: "Trophy" },
+        social: { earned: 0, max: 20, color: "#6366F1", label: "NSS & Social Responsibility", iconName: "HeartHandshake" },
+        totalEarned: 0,
         totalMax: 100,
-        percentage: 64,
+        percentage: 0,
       };
 
   const myClubs = (state?.clubMembers || []).filter((m) => m && m.userId === user.id);

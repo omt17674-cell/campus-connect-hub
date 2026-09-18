@@ -348,21 +348,12 @@ EXCEPTION WHEN OTHERS THEN
 END $$;
 
 -- ==============================================================================
--- INITIAL SAMPLE DATA FOR ACCOUNTS (DEFAULT PORTAL ROLES)
+-- INITIAL MASTER DATA FOR GOVERNANCE ACCOUNTS (ADMIN & ORGANIZER)
 -- ==============================================================================
 INSERT INTO public.accounts (id, name, roll_no, email, role, department, semester, year, attendance_percentage, points, streak_days, volunteer_hours, avatar)
 VALUES
-  ('u-demo', 'Demo Student', '24BT01001', 'demo.student@gsfcuniversity.ac.in', 'student', 'Computer Science & Engineering', 4, 2, 100, 100, 1, 0, 'DS'),
   ('u-ananya', 'Dr. Ananya Sharma (Dean)', 'ADM-DEAN-001', 'admin.dean@gsfcuniversity.ac.in', 'admin', 'Student Affairs & Academic Governance', 0, 0, 100, 3200, 120, 95, 'AS'),
   ('u-tpc', 'Prof. Rajiv Mehta (TPC Head)', 'TPC-ADMIN-108', 'tpc.admin@gsfcuniversity.ac.in', 'organizer', 'Training & Placement Cell / Event Convener', 0, 0, 99, 1950, 52, 65, 'RM')
-ON CONFLICT (id) DO NOTHING;
-
--- ==============================================================================
--- INITIAL SAMPLE DATA FOR NEW REGISTERED STUDENTS (LOCKED)
--- ==============================================================================
-INSERT INTO public.new_registered_students (id, full_name, mobile_number, roll_no, email, school, department, degree, semester, residence_type, hostel_block_or_bus_route, clubs_interested, id_card_uploaded, is_locked, verified_by_university)
-VALUES
-  ('STU-24BT01001', 'Demo Student', '+91 98765 00001', '24BT01001', 'demo.student@gsfcuniversity.ac.in', 'School of Technology (SOT)', 'Computer Science & Engineering', 'B.Tech', 4, 'hostel', 'Sardar Patel Boys Hostel - Block A', ARRAY['Coding & AI Club', 'Robotics Club'], true, true, true)
 ON CONFLICT (id) DO NOTHING;
 
 -- ==============================================================================

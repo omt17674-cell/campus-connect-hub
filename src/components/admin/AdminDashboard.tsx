@@ -63,30 +63,61 @@ export function AdminDashboard({ state, onOpenGateModal }: AdminDashboardProps) 
   const pendingApprovals = state.events.filter((e) => e.status === "pending_approval");
   const activeVisitors = state.visitorRecords.filter((v) => v.status === "active");
 
-  // Chart data
-  const departmentData = [
-    { department: "Computer Sci", participation: 88, students: 640 },
-    { department: "Chemical Eng", participation: 74, students: 510 },
-    { department: "Management", participation: 69, students: 430 },
-    { department: "Life Sciences", participation: 61, students: 380 },
-    { department: "Humanities", participation: 54, students: 290 },
+  const totalEvents = state.events.length;
+  const totalCheckins = state.attendanceRecords.length;
+  const totalRegistrations = state.registrations.length;
+  const avgEngagement = totalRegistrations > 0 ? `${Math.round((totalCheckins / totalRegistrations) * 100)}%` : "0%";
+  const verifiedCertificates = state.attendanceRecords.filter((a) => a.certificateId || a.verifiedMethod).length;
+
+  // Dynamic department calculation from active events & registrations
+  const departmentsList = [
+    "Computer Science",
+    "Chemical Engineering",
+    "School of Management",
+    "Applied Sciences",
+    "Humanities",
   ];
+
+  const departmentData = departmentsList.map((dept) => {
+    const deptEvents = state.events.filter((e) => (e.department || "").toLowerCase().includes(dept.toLowerCase().slice(0, 4)));
+    const deptStudents = (state.newRegisteredStudents || []).filter((s) => (s.department || "").toLowerCase().includes(dept.toLowerCase().slice(0, 4))).length;
+    const deptRegs = state.registrations.filter((r) => (r.department || "").toLowerCase().includes(dept.toLowerCase().slice(0, 4))).length;
+    const participation = deptStudents > 0 ? Math.min(100, Math.round((deptRegs / deptStudents) * 100)) : 0;
+    return {
+      department: dept.slice(0, 13),
+      participation,
+      students: deptStudents,
+    };
+  });
 
   const trendData = [
-    { week: "W1", scans: 320 },
-    { week: "W2", scans: 480 },
-    { week: "W3", scans: 610 },
-    { week: "W4", scans: 790 },
-    { week: "W5", scans: 850 },
-    { week: "W6", scans: 1040 },
+    { week: "W1", scans: state.attendanceRecords.filter((_, i) => i % 6 === 0).length },
+    { week: "W2", scans: state.attendanceRecords.filter((_, i) => i % 6 === 1).length },
+    { week: "W3", scans: state.attendanceRecords.filter((_, i) => i % 6 === 2).length },
+    { week: "W4", scans: state.attendanceRecords.filter((_, i) => i % 6 === 3).length },
+    { week: "W5", scans: state.attendanceRecords.filter((_, i) => i % 6 === 4).length },
+    { week: "W6", scans: state.attendanceRecords.filter((_, i) => i % 6 === 5).length },
   ];
 
-  const flaggedStudents = [
-    { name: "Devendra Patel", rollNo: "GSFC-CH-2022-0019", dept: "Chemical Eng", attendance: 58, mentor: "Dr. K. N. Patel" },
-    { name: "Manav Joshi", rollNo: "GSFC-MG-2021-0084", dept: "Management", attendance: 62, mentor: "Prof. S. Dave" },
-    { name: "Jhanvi Shah", rollNo: "GSFC-CS-2023-0199", dept: "Computer Science", attendance: 64, mentor: "Dr. Suresh Rao" },
-    { name: "Rishi Trivedi", rollNo: "GSFC-SC-2022-0041", dept: "Life Sciences", attendance: 68, mentor: "Dr. Neha Trivedi" },
-  ];
+  const flaggedStudents: Array<{ name: string; rollNo: string; dept: string; attendance: number; mentor: string }> = (
+    state.newRegisteredStudents || []
+  )
+    .filter((s) => {
+      const studentAtt = state.attendanceRecords.filter((a) => a.userRollNo === s.rollNo).length;
+      const studentReg = state.registrations.filter((r) => r.userRollNo === s.rollNo).length;
+      return studentReg > 0 && (studentAtt / studentReg) * 100 < 75;
+    })
+    .map((s) => {
+      const studentAtt = state.attendanceRecords.filter((a) => a.userRollNo === s.rollNo).length;
+      const studentReg = state.registrations.filter((r) => r.userRollNo === s.rollNo).length;
+      return {
+        name: s.fullName,
+        rollNo: s.rollNo,
+        dept: s.department,
+        attendance: studentReg > 0 ? Math.round((studentAtt / studentReg) * 100) : 0,
+        mentor: "Faculty Mentor",
+      };
+    });
 
   const handleExportFullCsv = () => {
     const rows = [
@@ -306,31 +337,31 @@ export function AdminDashboard({ state, onOpenGateModal }: AdminDashboardProps) 
               <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                 Total Events
               </span>
-              <p className="mt-2 font-display text-3xl font-black text-foreground">128</p>
-              <p className="mt-1 text-xs text-muted-foreground">Across 5 departments</p>
+              <p className="mt-2 font-display text-3xl font-black text-foreground">{totalEvents}</p>
+              <p className="mt-1 text-xs text-muted-foreground">Active university sessions</p>
             </div>
 
             <div className="rounded-3xl border border-border/80 bg-card/60 p-4 shadow-lg shadow-brand/5 backdrop-blur-2xl">
               <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                 Total Check-ins
               </span>
-              <p className="mt-2 font-display text-3xl font-black text-foreground">4,820</p>
-              <p className="mt-1 text-xs text-emerald-600 dark:text-emerald-400 font-semibold">+14% this semester</p>
+              <p className="mt-2 font-display text-3xl font-black text-foreground">{totalCheckins}</p>
+              <p className="mt-1 text-xs text-emerald-600 dark:text-emerald-400 font-semibold">Verified QR punches</p>
             </div>
 
             <div className="rounded-3xl border border-border/80 bg-card/60 p-4 shadow-lg shadow-brand/5 backdrop-blur-2xl">
               <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                 Avg. Engagement
               </span>
-              <p className="mt-2 font-display text-3xl font-black text-foreground">76.2%</p>
-              <p className="mt-1 text-xs text-muted-foreground">University benchmark</p>
+              <p className="mt-2 font-display text-3xl font-black text-foreground">{avgEngagement}</p>
+              <p className="mt-1 text-xs text-muted-foreground">Turnout across events</p>
             </div>
 
             <div className="rounded-3xl border border-border/80 bg-card/60 p-4 shadow-lg shadow-brand/5 backdrop-blur-2xl">
               <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                 Certificates Issued
               </span>
-              <p className="mt-2 font-display text-3xl font-black text-foreground">3,940</p>
+              <p className="mt-2 font-display text-3xl font-black text-foreground">{verifiedCertificates}</p>
               <p className="mt-1 text-xs text-emerald-600 dark:text-emerald-400 font-semibold">100% digitally verified</p>
             </div>
           </div>

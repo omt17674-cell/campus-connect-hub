@@ -293,27 +293,6 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
         matchedAccount = data;
       } catch {}
 
-      // 3. Check demo student fallback if testing with demo phone
-      if (!matchedStudent && !matchedAccount) {
-        if (cleanNumber === "9876500001" || cleanNumber === "9876543210" || cleanNumber.endsWith("0001")) {
-          matchedAccount = {
-            id: "u-demo",
-            name: "Demo Student",
-            roll_no: "24BT01001",
-            email: "demo.student@gsfcuniversity.ac.in",
-            role: "student",
-            department: "Computer Science & Engineering",
-            semester: 4,
-            year: 2,
-            attendance_percentage: 100,
-            points: 100,
-            streak_days: 1,
-            volunteer_hours: 0,
-            avatar: "DS",
-          };
-        }
-      }
-
       if (!matchedStudent && !matchedAccount) {
         return jsonResponse({
           success: false,
@@ -322,7 +301,7 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
       }
 
       const name = matchedStudent?.full_name || matchedAccount?.name || "GSFC Student";
-      const roll = matchedStudent?.roll_no || matchedAccount?.roll_no || "24BT01001";
+      const roll = matchedStudent?.roll_no || matchedAccount?.roll_no || "";
       const role = (matchedAccount?.role || body.role || "student") as string;
       const dept = matchedStudent?.department || matchedAccount?.department || "Computer Science & Engineering";
       const email = matchedStudent?.email || matchedAccount?.email || `${roll.toLowerCase()}@gsfcuniversity.ac.in`;
@@ -458,9 +437,9 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
   // 3. Authentication: Google Workspace SSO
   if (path === "/api/auth/google" && method === "POST") {
     const body = await parseBody<{ email?: string; name?: string; rollNo?: string }>(request);
-    const email = body?.email || "demo.student@gsfcuniversity.ac.in";
-    const name = body?.name || "Demo Student";
-    const rollNo = body?.rollNo || "24BT01001";
+    const email = body?.email || "student@gsfcuniversity.ac.in";
+    const name = body?.name || "GSFC Student";
+    const rollNo = body?.rollNo || "STUDENT";
 
     let account = await supabaseSync.getAccountByIdentifier(email);
 

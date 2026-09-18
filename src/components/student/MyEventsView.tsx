@@ -36,10 +36,10 @@ export function MyEventsView({ state, onSelectEvent, onOpenPunchModal }: MyEvent
   const [downloadingCertId, setDownloadingCertId] = useState<string | null>(null);
 
   const currentUser = state?.currentUser || {
-    id: "u-demo-student",
-    name: "Demo Student",
-    rollNo: "24BT01001",
-    department: "B.Tech CSE",
+    id: "",
+    name: "GSFC Student",
+    rollNo: "",
+    department: "Computer Science & Engineering",
   };
 
   const currentRollNo = currentUser.rollNo?.toLowerCase() || "";
@@ -111,7 +111,7 @@ export function MyEventsView({ state, onSelectEvent, onOpenPunchModal }: MyEvent
       eventTitle: event.title,
       userId: currentUser.id,
       userName: currentUser.name || "Demo Student",
-      userRollNo: currentUser.rollNo || "24BT01001",
+      userRollNo: currentUser.rollNo || "",
       department: currentUser.department || "Computer Science",
       timestamp: new Date().toISOString(),
       verifiedMethod: "qr_scan" as const,

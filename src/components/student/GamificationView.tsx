@@ -23,21 +23,42 @@ export function GamificationView({ state }: GamificationViewProps) {
   const t = translations[state.language];
   const [leaderboardTab, setLeaderboardTab] = useState<"students" | "departments">("students");
   const user = state?.currentUser || {
-    id: "u-demo-student",
-    name: "Demo Student",
-    rollNo: "24BT01001",
-    department: "B.Tech CSE",
-    points: 640,
-    streakDays: 9,
+    id: "",
+    name: "GSFC Student",
+    rollNo: "",
+    department: "Computer Science & Engineering",
+    points: 0,
+    streakDays: 0,
   };
 
-  const studentRankings = [
-    { rank: 1, name: "Tanvi Bhatt", rollNo: "GSFC-CS-0091", dept: "Computer Science", xp: 820, streak: 14, avatar: "TB" },
-    { rank: 2, name: `${user.name || "You"} (You)`, rollNo: user.rollNo || "24BT01001", dept: user.department || "CSE", xp: user.points || 640, streak: user.streakDays || 9, avatar: user.avatar || "DS", isUser: true },
-    { rank: 3, name: "Harshil Patel", rollNo: "GSFC-CH-0044", dept: "Chemical Eng", xp: 460, streak: 6, avatar: "HP" },
-    { rank: 4, name: "Sneha Desai", rollNo: "GSFC-MG-0112", dept: "Management", xp: 410, streak: 5, avatar: "SD" },
-    { rank: 5, name: "Kunal Shah", rollNo: "GSFC-CS-0205", dept: "Computer Science", xp: 380, streak: 4, avatar: "KS" },
-  ];
+  const registeredPeerList = (state.newRegisteredStudents || []).map((s, idx) => {
+    const isCurrentUser = s.rollNo.toUpperCase() === (user.rollNo || "").toUpperCase();
+    return {
+      rank: idx + 1,
+      name: isCurrentUser ? `${s.fullName} (You)` : s.fullName,
+      rollNo: s.rollNo,
+      dept: s.department,
+      xp: isCurrentUser ? (user.points || 0) : (state.attendanceRecords.filter(a => a.userRollNo === s.rollNo).length * 50),
+      streak: isCurrentUser ? (user.streakDays || 0) : (state.attendanceRecords.filter(a => a.userRollNo === s.rollNo).length > 0 ? 1 : 0),
+      avatar: s.fullName.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase() || "ST",
+      isUser: isCurrentUser,
+    };
+  });
+
+  const studentRankings = registeredPeerList.length > 0
+    ? registeredPeerList.sort((a, b) => b.xp - a.xp).map((item, idx) => ({ ...item, rank: idx + 1 }))
+    : [
+        {
+          rank: 1,
+          name: `${user.name || "You"} (You)`,
+          rollNo: user.rollNo || "Campus Candidate",
+          dept: user.department || "School of Technology",
+          xp: user.points || 0,
+          streak: user.streakDays || 0,
+          avatar: user.avatar || "ST",
+          isUser: true,
+        },
+      ];
 
   const departmentRankings = [
     { rank: 1, dept: "Computer Science & Engineering", participation: "88%", totalXp: "14,820 XP", events: 24 },

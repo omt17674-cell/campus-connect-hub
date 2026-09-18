@@ -151,15 +151,6 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
     const cleanEmail = cleanInput.includes("@") ? cleanInput.toLowerCase() : `${cleanInput.toLowerCase()}@gsfcuniversity.ac.in`;
 
     try {
-      // Check if demo test account for quick exhibition demo fallback
-      const isDemoAccount =
-        cleanEmail === "demo.student@gsfcuniversity.ac.in" ||
-        cleanEmail === "admin.dean@gsfcuniversity.ac.in" ||
-        cleanEmail === "tpc.admin@gsfcuniversity.ac.in" ||
-        cleanInput.toLowerCase() === "student" ||
-        cleanInput.toLowerCase() === "admin" ||
-        cleanInput.toLowerCase() === "organizer";
-
       // Resolve target email if student entered roll number
       let targetEmail = cleanEmail;
       if (!cleanInput.includes("@")) {
@@ -189,23 +180,6 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
       });
 
       if (authError) {
-        // Fallback ONLY for predefined demo accounts if Supabase Auth credentials differ
-        if (isDemoAccount) {
-          const demoAccount = allAccounts.find(
-            (a) =>
-              a.role === selectedRole &&
-              (a.email.toLowerCase() === cleanEmail ||
-                a.idOrRoll.toLowerCase() === cleanInput.toLowerCase())
-          );
-          if (demoAccount) {
-            campusStore.loginWithAccount(demoAccount);
-            setIsLoggingIn(false);
-            setStatusMessage({ text: `Welcome back, ${demoAccount.name}! (Demo Mode)`, type: "success" });
-            if (onLoginSuccess) onLoginSuccess();
-            return;
-          }
-        }
-
         // Check if unverified user attempting login
         const errMsg = authError.message || "";
         if (
