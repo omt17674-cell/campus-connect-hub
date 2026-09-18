@@ -901,13 +901,57 @@ export const campusStore = {
     listeners.forEach((l) => l(globalState));
   },
 
-  registerNewStudent(student: NewRegisteredStudent) {
+  async registerNewStudent(student: NewRegisteredStudent): Promise<{ success: boolean; message?: string }> {
     campusStore.setState((prev) => {
       const filtered = (prev.newRegisteredStudents || []).filter(
         (s) => s.rollNo.toUpperCase() !== student.rollNo.toUpperCase()
       );
       return { newRegisteredStudents: [student, ...filtered] };
     });
+
+    if (typeof window !== "undefined" && navigator.onLine) {
+      try {
+        const dbStudent = serializeStudentForDb(student);
+        const { error: stuErr } = await supabase.from("new_registered_students").upsert(dbStudent);
+        if (stuErr) {
+          logSupabaseError("upsert", "new_registered_students", stuErr);
+        }
+
+        const initials = student.fullName
+          .split(" ")
+          .map((n) => n[0])
+          .join("")
+          .toUpperCase()
+          .slice(0, 2) || "ST";
+
+        const dbAccount = {
+          id: `u-${student.rollNo.toLowerCase()}`,
+          name: student.fullName,
+          roll_no: student.rollNo,
+          email: student.email,
+          role: "student",
+          department: student.department,
+          semester: student.semester || 4,
+          year: Math.ceil((student.semester || 4) / 2) || 2,
+          attendance_percentage: 100,
+          points: 100,
+          streak_days: 1,
+          volunteer_hours: 0,
+          avatar: initials,
+          updated_at: new Date().toISOString(),
+        };
+        const { error: accErr } = await supabase.from("accounts").upsert(dbAccount);
+        if (accErr) {
+          logSupabaseError("upsert", "accounts", accErr);
+        }
+
+        return { success: !stuErr, message: stuErr?.message };
+      } catch (err: any) {
+        logSupabaseError("upsert_catch", "new_registered_students", err);
+        return { success: false, message: err.message };
+      }
+    }
+    return { success: true };
   },
 
   updateStudentProfile(student: NewRegisteredStudent) {
@@ -1000,29 +1044,68 @@ export const campusStore = {
         campusStore.setState(() => ({ attendanceRecords: attList }));
       }
 
-      // 4. Pull new registered students
+      // 4. Pull new registered students & accounts with student role (Merge deduplicated)
       const { data: supaStudents } = await supabase.from("new_registered_students").select("*").order("created_at", { ascending: false });
-      if (supaStudents && supaStudents.length > 0) {
-        const mappedStudents: NewRegisteredStudent[] = supaStudents.map((d: any) => ({
-          id: d.id,
-          fullName: d.full_name || d.fullName || "Student",
-          mobileNumber: d.mobile_number || d.mobileNumber || "N/A",
-          rollNo: d.roll_no || d.rollNo || "N/A",
-          email: d.email || "",
-          school: d.school || "School of Technology (SOT)",
-          department: d.department || "Computer Science & Engineering",
-          degree: d.degree || "B.Tech",
-          semester: d.semester || 4,
-          residenceType: d.residence_type || d.residenceType || "hostel",
-          hostelBlockOrBusRoute: d.hostel_block_or_bus_route || d.hostelBlockOrBusRoute,
-          clubsInterested: d.clubs_interested || d.clubsInterested || [],
-          idCardUploaded: Boolean(d.id_card_uploaded ?? d.idCardUploaded ?? true),
-          isLocked: true,
-          verifiedByUniversity: Boolean(d.verified_by_university ?? d.verifiedByUniversity ?? true),
-          createdAt: d.created_at || d.createdAt || new Date().toISOString(),
-        }));
+      const { data: supaAccounts } = await supabase.from("accounts").select("*").eq("role", "student");
+
+      const studentMap = new Map<string, NewRegisteredStudent>();
+
+      if (supaStudents && Array.isArray(supaStudents)) {
+        supaStudents.forEach((d: any) => {
+          const s: NewRegisteredStudent = {
+            id: d.id,
+            fullName: d.full_name || d.fullName || "Student",
+            mobileNumber: d.mobile_number || d.mobileNumber || "N/A",
+            rollNo: d.roll_no || d.rollNo || "N/A",
+            email: d.email || "",
+            school: d.school || "School of Technology (SOT)",
+            department: d.department || "Computer Science & Engineering",
+            degree: d.degree || "B.Tech",
+            semester: d.semester || 4,
+            residenceType: d.residence_type || d.residenceType || "hostel",
+            hostelBlockOrBusRoute: d.hostel_block_or_bus_route || d.hostelBlockOrBusRoute || "Campus Resident",
+            clubsInterested: d.clubs_interested || d.clubsInterested || [],
+            idCardUploaded: Boolean(d.id_card_uploaded ?? d.idCardUploaded ?? true),
+            isLocked: true,
+            verifiedByUniversity: Boolean(d.verified_by_university ?? d.verifiedByUniversity ?? true),
+            createdAt: d.created_at || d.createdAt || new Date().toISOString(),
+          };
+          if (s.rollNo && s.rollNo !== "N/A") {
+            studentMap.set(s.rollNo.toUpperCase(), s);
+          }
+        });
+      }
+
+      // Merge accounts table students if missing from new_registered_students
+      if (supaAccounts && Array.isArray(supaAccounts)) {
+        supaAccounts.forEach((acc: any) => {
+          const roll = (acc.roll_no || "").toUpperCase();
+          if (roll && !studentMap.has(roll)) {
+            studentMap.set(roll, {
+              id: `stu-${roll.toLowerCase()}`,
+              fullName: acc.name,
+              mobileNumber: "N/A",
+              rollNo: roll,
+              email: acc.email,
+              school: "School of Technology (SOT)",
+              department: acc.department || "Computer Science & Engineering",
+              degree: "B.Tech",
+              semester: acc.semester || 4,
+              residenceType: "hostel",
+              hostelBlockOrBusRoute: "Campus Resident",
+              clubsInterested: ["Coding & AI Club"],
+              idCardUploaded: true,
+              isLocked: true,
+              verifiedByUniversity: true,
+              createdAt: acc.created_at || new Date().toISOString(),
+            });
+          }
+        });
+      }
+
+      if (studentMap.size > 0) {
         campusStore.setState(() => ({
-          newRegisteredStudents: mappedStudents,
+          newRegisteredStudents: Array.from(studentMap.values()),
         }));
       }
 

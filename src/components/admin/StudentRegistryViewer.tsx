@@ -15,12 +15,15 @@ import {
   Filter,
   RefreshCw,
   Edit,
+  Radio,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CampusState, campusStore } from "@/lib/campus-store";
 import { NewRegisteredStudent } from "@/lib/types";
 import { EditStudentModal } from "./EditStudentModal";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/lib/supabase";
+import { toast } from "sonner";
 
 interface StudentRegistryViewerProps {
   state: CampusState;
@@ -35,11 +38,32 @@ export function StudentRegistryViewer({ state }: StudentRegistryViewerProps) {
 
   useEffect(() => {
     campusStore.loadFromSupabase();
+
+    const channel = supabase
+      .channel("admin-student-registry-sync")
+      .on("postgres_changes", { event: "*", schema: "public", table: "new_registered_students" }, () => {
+        campusStore.loadFromSupabase();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "accounts" }, () => {
+        campusStore.loadFromSupabase();
+      })
+      .subscribe();
+
+    const interval = setInterval(() => {
+      campusStore.loadFromSupabase();
+    }, 4000);
+
+    return () => {
+      clearInterval(interval);
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const handleManualSync = async () => {
     setIsRefreshing(true);
     await campusStore.loadFromSupabase();
+    const count = campusStore.getState().newRegisteredStudents?.length || 0;
+    toast.success(`Synced with Supabase: ${count} students in registry.`);
     setTimeout(() => setIsRefreshing(false), 500);
   };
 
@@ -122,6 +146,9 @@ export function StudentRegistryViewer({ state }: StudentRegistryViewerProps) {
               </h3>
               <span className="flex items-center gap-1 rounded-full bg-amber-500/15 px-2.5 py-0.5 text-[10px] font-black uppercase text-amber-700">
                 <Lock className="size-3" /> Identity Locked
+              </span>
+              <span className="flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[10px] font-black uppercase text-emerald-700">
+                <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live Sync Active
               </span>
             </div>
             <p className="text-xs text-slate-500">

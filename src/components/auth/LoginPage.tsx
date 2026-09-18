@@ -375,9 +375,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
         profile: newUserProfile,
       };
 
-      // Register and update store
-      campusStore.registerNewAccount(newAccount);
-      campusStore.registerNewStudent({
+      const newStudentObj = {
         id: `stu-${cleanRoll.toLowerCase()}`,
         fullName: regFullName.trim(),
         mobileNumber: regPhone.trim(),
@@ -394,11 +392,15 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
         isLocked: true,
         verifiedByUniversity: true,
         createdAt: new Date().toISOString(),
-      });
+      };
+
+      // Register and update store (with direct Supabase upsert)
+      campusStore.registerNewAccount(newAccount);
+      await campusStore.registerNewStudent(newStudentObj);
       campusStore.loginWithAccount(newAccount);
 
       // Trigger fresh load from Supabase
-      campusStore.loadFromSupabase();
+      await campusStore.loadFromSupabase();
 
       try {
         confetti({
