@@ -207,7 +207,7 @@ export function QRScannerModal({ onClose, onSuccess }: QRScannerModalProps) {
   const handleSimulateExpiredScan = () => {
     const oldPayload = {
       version: "1.0",
-      eventId: selectedSimEventId || liveEvent?.id || "evt-1",
+      eventId: selectedSimEventId || liveEvent?.id || state.events[0]?.id || "manual-test",
       eventTitle: "Expired Session",
       timestamp: Date.now() - 3600000,
       windowId: Math.floor((Date.now() - 3600000) / 45000),

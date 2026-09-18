@@ -148,10 +148,12 @@ export function HomeFeed({
         {filteredEvents.length === 0 ? (
           <div className="rounded-3xl border border-dashed border-border/80 bg-card/40 py-12 text-center backdrop-blur-xl">
             <p className="font-display text-base font-bold text-foreground">
-              No events found matching "{searchQuery}"
+              {searchQuery ? `No events found matching "${searchQuery}"` : "No Events Scheduled Yet"}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Try searching with a different keyword or category.
+              {searchQuery
+                ? "Try searching with a different keyword or category."
+                : "Create a new event anytime from the TPC Organizer portal or Admin dashboard."}
             </p>
           </div>
         ) : (
