@@ -20,14 +20,17 @@ import {
   Star,
   QrCode,
   Search,
+  Camera,
 } from "lucide-react";
 import { campusStore } from "@/lib/campus-store";
 import { VerifiedAchievement } from "@/lib/types";
+import { ChangeProfilePictureModal } from "@/components/profile/ChangeProfilePictureModal";
 
 export const StudentPassportView: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [showQRModal, setShowQRModal] = useState<VerifiedAchievement | null>(null);
+  const [isChangePhotoOpen, setIsChangePhotoOpen] = useState(false);
 
   const state = campusStore.getState();
   const user = state?.currentUser || {
@@ -45,6 +48,9 @@ export const StudentPassportView: React.FC = () => {
     attendanceRate: 91,
     badges: ["b1", "b2", "b3", "b5"],
   };
+
+  const isPhotoUrl = (url?: string) =>
+    Boolean(url && (url.startsWith("http") || url.startsWith("data:") || url.startsWith("/")));
 
   const activitySummary = campusStore.calculateActivityPoints
     ? campusStore.calculateActivityPoints(user.id)
@@ -93,17 +99,44 @@ export const StudentPassportView: React.FC = () => {
 
   return (
     <div className="space-y-6 pb-12 animate-fade-in">
+      {/* Change Profile Picture Modal */}
+      <ChangeProfilePictureModal
+        isOpen={isChangePhotoOpen}
+        onClose={() => setIsChangePhotoOpen(false)}
+        currentAvatar={user.avatar}
+        userName={user.name}
+      />
+
       {/* Header Banner: Student 360 Activity Passport */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#1A3C6E] via-[#255294] to-[#0e2547] p-6 sm:p-8 text-white shadow-xl">
         <div className="absolute -top-16 -right-16 h-48 w-48 rounded-full bg-[#F2A93B]/20 blur-3xl pointer-events-none" />
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="flex items-center gap-4">
-            <div className="relative">
-              <img
-                src={user.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80"}
-                alt={user.name}
-                className="h-20 w-20 rounded-2xl border-2 border-[#F2A93B] object-cover shadow-md"
-              />
+            <div
+              className="relative group cursor-pointer"
+              onClick={() => setIsChangePhotoOpen(true)}
+              title="Click to Change Profile Picture"
+            >
+              <div className="h-20 w-20 overflow-hidden rounded-2xl border-2 border-[#F2A93B] shadow-md bg-gradient-to-br from-[#1A3C6E] to-[#0e2547] flex items-center justify-center">
+                {isPhotoUrl(user.avatar) ? (
+                  <img
+                    src={user.avatar}
+                    alt={user.name}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <span className="font-display text-2xl font-black text-[#F2A93B]">
+                    {user.avatar || user.name.slice(0, 2).toUpperCase()}
+                  </span>
+                )}
+              </div>
+              
+              {/* Camera Hover Overlay */}
+              <div className="absolute inset-0 flex flex-col items-center justify-center rounded-2xl bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity text-white text-[10px] font-bold gap-1">
+                <Camera className="h-4 w-4 text-[#F2A93B]" />
+                <span>Change</span>
+              </div>
+
               <div className="absolute -bottom-1 -right-1 rounded-full bg-emerald-500 p-1 text-white shadow">
                 <ShieldCheck className="h-4 w-4" />
               </div>
@@ -125,6 +158,13 @@ export const StudentPassportView: React.FC = () => {
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
+            <button
+              onClick={() => setIsChangePhotoOpen(true)}
+              className="flex items-center gap-2 rounded-xl bg-[#F2A93B]/20 px-4 py-2.5 text-xs font-bold text-[#F2A93B] hover:bg-[#F2A93B]/30 transition-all backdrop-blur-md border border-[#F2A93B]/40 shadow-sm"
+            >
+              <Camera className="h-4 w-4 text-[#F2A93B]" />
+              Change Photo
+            </button>
             <button
               onClick={handlePrintPassport}
               className="flex items-center gap-2 rounded-xl bg-white/15 px-4 py-2.5 text-xs font-bold text-white hover:bg-white/25 transition-all backdrop-blur-md border border-white/20"

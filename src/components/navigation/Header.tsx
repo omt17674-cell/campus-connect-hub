@@ -217,8 +217,12 @@ export function Header({
           {/* User Profile Pill & Logout / Switch Role */}
           <div className="flex items-center gap-2">
             <div className="hidden items-center gap-2 rounded-full border border-border/70 bg-card/60 px-3 py-1 text-xs backdrop-blur-xl md:flex">
-              <div className="flex size-7 items-center justify-center rounded-full bg-brand/10 font-display text-xs font-extrabold text-brand">
-                {state.currentUser.avatar}
+              <div className="flex size-7 items-center justify-center overflow-hidden rounded-full bg-brand/10 font-display text-xs font-extrabold text-brand">
+                {state.currentUser.avatar && (state.currentUser.avatar.startsWith("http") || state.currentUser.avatar.startsWith("data:") || state.currentUser.avatar.startsWith("/")) ? (
+                  <img src={state.currentUser.avatar} alt={state.currentUser.name} className="h-full w-full object-cover" />
+                ) : (
+                  (state.currentUser.avatar || state.currentUser.name.slice(0, 2).toUpperCase())
+                )}
               </div>
               <div className="text-left leading-none">
                 <p className="font-bold text-foreground">{state.currentUser.name}</p>

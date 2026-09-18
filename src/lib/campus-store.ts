@@ -2788,7 +2788,55 @@ export const campusStore = {
     campusStore.setState(() => ({ announcements: updated }));
   },
 
-  // --- Google OAuth Enterprise Flow ---
+  updateUserProfilePicture(photoUrl: string): void {
+    const state = campusStore.getState();
+    const currentProfile = state.currentUser;
+    if (!currentProfile) return;
+
+    const updatedProfile = {
+      ...currentProfile,
+      avatar: photoUrl,
+    };
+
+    campusStore.setState((prev) => ({
+      currentUser: updatedProfile,
+      digitalId: {
+        ...prev.digitalId,
+        photoUrl: (photoUrl && (photoUrl.startsWith("http") || photoUrl.startsWith("data:") || photoUrl.startsWith("/"))) ? photoUrl : prev.digitalId.photoUrl,
+      },
+    }));
+
+    // Update locally stored accounts
+    const allAccounts = getStoredAccounts();
+    const updatedAccounts = allAccounts.map((acc) => {
+      if (
+        acc.email.toLowerCase() === currentProfile.email.toLowerCase() ||
+        acc.idOrRoll.toLowerCase() === currentProfile.rollNo.toLowerCase()
+      ) {
+        return {
+          ...acc,
+          profile: {
+            ...acc.profile,
+            avatar: photoUrl,
+          },
+        };
+      }
+      return acc;
+    });
+    saveStoredAccounts(updatedAccounts);
+
+    // Sync to Supabase accounts table
+    try {
+      supabaseAdmin
+        .from("accounts")
+        .update({ avatar: photoUrl })
+        .eq("email", currentProfile.email)
+        .then(() => {})
+        .catch(() => {});
+    } catch (e) {
+      console.warn("Failed to sync avatar to Supabase:", e);
+    }
+  },
   loginWithGoogle(userOverride?: { name?: string; email?: string; rollNo?: string; photo?: string }): { success: boolean; message: string } {
     const email = userOverride?.email || "omthakkar168@gsfcuniversity.ac.in";
     const name = userOverride?.name || "Om Thakkar";

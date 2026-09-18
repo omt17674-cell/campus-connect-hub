@@ -1,3 +1,4 @@
+import React, { useState } from "react";
 import {
   Award,
   BookOpen,
@@ -10,15 +11,19 @@ import {
   RefreshCw,
   ShieldCheck,
   User,
+  Camera,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CampusState, campusStore } from "@/lib/campus-store";
+import { ChangeProfilePictureModal } from "@/components/profile/ChangeProfilePictureModal";
 
 interface ProfileViewProps {
   state: CampusState;
 }
 
 export function ProfileView({ state }: ProfileViewProps) {
+  const [isChangePhotoOpen, setIsChangePhotoOpen] = useState(false);
+
   const user = state?.currentUser || {
     id: "u-om",
     name: "Om Thakkar",
@@ -34,6 +39,9 @@ export function ProfileView({ state }: ProfileViewProps) {
     attendanceRate: 91,
     badges: ["b1", "b2", "b3", "b5"],
   };
+
+  const isPhotoUrl = (url?: string) =>
+    Boolean(url && (url.startsWith("http") || url.startsWith("data:") || url.startsWith("/")));
 
   const handleExportStudentRecord = () => {
     const records = state?.attendanceRecords || [];
@@ -72,12 +80,33 @@ export function ProfileView({ state }: ProfileViewProps) {
 
   return (
     <div className="flex flex-col gap-6">
+      <ChangeProfilePictureModal
+        isOpen={isChangePhotoOpen}
+        onClose={() => setIsChangePhotoOpen(false)}
+        currentAvatar={user.avatar}
+        userName={user.name}
+      />
+
       {/* Profile Header Card */}
       <div className="rounded-3xl border border-border/80 bg-card/60 p-6 shadow-xl shadow-brand/5 backdrop-blur-2xl">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
-            <div className="flex size-16 items-center justify-center rounded-2xl bg-gradient-to-br from-[#1A3C6E] to-[#0E2342] font-display text-2xl font-black text-[#F2A93B] shadow-lg shadow-[#1A3C6E]/20">
-              {user.avatar}
+            <div
+              className="relative group size-16 shrink-0 cursor-pointer overflow-hidden rounded-2xl border-2 border-[#F2A93B] shadow-lg shadow-[#1A3C6E]/20 bg-gradient-to-br from-[#1A3C6E] to-[#0E2342] flex items-center justify-center"
+              onClick={() => setIsChangePhotoOpen(true)}
+              title="Click to Change Profile Picture"
+            >
+              {isPhotoUrl(user.avatar) ? (
+                <img src={user.avatar} alt={user.name} className="h-full w-full object-cover" />
+              ) : (
+                <span className="font-display text-2xl font-black text-[#F2A93B]">
+                  {user.avatar || user.name.slice(0, 2).toUpperCase()}
+                </span>
+              )}
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity text-white text-[9px] font-bold gap-0.5">
+                <Camera className="size-3.5 text-[#F2A93B]" />
+                <span>Change</span>
+              </div>
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -97,15 +126,26 @@ export function ProfileView({ state }: ProfileViewProps) {
             </div>
           </div>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleExportStudentRecord}
-            className="h-9 gap-1.5 rounded-xl border-border/80 text-xs font-bold"
-          >
-            <Download className="size-3.5" />
-            Export Co-Curricular Record (CSV)
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsChangePhotoOpen(true)}
+              className="h-9 gap-1.5 rounded-xl border-brand/40 text-xs font-bold text-brand hover:bg-brand/10"
+            >
+              <Camera className="size-3.5 text-[#F2A93B]" />
+              Change Photo
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportStudentRecord}
+              className="h-9 gap-1.5 rounded-xl border-border/80 text-xs font-bold"
+            >
+              <Download className="size-3.5" />
+              Export Co-Curricular Record (CSV)
+            </Button>
+          </div>
         </div>
 
         {/* Info Grid */}
