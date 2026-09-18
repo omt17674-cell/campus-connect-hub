@@ -54,7 +54,6 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [autoAppendDomain, setAutoAppendDomain] = useState(true);
-  const [showCredentialsSheet, setShowCredentialsSheet] = useState(false);
   const [showCampusTour, setShowCampusTour] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
 
@@ -84,30 +83,6 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
   const handleRoleChange = (role: UserRole) => {
     setSelectedRole(role);
     setStatusMessage(null);
-  };
-
-  // 1-Click Fast Role Sign-in
-  const handleFastSignIn = async (account: CampusAccount) => {
-    setSelectedRole(account.role);
-    setIdentifier(account.email);
-    setPassword(account.password);
-    setIsLoggingIn(true);
-
-    try {
-      if (account.email && account.password) {
-        await supabase.auth.signInWithPassword({
-          email: account.email,
-          password: account.password,
-        }).catch(() => {});
-      }
-    } catch {}
-
-    campusStore.loginWithAccount(account);
-    setIsLoggingIn(false);
-    setStatusMessage({ text: `Logged in as ${account.name}`, type: "success" });
-    if (onLoginSuccess) {
-      onLoginSuccess();
-    }
   };
 
   // Standard Login Submit
@@ -500,17 +475,6 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => setShowCredentialsSheet(true)}
-            className="hidden h-8 gap-1.5 rounded-lg border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 md:flex"
-          >
-            <KeyRound className="size-3.5 text-amber-500" />
-            <span>View All Passwords</span>
-          </Button>
-
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
             onClick={() => setShowCampusTour(true)}
             className="h-8 gap-1.5 rounded-lg border-[#1A3C6E]/30 bg-white px-2.5 text-xs font-bold text-[#1A3C6E] shadow-sm hover:bg-blue-50"
           >
@@ -644,7 +608,8 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
                     type="text"
                     value={identifier}
                     onChange={(e) => setIdentifier(e.target.value)}
-                    placeholder={selectedRole === "student" ? "omthakkar168@gmail.com / 24BT04171" : "official.id@gsfcuniversity.ac.in"}
+                    placeholder={selectedRole === "student" ? "GSFC University Email or Roll No" : "official.id@gsfcuniversity.ac.in"}
+                    autoComplete="username"
                     className="w-full bg-transparent px-3 py-2.5 text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none"
                   />
                   {selectedRole === "student" && (
@@ -703,71 +668,6 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
                 >
                   Forgot Password ?
                 </button>
-              </div>
-
-              <div className="mt-5 border-t border-slate-200 pt-4">
-                <div className="flex items-center justify-between text-[11px]">
-                  <span className="flex items-center gap-1 font-bold text-slate-700">
-                    <Sparkles className="size-3 text-amber-500" />
-                    <span>1-CLICK FAST ROLE SIGN-IN</span>
-                  </span>
-                  <span className="text-[10px] font-semibold text-amber-600">
-                    Stored Passwords Auto-Filled
-                  </span>
-                </div>
-
-                <div className="mt-2.5 grid grid-cols-3 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleFastSignIn(STUDENT_ACCOUNT)}
-                    className={cn(
-                      "flex flex-col items-center justify-center rounded-xl border p-2 text-center transition-all hover:scale-105",
-                      selectedRole === "student"
-                        ? "border-[#1A3C6E] bg-blue-50/70 text-[#1A3C6E] shadow-sm ring-1 ring-[#1A3C6E]/30"
-                        : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                    )}
-                  >
-                    <div className="flex size-7 items-center justify-center rounded-lg bg-[#1A3C6E]/10 text-[#1A3C6E]">
-                      <GraduationCap className="size-4" />
-                    </div>
-                    <span className="mt-1 text-[11px] font-black">24BT04171</span>
-                    <span className="text-[9px] font-bold text-slate-500">Student</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleFastSignIn(ADMIN_ACCOUNT)}
-                    className={cn(
-                      "flex flex-col items-center justify-center rounded-xl border p-2 text-center transition-all hover:scale-105",
-                      selectedRole === "admin"
-                        ? "border-[#1A3C6E] bg-blue-50/70 text-[#1A3C6E] shadow-sm ring-1 ring-[#1A3C6E]/30"
-                        : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                    )}
-                  >
-                    <div className="flex size-7 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600">
-                      <ShieldCheck className="size-4" />
-                    </div>
-                    <span className="mt-1 text-[11px] font-black">Administration</span>
-                    <span className="text-[9px] font-bold text-slate-500">Dean Office</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleFastSignIn(TPC_ADMIN_ACCOUNT)}
-                    className={cn(
-                      "flex flex-col items-center justify-center rounded-xl border p-2 text-center transition-all hover:scale-105",
-                      selectedRole === "organizer"
-                        ? "border-[#1A3C6E] bg-blue-50/70 text-[#1A3C6E] shadow-sm ring-1 ring-[#1A3C6E]/30"
-                        : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                    )}
-                  >
-                    <div className="flex size-7 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600">
-                      <UserCheck className="size-4" />
-                    </div>
-                    <span className="mt-1 text-[11px] font-black">TPC Admin</span>
-                    <span className="text-[9px] font-bold text-slate-500">Placement</span>
-                  </button>
-                </div>
               </div>
 
               <div className="mt-4 space-y-2">
@@ -914,7 +814,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
                           required
                           value={regRollNo}
                           onChange={(e) => setRegRollNo(e.target.value.toUpperCase())}
-                          placeholder="e.g. 24BT04171"
+                          placeholder="e.g. 24BT01001"
                           className="w-full bg-transparent px-2.5 py-2 font-mono text-xs font-bold text-slate-800 placeholder:text-slate-400 focus:outline-none"
                         />
                       </div>
@@ -1209,61 +1109,6 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
           )}
         </div>
       </main>
-
-      {/* Credential Modal Sheet */}
-      {showCredentialsSheet && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-          <div className="relative w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl">
-            <div className="flex items-center justify-between border-b pb-3">
-              <div className="flex items-center gap-2 font-display text-base font-black text-[#1A3C6E]">
-                <KeyRound className="size-5 text-amber-500" />
-                <span>All Login Accounts & Passwords</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowCredentialsSheet(false)}
-                className="rounded-full bg-slate-100 p-1.5 text-slate-500 hover:bg-slate-200"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="mt-4 space-y-3">
-              {allAccounts.map((acc) => (
-                <div
-                  key={acc.idOrRoll}
-                  className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-xs"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-[#1A3C6E]">{acc.roleTitle}</span>
-                    <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-black text-[#1A3C6E]">
-                      {acc.roleBadge}
-                    </span>
-                  </div>
-                  <div className="mt-2 grid grid-cols-[80px_1fr] gap-1 text-slate-600">
-                    <span className="font-semibold text-slate-400">Name:</span>
-                    <span className="font-bold text-slate-800">{acc.name}</span>
-                    <span className="font-semibold text-slate-400">ID / Email:</span>
-                    <span className="font-mono text-slate-800">{acc.email}</span>
-                    <span className="font-semibold text-slate-400">Password:</span>
-                    <span className="font-mono font-bold text-emerald-600">{acc.password}</span>
-                  </div>
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      setShowCredentialsSheet(false);
-                      handleFastSignIn(acc);
-                    }}
-                    className="mt-2.5 h-7 w-full rounded-lg bg-[#1A3C6E] text-[11px] font-bold text-white hover:bg-[#1A3C6E]/90"
-                  >
-                    Auto-Fill & Sign In as {acc.role.toUpperCase()}
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Sweeping Orange Wave Curve Graphic (Bottom Left Corner) */}
       <div className="pointer-events-none absolute bottom-9 left-0 z-10 h-24 w-80 overflow-hidden sm:h-32 sm:w-[420px]">
