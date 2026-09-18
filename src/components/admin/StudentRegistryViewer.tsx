@@ -309,24 +309,33 @@ export function StudentRegistryViewer({ state }: StudentRegistryViewerProps) {
                       </span>
                     </td>
 
-                    {/* Hostel / Commute */}
+                    {/* Hostel / Commute Campus Location */}
                     <td className="px-4 py-3.5">
-                      <div className="flex items-center gap-1.5 text-foreground">
+                      <div className="flex flex-col gap-0.5">
                         {stu.residenceType === "hostel" ? (
-                          <>
-                            <Home className="size-3.5 text-[#1A3C6E]" />
-                            <span className="text-[11px] font-semibold line-clamp-1">
-                              {stu.hostelBlockOrBusRoute || "Hostel Resident"}
+                          <div className="flex items-center gap-1.5 text-[#1A3C6E] dark:text-blue-300">
+                            <Home className="size-3.5 shrink-0 text-[#1A3C6E]" />
+                            <span className="text-[11px] font-bold">
+                              {stu.hostelBlockOrBusRoute || "GSFC Campus Hostel"}
                             </span>
-                          </>
+                            <span className="rounded bg-blue-500/10 px-1.5 py-0.2 text-[9px] font-black text-blue-700 dark:text-blue-300">
+                              On-Campus
+                            </span>
+                          </div>
                         ) : (
-                          <>
-                            <Bus className="size-3.5 text-amber-600" />
-                            <span className="text-[11px] font-semibold line-clamp-1">
-                              {stu.hostelBlockOrBusRoute || "Day Scholar Bus"}
+                          <div className="flex items-center gap-1.5 text-amber-800 dark:text-amber-300">
+                            <Bus className="size-3.5 shrink-0 text-amber-600" />
+                            <span className="text-[11px] font-bold">
+                              {stu.hostelBlockOrBusRoute || "Vadodara Bus Route"}
                             </span>
-                          </>
+                            <span className="rounded bg-amber-500/10 px-1.5 py-0.2 text-[9px] font-black text-amber-700 dark:text-amber-400">
+                              Day Scholar
+                            </span>
+                          </div>
                         )}
+                        <span className="text-[10px] text-muted-foreground">
+                          {stu.residenceType === "hostel" ? "Resident on GSFC Campus" : "Commutes to GSFC Campus"}
+                        </span>
                       </div>
                     </td>
 
