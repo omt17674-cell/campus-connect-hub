@@ -377,25 +377,24 @@ export function QRScannerModal({ onClose, onSuccess }: QRScannerModalProps) {
               <h4 className="mt-3 font-display text-lg font-black">Check-in Blocked</h4>
               <p className="mt-1 text-xs text-rose-200 leading-relaxed">{errorMessage}</p>
 
-              <div className="mt-4 flex flex-wrap justify-center gap-2">
+              <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
                 <Button
                   size="sm"
                   onClick={() => setScanStatus("ready")}
-                  className="rounded-xl bg-white text-rose-950 hover:bg-white/90"
+                  className="rounded-xl bg-white font-bold text-rose-950 shadow-md hover:bg-white/90"
                 >
                   <RefreshCw className="mr-1.5 size-3.5" /> Try Again
                 </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
+                <button
+                  type="button"
                   onClick={() => {
                     setLocationBypass(true);
                     setScanStatus("ready");
                   }}
-                  className="rounded-xl border-white/40 text-xs text-white hover:bg-white/10"
+                  className="inline-flex items-center justify-center rounded-xl border border-rose-300/50 bg-rose-900/90 px-3.5 py-1.5 text-xs font-bold text-white shadow-sm transition-colors hover:bg-rose-800 hover:border-rose-200"
                 >
                   Bypass Geofence (Admin Demo)
-                </Button>
+                </button>
               </div>
             </div>
           )}
