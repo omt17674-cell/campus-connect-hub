@@ -203,6 +203,8 @@ export const apiClient = {
   async updateStudentProfile(payload: {
     studentId: string;
     fullName?: string;
+    rollNo?: string;
+    email?: string;
     mobileNumber?: string;
     school?: string;
     department?: string;
@@ -212,6 +214,7 @@ export const apiClient = {
     hostelBlockOrBusRoute?: string;
     clubsInterested?: string[];
     verifiedByUniversity?: boolean;
+    isAdminOverride?: boolean;
   }) {
     try {
       const res = await fetch("/api/students/profile/update", {

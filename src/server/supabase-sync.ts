@@ -472,6 +472,8 @@ export const supabaseSync = {
     studentId: string,
     updates: {
       fullName?: string;
+      rollNo?: string;
+      email?: string;
       mobileNumber?: string;
       school?: string;
       department?: string;
@@ -492,6 +494,9 @@ export const supabaseSync = {
       const dbPayload: any = {
         updated_at: new Date().toISOString(),
       };
+      if (updates.fullName !== undefined) dbPayload.full_name = updates.fullName;
+      if (updates.rollNo !== undefined) dbPayload.roll_no = updates.rollNo;
+      if (updates.email !== undefined) dbPayload.email = updates.email;
       if (updates.mobileNumber !== undefined) dbPayload.mobile_number = updates.mobileNumber;
       if (updates.school !== undefined) dbPayload.school = updates.school;
       if (updates.department !== undefined) dbPayload.department = updates.department;
@@ -513,6 +518,9 @@ export const supabaseSync = {
 
       // Also update accounts table if exists
       const accountUpdates: any = {};
+      if (updates.fullName !== undefined) accountUpdates.name = updates.fullName;
+      if (updates.rollNo !== undefined) accountUpdates.roll_no = updates.rollNo;
+      if (updates.email !== undefined) accountUpdates.email = updates.email;
       if (updates.mobileNumber !== undefined) accountUpdates.mobile_number = updates.mobileNumber;
       if (updates.department !== undefined) accountUpdates.department = updates.department;
       if (updates.semester !== undefined) accountUpdates.semester = updates.semester;
@@ -525,6 +533,9 @@ export const supabaseSync = {
 
       const updatedStudent: NewRegisteredStudent = {
         ...current,
+        fullName: updates.fullName ?? current.fullName,
+        rollNo: updates.rollNo ?? current.rollNo,
+        email: updates.email ?? current.email,
         mobileNumber: updates.mobileNumber ?? current.mobileNumber,
         school: updates.school ?? current.school,
         department: updates.department ?? current.department,

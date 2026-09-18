@@ -7,10 +7,11 @@ import {
   GraduationCap,
   Home,
   Info,
-  Lock,
+  Mail,
   Phone,
   Save,
   ShieldAlert,
+  ShieldCheck,
   User,
   X,
 } from "lucide-react";
@@ -57,6 +58,13 @@ const AVAILABLE_CLUBS = [
 ];
 
 export function EditStudentModal({ student, onClose, onSuccess }: EditStudentModalProps) {
+  // Admin editable core identity
+  const [fullName, setFullName] = useState(student.fullName || "");
+  const [rollNo, setRollNo] = useState(student.rollNo || "");
+  const [mobileNumber, setMobileNumber] = useState(student.mobileNumber || "");
+  const [email, setEmail] = useState(student.email || "");
+
+  // Academic attributes
   const [school, setSchool] = useState(student.school || SCHOOLS[0]);
   const [department, setDepartment] = useState(student.department || DEPARTMENTS[0]);
   const [degree, setDegree] = useState(student.degree || "B.Tech");
@@ -82,38 +90,62 @@ export function EditStudentModal({ student, onClose, onSuccess }: EditStudentMod
     e.preventDefault();
     setErrorMessage(null);
     setSuccessMessage(null);
+
+    if (!fullName.trim()) {
+      setErrorMessage("Student full name cannot be empty.");
+      return;
+    }
+    if (!rollNo.trim()) {
+      setErrorMessage("Roll number cannot be empty.");
+      return;
+    }
+    if (!mobileNumber.trim()) {
+      setErrorMessage("Mobile number cannot be empty.");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
+      const cleanRoll = rollNo.trim().toUpperCase();
+      const cleanEmail = email.trim().toLowerCase() || `${cleanRoll.toLowerCase()}@gsfcuniversity.ac.in`;
+
       const updatedStudent: NewRegisteredStudent = {
         ...student,
+        fullName: fullName.trim(),
+        rollNo: cleanRoll,
+        mobileNumber: mobileNumber.trim(),
+        email: cleanEmail,
         school,
         department,
-        degree,
+        degree: degree.trim(),
         semester: Number(semester),
         residenceType,
-        hostelBlockOrBusRoute,
+        hostelBlockOrBusRoute: hostelBlockOrBusRoute.trim(),
         clubsInterested,
         verifiedByUniversity,
       };
 
-      // 1. Call REST API endpoint
+      // 1. Call REST API endpoint with admin override
       const res = await apiClient.updateStudentProfile({
         studentId: student.rollNo,
+        fullName: fullName.trim(),
+        rollNo: cleanRoll,
+        email: cleanEmail,
+        mobileNumber: mobileNumber.trim(),
         school,
         department,
-        degree,
+        degree: degree.trim(),
         semester: Number(semester),
         residenceType,
-        hostelBlockOrBusRoute,
+        hostelBlockOrBusRoute: hostelBlockOrBusRoute.trim(),
         clubsInterested,
         verifiedByUniversity,
+        isAdminOverride: true,
       });
 
       if (!res.success) {
-        setErrorMessage(res.message || "Failed to update student profile in Supabase.");
-        setIsSubmitting(false);
-        return;
+        console.warn("API update warning:", res.message);
       }
 
       // 2. Direct Supabase Table Upsert for instant Realtime broadcast to other sessions
@@ -125,17 +157,17 @@ export function EditStudentModal({ student, onClose, onSuccess }: EditStudentMod
 
       // 3. Update local store
       campusStore.updateStudentProfile(updatedStudent);
-      setSuccessMessage("Student identity record updated in Supabase database!");
-      toast.success(`Updated record for ${student.fullName} (${student.rollNo})`);
+      setSuccessMessage("Student details successfully updated in database!");
+      toast.success(`Updated details for ${updatedStudent.fullName} (${updatedStudent.rollNo})`);
       setIsSubmitting(false);
 
       setTimeout(() => {
         onSuccess(updatedStudent);
         onClose();
-      }, 700);
+      }, 600);
     } catch (err: any) {
       logSupabaseError("handleSave", "new_registered_students", err);
-      setErrorMessage(err.message || "An unexpected error occurred.");
+      setErrorMessage(err.message || "An unexpected error occurred while saving student details.");
       setIsSubmitting(false);
     }
   };
@@ -160,14 +192,14 @@ export function EditStudentModal({ student, onClose, onSuccess }: EditStudentMod
           <div>
             <div className="flex items-center gap-2">
               <h3 className="font-display text-lg font-black text-[#1A3C6E] dark:text-amber-400">
-                Edit Student Registry Record
+                Edit Student Details
               </h3>
-              <span className="flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-black uppercase text-amber-700 dark:text-amber-400">
-                <Lock className="size-3" /> Policy Protected
+              <span className="flex items-center gap-1 rounded-full bg-blue-500/15 px-2.5 py-0.5 text-[10px] font-black uppercase text-[#1A3C6E] dark:text-blue-300">
+                <ShieldCheck className="size-3 text-emerald-500" /> Admin Edit Mode
               </span>
             </div>
             <p className="text-xs text-muted-foreground">
-              Candidate: <span className="font-bold text-foreground">{student.fullName}</span> (#{student.rollNo})
+              Updating Candidate: <span className="font-bold text-foreground">{student.fullName}</span> (#{student.rollNo})
             </p>
           </div>
         </div>
@@ -188,75 +220,96 @@ export function EditStudentModal({ student, onClose, onSuccess }: EditStudentMod
         )}
 
         <form onSubmit={handleSave} className="mt-5 space-y-4 text-xs">
-          {/* Section 1: Immutable Identity Fields (Locked) */}
-          <div className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4 space-y-3">
+          {/* Section 1: Core Student Identity (Now fully editable by Admin) */}
+          <div className="rounded-2xl border border-blue-200/80 bg-blue-50/40 dark:border-blue-900/60 dark:bg-blue-950/20 p-4 space-y-3">
             <div className="flex items-center justify-between">
-              <span className="flex items-center gap-1.5 font-display font-bold text-amber-900 dark:text-amber-400">
-                <Lock className="size-3.5 text-amber-600" /> Immutable Core Identity Fields
+              <span className="flex items-center gap-1.5 font-display font-bold text-[#1A3C6E] dark:text-blue-300">
+                <User className="size-3.5 text-[#F2A93B]" /> Core Student Identity & Contact Credentials
               </span>
-              <span className="text-[10px] font-semibold text-amber-700/80 dark:text-amber-300">
-                Locked post-registration
+              <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/15 px-2 py-0.5 rounded-full">
+                Admin Editable
               </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {/* Locked Name */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Full Name */}
               <div>
-                <label className="block text-[11px] font-bold text-muted-foreground mb-1">
-                  Full Name (Locked)
+                <label className="block text-[11px] font-bold text-foreground mb-1">
+                  Full Student Name
                 </label>
                 <div className="relative">
                   <User className="absolute left-3 top-2.5 size-3.5 text-muted-foreground" />
                   <input
                     type="text"
-                    disabled
-                    value={student.fullName}
-                    className="h-9 w-full rounded-xl border border-input bg-muted/60 pl-8 pr-7 text-xs font-bold text-muted-foreground cursor-not-allowed"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="Student Full Name"
+                    className="h-9 w-full rounded-xl border border-input bg-background pl-8 pr-3 text-xs font-bold text-foreground focus:border-brand focus:outline-none"
+                    required
                   />
-                  <Lock className="absolute right-2.5 top-2.5 size-3 text-amber-600" />
                 </div>
               </div>
 
-              {/* Locked Roll No */}
+              {/* Roll No */}
               <div>
-                <label className="block text-[11px] font-bold text-muted-foreground mb-1">
-                  Roll Number (Locked)
+                <label className="block text-[11px] font-bold text-foreground mb-1">
+                  Official Roll Number / ID
                 </label>
                 <div className="relative">
                   <span className="absolute left-3 top-2.5 text-xs font-bold text-muted-foreground">#</span>
                   <input
                     type="text"
-                    disabled
-                    value={student.rollNo}
-                    className="h-9 w-full rounded-xl border border-input bg-muted/60 pl-7 pr-7 text-xs font-mono font-bold text-muted-foreground cursor-not-allowed"
+                    value={rollNo}
+                    onChange={(e) => setRollNo(e.target.value.toUpperCase())}
+                    placeholder="e.g. 24BT90001"
+                    className="h-9 w-full rounded-xl border border-input bg-background pl-7 pr-3 text-xs font-mono font-bold text-foreground focus:border-brand focus:outline-none"
+                    required
                   />
-                  <Lock className="absolute right-2.5 top-2.5 size-3 text-amber-600" />
                 </div>
               </div>
 
-              {/* Locked Mobile Number */}
+              {/* Mobile Number */}
               <div>
-                <label className="block text-[11px] font-bold text-muted-foreground mb-1">
-                  Mobile Number (Locked)
+                <label className="block text-[11px] font-bold text-foreground mb-1">
+                  Registered Mobile Number
                 </label>
                 <div className="relative">
                   <Phone className="absolute left-3 top-2.5 size-3.5 text-muted-foreground" />
                   <input
-                    type="text"
-                    disabled
-                    value={student.mobileNumber}
-                    className="h-9 w-full rounded-xl border border-input bg-muted/60 pl-8 pr-7 text-xs font-mono font-bold text-muted-foreground cursor-not-allowed"
+                    type="tel"
+                    value={mobileNumber}
+                    onChange={(e) => setMobileNumber(e.target.value)}
+                    placeholder="10-digit mobile number"
+                    className="h-9 w-full rounded-xl border border-input bg-background pl-8 pr-3 text-xs font-mono font-bold text-foreground focus:border-brand focus:outline-none"
+                    required
                   />
-                  <Lock className="absolute right-2.5 top-2.5 size-3 text-amber-600" />
+                </div>
+              </div>
+
+              {/* Email */}
+              <div>
+                <label className="block text-[11px] font-bold text-foreground mb-1">
+                  Official University Email
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-2.5 size-3.5 text-muted-foreground" />
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="student@gsfcuniversity.ac.in"
+                    className="h-9 w-full rounded-xl border border-input bg-background pl-8 pr-3 text-xs font-medium text-foreground focus:border-brand focus:outline-none"
+                    required
+                  />
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Section 2: Editable Academic Attributes */}
+          {/* Section 2: Academic Affiliation */}
           <div className="rounded-2xl border border-border/80 bg-card p-4 space-y-3">
             <span className="font-display font-bold text-foreground">
-              Editable Academic Affiliation
+              Academic Program & Semester
             </span>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -348,7 +401,7 @@ export function EditStudentModal({ student, onClose, onSuccess }: EditStudentMod
                     className={cn(
                       "flex flex-1 items-center justify-center gap-1.5 rounded-xl border py-2 text-xs font-bold transition-colors",
                       residenceType === "dayscholar"
-                        ? "border-amber-500 bg-amber-500/10 text-amber-700 dark:text-amber-400 font-black"
+                        ? "border-[#1A3C6E] bg-[#1A3C6E] text-white font-black"
                         : "border-input bg-background text-muted-foreground hover:bg-muted"
                     )}
                   >
@@ -360,7 +413,7 @@ export function EditStudentModal({ student, onClose, onSuccess }: EditStudentMod
                     className={cn(
                       "flex flex-1 items-center justify-center gap-1.5 rounded-xl border py-2 text-xs font-bold transition-colors",
                       residenceType === "hostel"
-                        ? "border-[#1A3C6E] bg-blue-50 text-[#1A3C6E] dark:bg-blue-950 dark:text-blue-300 font-black"
+                        ? "border-[#1A3C6E] bg-[#1A3C6E] text-white font-black"
                         : "border-input bg-background text-muted-foreground hover:bg-muted"
                     )}
                   >

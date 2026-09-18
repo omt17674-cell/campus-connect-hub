@@ -957,7 +957,9 @@ export const campusStore = {
   updateStudentProfile(student: NewRegisteredStudent) {
     campusStore.setState((prev) => {
       const updatedList = (prev.newRegisteredStudents || []).map((s) =>
-        s.rollNo.toUpperCase() === student.rollNo.toUpperCase() ? { ...s, ...student } : s
+        s.id === student.id || s.rollNo.toUpperCase() === student.rollNo.toUpperCase()
+          ? { ...s, ...student }
+          : s
       );
       return { newRegisteredStudents: updatedList };
     });

@@ -980,6 +980,7 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
       fullName?: string;
       mobileNumber?: string;
       rollNo?: string;
+      email?: string;
       school?: string;
       department?: string;
       degree?: string;
@@ -988,6 +989,7 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
       hostelBlockOrBusRoute?: string;
       clubsInterested?: string[];
       verifiedByUniversity?: boolean;
+      isAdminOverride?: boolean;
     }>(request);
 
     if (!body || !body.studentId) {
@@ -1000,15 +1002,16 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
       return jsonResponse({ success: false, message: "Student record not found in Supabase." }, 404);
     }
 
-    // Check if attempt is made to mutate immutable core academic identity fields (Full Name and Roll Number)
+    // Allow Admin override to edit all student fields
     if (
-      (body.fullName && body.fullName.trim() !== currentStudent.fullName) ||
-      (body.rollNo && body.rollNo.trim().toUpperCase() !== currentStudent.rollNo)
+      !body.isAdminOverride &&
+      ((body.fullName && body.fullName.trim() !== currentStudent.fullName) ||
+      (body.rollNo && body.rollNo.trim().toUpperCase() !== currentStudent.rollNo))
     ) {
       return jsonResponse({
         success: false,
         error: "IMMUTABLE_FIELD_MODIFICATION_BLOCKED",
-        message: "SECURITY POLICY VIOLATION: Student Full Name and Enrolment Roll Number are permanently locked after registration and cannot be modified under any circumstances.",
+        message: "SECURITY POLICY: Student Full Name and Roll Number require Admin override to modify.",
         lockedFields: ["fullName", "rollNo"],
       }, 403);
     }
@@ -1027,6 +1030,9 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
     }
 
     const updateRes = await supabaseSync.updateStudentProfile(currentStudent.rollNo, {
+      fullName: body.fullName?.trim(),
+      rollNo: body.rollNo?.trim().toUpperCase(),
+      email: body.email?.trim().toLowerCase(),
       mobileNumber: cleanMobile,
       school: body.school,
       department: body.department,
