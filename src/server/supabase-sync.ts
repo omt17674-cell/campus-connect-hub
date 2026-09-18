@@ -1,4 +1,4 @@
-import { supabaseAdmin } from "../lib/supabase";
+import { supabaseAdmin } from "./supabase-admin";
 import {
   CampusEvent,
   Registration,

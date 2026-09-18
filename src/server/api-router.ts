@@ -1,5 +1,5 @@
 import { supabaseSync } from "./supabase-sync";
-import { supabaseAdmin } from "../lib/supabase";
+import { supabaseAdmin } from "./supabase-admin";
 import { CampusEvent, Registration, AttendanceRecord, ClubMember, CampusAnnouncement, VisitorRecord, VehicleRecord } from "../lib/types";
 
 // Helper for standardized JSON HTTP responses
