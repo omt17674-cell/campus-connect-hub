@@ -9,14 +9,17 @@ import {
   QrCode,
   RefreshCw,
   ShieldCheck,
+  UserCheck,
   Users,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CampusEvent } from "@/lib/types";
-import { CampusState } from "@/lib/campus-store";
+import { CampusState, campusStore } from "@/lib/campus-store";
 import { generateQrDataUrl, generateQrPayload, QR_ROTATION_INTERVAL_SECONDS } from "@/lib/qr-engine";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/lib/supabase";
+import { toast } from "sonner";
 
 interface LiveAttendanceModalProps {
   event: CampusEvent;
@@ -26,18 +29,59 @@ interface LiveAttendanceModalProps {
 
 export function LiveAttendanceModal({
   event,
-  state,
+  state: initialState,
   onClose,
 }: LiveAttendanceModalProps) {
+  const [storeState, setStoreState] = useState<CampusState>(initialState);
+  const [activeTab, setActiveTab] = useState<"scans" | "registered">("registered");
   const [qrDataUrl, setQrDataUrl] = useState<string>("");
   const [secondsRemaining, setSecondsRemaining] = useState<number>(QR_ROTATION_INTERVAL_SECONDS);
   const [currentToken, setCurrentToken] = useState<string>("");
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // Filter attendance for this event
-  const checkedInList = state.attendanceRecords.filter((a) => a.eventId === event.id);
-  const totalRegistered = event.registeredCount || 86;
-  const attendanceRate = Math.round((checkedInList.length / (totalRegistered || 1)) * 100);
+  // Subscribe to reactive campusStore updates
+  useEffect(() => {
+    const unsub = campusStore.subscribe((next) => {
+      setStoreState(next);
+    });
+    return () => unsub();
+  }, []);
+
+  // Supabase Realtime listeners for immediate live updates when a student scans or registers
+  useEffect(() => {
+    campusStore.loadFromSupabase();
+
+    const channel = supabase
+      .channel(`live-session-${event.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "attendance" },
+        () => {
+          campusStore.loadFromSupabase();
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "registrations" },
+        () => {
+          campusStore.loadFromSupabase();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [event.id]);
+
+  // Real live data calculations
+  const currentEvent = storeState.events.find((e) => e.id === event.id) || event;
+  const eventRegistrations = (storeState.registrations || []).filter((r) => r.eventId === event.id);
+  const totalRegistered = Math.max(eventRegistrations.length, currentEvent.registeredCount || 0);
+
+  const checkedInList = (storeState.attendanceRecords || []).filter((a) => a.eventId === event.id);
+  const checkInCount = checkedInList.length;
+  const turnoutPercent = totalRegistered > 0 ? Math.min(100, Math.round((checkInCount / totalRegistered) * 100)) : 0;
 
   // Generate & rotate QR code every 45s
   useEffect(() => {
@@ -67,6 +111,12 @@ export function LiveAttendanceModal({
     return () => clearInterval(timer);
   }, [event.id, event.title]);
 
+  const handleConclude = () => {
+    const res = campusStore.endAndConcludeEvent(event.id);
+    toast.success(res.message);
+    onClose();
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-md">
       <div
@@ -81,16 +131,16 @@ export function LiveAttendanceModal({
         <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center gap-2">
-              <span className="flex size-2.5 animate-ping rounded-full bg-emerald-500" />
+              <span className="flex size-2 rounded-full bg-emerald-500" />
               <span className="rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
                 Live Attendance Session
               </span>
               <span className="text-xs font-semibold text-muted-foreground">
-                {event.venue}
+                {currentEvent.venue || "Campus Venue"}
               </span>
             </div>
             <h2 className="mt-1 font-display text-xl font-black text-foreground sm:text-2xl">
-              {event.title}
+              {currentEvent.title}
             </h2>
           </div>
 
@@ -164,12 +214,15 @@ export function LiveAttendanceModal({
                 <span className="text-xs font-bold uppercase tracking-wider text-[#F2A93B]">
                   Verified Check-ins
                 </span>
-                <Users className="size-4 text-slate-300" />
+                <span className="flex items-center gap-1.5 rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-bold text-white">
+                  <Users className="size-3 text-[#F2A93B]" />
+                  <span>{totalRegistered} Registered</span>
+                </span>
               </div>
 
               <div className="mt-3 flex items-baseline gap-2">
                 <span className="font-display text-4xl font-black sm:text-5xl">
-                  {checkedInList.length + 61}
+                  {checkInCount}
                 </span>
                 <span className="text-xs text-slate-300">
                   of {totalRegistered} registered
@@ -179,44 +232,116 @@ export function LiveAttendanceModal({
               {/* Progress Bar */}
               <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-white/20">
                 <div
-                  className="h-full rounded-full bg-[#F2A93B]"
-                  style={{ width: `${Math.min(100, ((checkedInList.length + 61) / totalRegistered) * 100)}%` }}
+                  className="h-full rounded-full bg-[#F2A93B] transition-all duration-500"
+                  style={{ width: `${turnoutPercent}%` }}
                 />
               </div>
-              <p className="mt-1.5 text-right text-[10px] font-bold text-[#F2A93B]">
-                {Math.min(100, Math.round(((checkedInList.length + 61) / totalRegistered) * 100))}% Turnout
-              </p>
+              <div className="mt-1.5 flex items-center justify-between text-[10px] font-bold text-slate-300">
+                <span>Capacity: {currentEvent.capacity}</span>
+                <span className="text-[#F2A93B]">{turnoutPercent}% Turnout</span>
+              </div>
             </div>
 
-            {/* Live Attendance Feed Ticker */}
+            {/* Live Feed Container with Tabs for Registered vs Checked-In */}
             <div className="flex flex-1 flex-col rounded-3xl border border-border/80 bg-card/60 p-4 backdrop-blur-xl">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                Recent Scans Live Feed
-              </h4>
-
-              <div className="mt-2.5 max-h-40 flex-1 space-y-2 overflow-y-auto pr-1">
-                {[
-                  ...(checkedInList.map((a) => ({ name: a.userName, roll: a.userRollNo, time: "Just now" }))),
-                  { name: "Aarav Mehta", roll: "GSFC-CS-0142", time: "2 min ago" },
-                  { name: "Pooja Varma", roll: "GSFC-CS-0189", time: "3 min ago" },
-                  { name: "Rohan Dave", roll: "GSFC-CS-0201", time: "4 min ago" },
-                  { name: "Tanvi Bhatt", roll: "GSFC-CS-0091", time: "5 min ago" },
-                ].map((item, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-center justify-between rounded-xl border border-border/60 bg-card/40 px-3 py-1.5 text-xs"
+              <div className="flex items-center justify-between border-b border-border/60 pb-2">
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("registered")}
+                    className={cn(
+                      "px-2.5 py-1 text-[11px] font-bold rounded-lg transition-colors",
+                      activeTab === "registered"
+                        ? "bg-[#1A3C6E] text-white"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
                   >
-                    <div className="flex items-center gap-2">
-                      <div className="flex size-6 items-center justify-center rounded-full bg-emerald-500/15 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
-                        <Check className="size-3" />
-                      </div>
-                      <span className="font-bold text-foreground">{item.name}</span>
-                      <span className="text-[10px] text-muted-foreground">({item.roll})</span>
-                    </div>
-                    <span className="text-[10px] text-muted-foreground">{item.time}</span>
-                  </div>
-                ))}
+                    Registered ({totalRegistered})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("scans")}
+                    className={cn(
+                      "px-2.5 py-1 text-[11px] font-bold rounded-lg transition-colors",
+                      activeTab === "scans"
+                        ? "bg-emerald-600 text-white"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    Scanned ({checkInCount})
+                  </button>
+                </div>
               </div>
+
+              {/* Tab 1: Registered Students */}
+              {activeTab === "registered" && (
+                <div className="mt-2.5 max-h-40 flex-1 space-y-2 overflow-y-auto pr-1">
+                  {eventRegistrations.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center p-6 text-center text-muted-foreground">
+                      <Users className="size-8 text-muted-foreground/30 mb-2" />
+                      <p className="text-xs font-bold text-foreground">0 Students Registered</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        Students who register from the event feed will appear here live.
+                      </p>
+                    </div>
+                  ) : (
+                    eventRegistrations.map((reg) => (
+                      <div
+                        key={reg.id}
+                        className="flex items-center justify-between rounded-xl border border-border/60 bg-card/40 px-3 py-1.5 text-xs"
+                      >
+                        <div>
+                          <span className="font-bold text-foreground">{reg.userName}</span>
+                          <span className="text-[10px] text-muted-foreground ml-1.5 font-mono">
+                            ({reg.userRollNo})
+                          </span>
+                          <p className="text-[10px] text-slate-500">{reg.department}</p>
+                        </div>
+                        <span className="rounded-full bg-blue-500/15 px-2 py-0.5 text-[9px] font-bold text-blue-600 dark:text-blue-400">
+                          {reg.status || "Registered"}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+
+              {/* Tab 2: Live Scans Check-in Feed */}
+              {activeTab === "scans" && (
+                <div className="mt-2.5 max-h-40 flex-1 space-y-2 overflow-y-auto pr-1">
+                  {checkedInList.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center p-6 text-center text-muted-foreground">
+                      <QrCode className="size-8 text-muted-foreground/30 mb-2" />
+                      <p className="text-xs font-bold text-foreground">Awaiting Student Scans</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        Students will appear here live when they scan this QR code.
+                      </p>
+                    </div>
+                  ) : (
+                    checkedInList.map((item, idx) => (
+                      <div
+                        key={item.id || idx}
+                        className="flex items-center justify-between rounded-xl border border-border/60 bg-card/40 px-3 py-1.5 text-xs"
+                      >
+                        <div className="flex items-center gap-2">
+                          <div className="flex size-6 items-center justify-center rounded-full bg-emerald-500/15 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                            <Check className="size-3" />
+                          </div>
+                          <div>
+                            <span className="font-bold text-foreground">{item.userName}</span>
+                            <span className="text-[10px] text-muted-foreground ml-1 font-mono">
+                              ({item.userRollNo})
+                            </span>
+                          </div>
+                        </div>
+                        <span className="text-[10px] text-muted-foreground font-mono">
+                          {item.punchInTime || "Checked in"}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -235,11 +360,7 @@ export function LiveAttendanceModal({
             </Button>
             <Button
               size="sm"
-              onClick={() => {
-                const res = campusStore.endAndConcludeEvent(event.id);
-                alert(`🎓 ${res.message}`);
-                onClose();
-              }}
+              onClick={handleConclude}
               className="rounded-xl bg-gradient-to-r from-emerald-600 to-[#1A3C6E] text-xs font-bold text-white shadow-md hover:opacity-95"
             >
               <Award className="mr-1.5 size-3.5 text-[#F2A93B]" />
