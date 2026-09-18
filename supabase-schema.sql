@@ -360,9 +360,7 @@ ON CONFLICT (id) DO NOTHING;
 -- ==============================================================================
 INSERT INTO public.new_registered_students (id, full_name, mobile_number, roll_no, email, school, department, degree, semester, residence_type, hostel_block_or_bus_route, clubs_interested, id_card_uploaded, is_locked, verified_by_university)
 VALUES
-  ('STU-OM4171', 'Om Thakkar', '+91 98765 04171', '24BT04171', 'omthakkar168@gsfcuniversity.ac.in', 'School of Technology (SOT)', 'Computer Science & Engineering', 'B.Tech', 4, 'hostel', 'Sardar Patel Boys Hostel - Block A', ARRAY['Coding & AI Club', 'Robotics Club'], true, true, true),
-  ('STU-PV4192', 'Pooja Varma', '+91 98240 19283', '24BT04192', 'pooja.v@gsfcuniversity.ac.in', 'School of Technology (SOT)', 'Computer Science & Engineering', 'B.Tech', 4, 'dayscholar', 'Route 4 - Vadodara Alkapuri', ARRAY['Chrysalis Cultural Guild'], true, true, true),
-  ('STU-RD4205', 'Rohan Dave', '+91 97250 88205', '24BT04205', 'rohan.d@gsfcuniversity.ac.in', 'School of Technology (SOT)', 'Chemical Engineering', 'B.Tech', 4, 'hostel', 'Sardar Patel Boys Hostel - Block A', ARRAY['GSFC E-Cell'], true, true, true)
+  ('STU-OM4171', 'Om Thakkar', '+91 98765 04171', '24BT04171', 'omthakkar168@gsfcuniversity.ac.in', 'School of Technology (SOT)', 'Computer Science & Engineering', 'B.Tech', 4, 'hostel', 'Sardar Patel Boys Hostel - Block A', ARRAY['Coding & AI Club', 'Robotics Club'], true, true, true)
 ON CONFLICT (id) DO NOTHING;
 
 -- ==============================================================================
