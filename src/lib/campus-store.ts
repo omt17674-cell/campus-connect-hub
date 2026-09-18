@@ -909,6 +909,15 @@ export const campusStore = {
     });
   },
 
+  updateStudentProfile(student: NewRegisteredStudent) {
+    campusStore.setState((prev) => {
+      const updatedList = (prev.newRegisteredStudents || []).map((s) =>
+        s.rollNo.toUpperCase() === student.rollNo.toUpperCase() ? { ...s, ...student } : s
+      );
+      return { newRegisteredStudents: updatedList };
+    });
+  },
+
   async loadFromSupabase(): Promise<void> {
     if (typeof window === "undefined" || !navigator.onLine) return;
     initSupabaseRealtimeSync();
@@ -1174,8 +1183,23 @@ export const campusStore = {
       details: `Status: ${regStatus} · Team: ${isTeam ? teamName : "Individual"}`,
     };
 
-    // Immediate write-through to Supabase
+    // Immediate write-through to Supabase & API Gateway
     try {
+      fetch("/api/events/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          eventId: newRegistration.eventId,
+          userId: newRegistration.userId,
+          userRollNo: newRegistration.userRollNo,
+          userName: newRegistration.userName,
+          department: newRegistration.department,
+          isTeam: newRegistration.isTeam,
+          teamName: newRegistration.teamName,
+          teamMembers: newRegistration.teamMembers,
+        }),
+      }).catch(() => {});
+
       supabase.from("registrations").upsert({
         id: newRegistration.id,
         event_id: newRegistration.eventId,

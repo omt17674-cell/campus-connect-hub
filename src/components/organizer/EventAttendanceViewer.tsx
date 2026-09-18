@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Award,
   Calendar,
@@ -14,6 +14,7 @@ import {
   LogOut,
   MapPin,
   Megaphone,
+  RefreshCw,
   Search,
   ShieldCheck,
   UserCheck,
@@ -28,6 +29,8 @@ import { generateCertificatePdf } from "@/lib/certificate-generator";
 import { generateEventCompletionReportPdf } from "@/lib/report-generator";
 import { LiveHeadcountTicker } from "@/components/faculty/LiveHeadcountTicker";
 import { EventBroadcastModal } from "@/components/faculty/EventBroadcastModal";
+import { supabase } from "@/lib/supabase";
+import { apiClient } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 
 interface EventAttendanceViewerProps {
@@ -59,11 +62,83 @@ export function EventAttendanceViewer({
   const [downloadingCertUserId, setDownloadingCertUserId] = useState<string | null>(null);
   const [showBroadcastModal, setShowBroadcastModal] = useState(false);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [fetchedRegistrations, setFetchedRegistrations] = useState<Registration[] | null>(null);
 
   const activeEvent = state.events.find((e) => e.id === currentEventId) || state.events[0];
 
-  // Get registrations for this specific event
-  const eventRegistrations = state.registrations.filter((r) => r.eventId === activeEvent?.id);
+  // Fetch registrations directly from Supabase for this event
+  const loadRegistrations = useCallback(async (eventId?: string) => {
+    const targetId = eventId || activeEvent?.id;
+    if (!targetId) return;
+
+    try {
+      // 1. Query Supabase directly
+      const { data, error } = await supabase
+        .from("registrations")
+        .select("*")
+        .eq("event_id", targetId)
+        .order("registered_at", { ascending: false });
+
+      if (!error && Array.isArray(data)) {
+        const mapped: Registration[] = data.map((d: any) => ({
+          id: d.id,
+          eventId: d.event_id || d.eventId,
+          userId: d.user_id || d.userId,
+          userRollNo: d.user_roll_no || d.userRollNo,
+          userName: d.user_name || d.userName,
+          department: d.department,
+          registeredAt: d.registered_at || d.registeredAt,
+          status: d.status || "confirmed",
+          isTeam: Boolean(d.is_team ?? d.isTeam),
+          teamName: d.team_name || d.teamName,
+          teamMembers: d.team_members || d.teamMembers,
+        }));
+        setFetchedRegistrations(mapped);
+      } else {
+        // Fallback to API endpoint
+        const res = await apiClient.getEventRegistrations(targetId);
+        if (res?.success && Array.isArray(res.registrations)) {
+          setFetchedRegistrations(res.registrations);
+        }
+      }
+    } catch (e) {
+      console.debug("Error fetching event registrations:", e);
+    }
+  }, [activeEvent?.id]);
+
+  useEffect(() => {
+    loadRegistrations();
+  }, [currentEventId, loadRegistrations]);
+
+  // Subscribe to Supabase Realtime registrations changes
+  useEffect(() => {
+    const channel = supabase
+      .channel(`realtime-registrations-${currentEventId || "all"}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "registrations" },
+        () => {
+          loadRegistrations();
+          campusStore.loadFromSupabase();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentEventId, loadRegistrations]);
+
+  const handleManualSync = async () => {
+    setIsSyncing(true);
+    await Promise.all([loadRegistrations(), campusStore.loadFromSupabase()]);
+    setTimeout(() => setIsSyncing(false), 500);
+  };
+
+  // Merge fetched registrations from Supabase with state.registrations
+  const storeEventRegs = state.registrations.filter((r) => r.eventId === activeEvent?.id);
+  const eventRegistrations = fetchedRegistrations !== null ? fetchedRegistrations : storeEventRegs;
   const eventAttendanceRecords = state.attendanceRecords.filter((a) => a.eventId === activeEvent?.id);
 
   // Compute distinct departments
@@ -253,6 +328,17 @@ export function EventAttendanceViewer({
               </option>
             ))}
           </select>
+
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleManualSync}
+            disabled={isSyncing}
+            className="h-9 gap-1.5 rounded-xl border-blue-200 bg-blue-50/50 text-xs font-bold text-[#1A3C6E] hover:bg-blue-100/60 dark:bg-slate-800 dark:border-slate-700 dark:text-blue-300"
+          >
+            <RefreshCw className={cn("size-3.5 text-[#F2A93B]", isSyncing && "animate-spin")} />
+            Sync Roster
+          </Button>
 
           {/* Broadcast Alert Button */}
           {activeEvent && (

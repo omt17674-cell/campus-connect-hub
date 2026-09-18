@@ -354,9 +354,15 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
         }),
       });
 
-      if (res.status === 409) {
+      const resData = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        const errMsg =
+          res.status === 409
+            ? `⚠️ Identity Locked: Student ${cleanRoll} is already registered in Supabase. Name & Mobile cannot be changed.`
+            : resData?.message || `Registration failed on Supabase backend (HTTP ${res.status}).`;
         setStatusMessage({
-          text: `⚠️ Identity Locked: Student ${cleanRoll} is already registered. Name & Mobile cannot be changed.`,
+          text: errMsg,
           type: "error",
         });
         setRegSubmitting(false);

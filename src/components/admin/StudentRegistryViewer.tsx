@@ -14,10 +14,12 @@ import {
   Download,
   Filter,
   RefreshCw,
+  Edit,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CampusState, campusStore } from "@/lib/campus-store";
 import { NewRegisteredStudent } from "@/lib/types";
+import { EditStudentModal } from "./EditStudentModal";
 import { cn } from "@/lib/utils";
 
 interface StudentRegistryViewerProps {
@@ -29,6 +31,7 @@ export function StudentRegistryViewer({ state }: StudentRegistryViewerProps) {
   const [departmentFilter, setDepartmentFilter] = useState("all");
   const [residenceFilter, setResidenceFilter] = useState<"all" | "hostel" | "dayscholar">("all");
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [editingStudent, setEditingStudent] = useState<NewRegisteredStudent | null>(null);
 
   useEffect(() => {
     campusStore.loadFromSupabase();
@@ -203,13 +206,14 @@ export function StudentRegistryViewer({ state }: StudentRegistryViewerProps) {
                 <th className="px-4 py-3.5">Degree & Sem</th>
                 <th className="px-4 py-3.5">Hostel / Commute</th>
                 <th className="px-4 py-3.5 text-center">Identity Status</th>
-                <th className="py-3.5 pl-4 pr-6 text-right">Verification</th>
+                <th className="px-4 py-3.5 text-center">Verification</th>
+                <th className="py-3.5 pl-4 pr-6 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60 font-medium">
               {filteredStudents.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-muted-foreground">
+                  <td colSpan={8} className="py-12 text-center text-muted-foreground">
                     <GraduationCap className="mx-auto size-8 text-muted-foreground/40 mb-2" />
                     <p className="font-bold">No registered students found matching search criteria.</p>
                   </td>
@@ -293,11 +297,24 @@ export function StudentRegistryViewer({ state }: StudentRegistryViewerProps) {
                     </td>
 
                     {/* Verification Status */}
-                    <td className="py-3.5 pl-4 pr-6 text-right">
+                    <td className="px-4 py-3.5 text-center">
                       <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-400">
                         <CheckCircle2 className="size-3" />
                         <span>Bona Fide</span>
                       </span>
+                    </td>
+
+                    {/* Actions: Edit Student */}
+                    <td className="py-3.5 pl-4 pr-6 text-right">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setEditingStudent(stu)}
+                        className="h-8 gap-1.5 rounded-xl border-blue-200 bg-blue-50/60 px-3 text-[11px] font-bold text-[#1A3C6E] hover:bg-blue-100 hover:text-[#1A3C6E] dark:bg-slate-800 dark:border-slate-700 dark:text-blue-300"
+                      >
+                        <Edit className="size-3 text-[#F2A93B]" />
+                        Edit Student
+                      </Button>
                     </td>
                   </tr>
                 ))
@@ -306,6 +323,17 @@ export function StudentRegistryViewer({ state }: StudentRegistryViewerProps) {
           </table>
         </div>
       </div>
+
+      {/* Edit Student Modal */}
+      {editingStudent && (
+        <EditStudentModal
+          student={editingStudent}
+          onClose={() => setEditingStudent(null)}
+          onSuccess={() => {
+            campusStore.loadFromSupabase();
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -463,6 +463,73 @@ export const supabaseSync = {
     return null;
   },
 
+  async updateStudentProfile(
+    studentId: string,
+    updates: {
+      school?: string;
+      department?: string;
+      degree?: string;
+      semester?: number;
+      residenceType?: "hostel" | "dayscholar";
+      hostelBlockOrBusRoute?: string;
+      clubsInterested?: string[];
+    }
+  ): Promise<{ success: boolean; message?: string; student?: NewRegisteredStudent }> {
+    try {
+      const current = await this.getStudentByRollOrEmail(studentId);
+      if (!current) {
+        return { success: false, message: "Student not found in registry." };
+      }
+
+      const dbPayload: any = {
+        updated_at: new Date().toISOString(),
+      };
+      if (updates.school !== undefined) dbPayload.school = updates.school;
+      if (updates.department !== undefined) dbPayload.department = updates.department;
+      if (updates.degree !== undefined) dbPayload.degree = updates.degree;
+      if (updates.semester !== undefined) dbPayload.semester = updates.semester;
+      if (updates.residenceType !== undefined) dbPayload.residence_type = updates.residenceType;
+      if (updates.hostelBlockOrBusRoute !== undefined) dbPayload.hostel_block_or_bus_route = updates.hostelBlockOrBusRoute;
+      if (updates.clubsInterested !== undefined) dbPayload.clubs_interested = updates.clubsInterested;
+
+      const { error } = await supabaseAdmin
+        .from("new_registered_students")
+        .update(dbPayload)
+        .eq("roll_no", current.rollNo);
+
+      if (error) {
+        return { success: false, message: error.message };
+      }
+
+      // Also update accounts table if exists
+      if (updates.department !== undefined || updates.semester !== undefined) {
+        const accountUpdates: any = {};
+        if (updates.department !== undefined) accountUpdates.department = updates.department;
+        if (updates.semester !== undefined) accountUpdates.semester = updates.semester;
+        await supabaseAdmin
+          .from("accounts")
+          .update(accountUpdates)
+          .eq("roll_no", current.rollNo);
+      }
+
+      const updatedStudent: NewRegisteredStudent = {
+        ...current,
+        school: updates.school ?? current.school,
+        department: updates.department ?? current.department,
+        degree: updates.degree ?? current.degree,
+        semester: updates.semester ?? current.semester,
+        residenceType: updates.residenceType ?? current.residenceType,
+        hostelBlockOrBusRoute: updates.hostelBlockOrBusRoute ?? current.hostelBlockOrBusRoute,
+        clubsInterested: updates.clubsInterested ?? current.clubsInterested,
+      };
+
+      return { success: true, message: "Student profile updated successfully in Supabase.", student: updatedStudent };
+    } catch (e: any) {
+      console.warn("Supabase update student profile error:", e);
+      return { success: false, message: e.message || String(e) };
+    }
+  },
+
   // 6. Clubs CRUD
   async getClubs(): Promise<Club[]> {
     try {

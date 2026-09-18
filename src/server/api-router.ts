@@ -262,6 +262,7 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
       department: string;
       isTeam?: boolean;
       teamName?: string;
+      teamMembers?: Array<{ name: string; rollNo: string; email: string }>;
     }>(request);
 
     if (!body || !body.eventId || !body.userId) {
@@ -285,6 +286,7 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
       status: regStatus,
       isTeam: body.isTeam || false,
       teamName: body.teamName,
+      teamMembers: body.teamMembers,
     };
 
     await supabaseSync.saveRegistration(newReg);
@@ -302,6 +304,26 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
       message: isFull ? "Added to waitlist on Supabase" : "Registration confirmed on Supabase",
       registration: newReg,
       waitlisted: isFull,
+      event,
+    });
+  }
+
+  // 6b. Events: Get Registrations for an Event or All
+  if ((path === "/api/registrations" || (path.startsWith("/api/events/") && path.endsWith("/registrations"))) && method === "GET") {
+    let eventId = url.searchParams.get("eventId");
+    if (!eventId && path.startsWith("/api/events/")) {
+      const parts = path.split("/");
+      // e.g. /api/events/evt-123/registrations -> parts[3] is evt-123
+      if (parts.length >= 4) {
+        eventId = parts[3];
+      }
+    }
+
+    const registrations = await supabaseSync.getRegistrations(eventId || undefined);
+    return jsonResponse({
+      success: true,
+      count: registrations.length,
+      registrations,
     });
   }
 
@@ -553,35 +575,60 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
       fullName?: string;
       mobileNumber?: string;
       rollNo?: string;
+      school?: string;
       department?: string;
+      degree?: string;
       semester?: number;
+      residenceType?: "hostel" | "dayscholar";
+      hostelBlockOrBusRoute?: string;
+      clubsInterested?: string[];
     }>(request);
 
     if (!body || !body.studentId) {
-      return jsonResponse({ success: false, message: "Missing student ID." }, 400);
+      return jsonResponse({ success: false, message: "Missing student ID or roll number." }, 400);
     }
 
     const currentStudent = await supabaseSync.getStudentByRollOrEmail(body.studentId);
 
-    if (currentStudent) {
-      // Check if attempt is made to mutate locked fields
-      if (
-        (body.fullName && body.fullName.trim() !== currentStudent.fullName) ||
-        (body.mobileNumber && body.mobileNumber.trim() !== currentStudent.mobileNumber) ||
-        (body.rollNo && body.rollNo.trim().toUpperCase() !== currentStudent.rollNo)
-      ) {
-        return jsonResponse({
-          success: false,
-          error: "IMMUTABLE_FIELD_MODIFICATION_BLOCKED",
-          message: "SECURITY POLICY VIOLATION: Student Full Name, Mobile Number, and Roll Number are permanently locked after registration and cannot be modified under any circumstances.",
-          lockedFields: ["fullName", "mobileNumber", "rollNo"],
-        }, 403);
-      }
+    if (!currentStudent) {
+      return jsonResponse({ success: false, message: "Student record not found in Supabase." }, 404);
+    }
+
+    // Check if attempt is made to mutate locked fields
+    if (
+      (body.fullName && body.fullName.trim() !== currentStudent.fullName) ||
+      (body.mobileNumber && body.mobileNumber.trim() !== currentStudent.mobileNumber) ||
+      (body.rollNo && body.rollNo.trim().toUpperCase() !== currentStudent.rollNo)
+    ) {
+      return jsonResponse({
+        success: false,
+        error: "IMMUTABLE_FIELD_MODIFICATION_BLOCKED",
+        message: "SECURITY POLICY VIOLATION: Student Full Name, Mobile Number, and Roll Number are permanently locked after registration and cannot be modified under any circumstances.",
+        lockedFields: ["fullName", "mobileNumber", "rollNo"],
+      }, 403);
+    }
+
+    const updateRes = await supabaseSync.updateStudentProfile(currentStudent.rollNo, {
+      school: body.school,
+      department: body.department,
+      degree: body.degree,
+      semester: body.semester !== undefined ? Number(body.semester) : undefined,
+      residenceType: body.residenceType,
+      hostelBlockOrBusRoute: body.hostelBlockOrBusRoute,
+      clubsInterested: body.clubsInterested,
+    });
+
+    if (!updateRes.success) {
+      return jsonResponse({
+        success: false,
+        message: updateRes.message || "Failed to update student profile in Supabase.",
+      }, 500);
     }
 
     return jsonResponse({
       success: true,
-      message: "Non-critical profile details updated in Supabase. Core identity remains locked.",
+      message: "Student record updated in Supabase. Core identity remains locked.",
+      student: updateRes.student,
     });
   }
 

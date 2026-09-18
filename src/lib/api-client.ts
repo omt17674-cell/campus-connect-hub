@@ -125,6 +125,38 @@ export const apiClient = {
     }
   },
 
+  async getEventRegistrations(eventId?: string) {
+    try {
+      const url = eventId ? `/api/events/${encodeURIComponent(eventId)}/registrations` : "/api/registrations";
+      const res = await fetch(url);
+      return await res.json();
+    } catch (e) {
+      return { success: false, registrations: [] };
+    }
+  },
+
+  async updateStudentProfile(payload: {
+    studentId: string;
+    school?: string;
+    department?: string;
+    degree?: string;
+    semester?: number;
+    residenceType?: "hostel" | "dayscholar";
+    hostelBlockOrBusRoute?: string;
+    clubsInterested?: string[];
+  }) {
+    try {
+      const res = await fetch("/api/students/profile/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      return await res.json();
+    } catch (e) {
+      return { success: false, message: "Network error updating student profile." };
+    }
+  },
+
   async queryAiAssistant(prompt: string, userRole?: string, userId?: string) {
     try {
       const res = await fetch("/api/ai/assistant", {
@@ -138,3 +170,4 @@ export const apiClient = {
     }
   },
 };
+
