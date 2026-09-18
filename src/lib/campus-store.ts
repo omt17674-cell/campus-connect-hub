@@ -864,6 +864,28 @@ export async function syncStateToSupabase(state: CampusState): Promise<void> {
       const { error: stuErr } = await supabase.from("new_registered_students").upsert(mappedStudents, { onConflict: "roll_no" });
       if (stuErr) logSupabaseError("upsert", "new_registered_students", stuErr);
     }
+
+    // 6. Sync current active student to accounts & new_registered_students
+    if (state.isAuthenticated && state.currentUser && state.currentUser.rollNo && state.currentRole === "student") {
+      const u = state.currentUser;
+      const dbAcc = {
+        id: `u-${u.rollNo.toLowerCase()}`,
+        name: u.name,
+        roll_no: u.rollNo,
+        email: u.email || `${u.rollNo.toLowerCase()}@gsfcuniversity.ac.in`,
+        role: "student",
+        department: u.department || "Computer Science & Engineering",
+        semester: u.semester || 4,
+        year: Math.ceil((u.semester || 4) / 2) || 2,
+        attendance_percentage: u.attendanceRate || 100,
+        points: u.points || 100,
+        streak_days: u.streakDays || 1,
+        volunteer_hours: u.volunteerHours || 0,
+        avatar: u.avatar || u.name?.slice(0, 2).toUpperCase() || "ST",
+        updated_at: new Date().toISOString(),
+      };
+      await supabase.from("accounts").upsert(dbAcc, { onConflict: "roll_no" });
+    }
   } catch (err) {
     logSupabaseError("background_sync", "all_tables", err);
   }
