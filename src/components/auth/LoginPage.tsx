@@ -50,8 +50,8 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
   const allAccounts = getStoredAccounts();
   const [activeTab, setActiveTab] = useState<"signin" | "register">("signin");
   const [selectedRole, setSelectedRole] = useState<UserRole>("student");
-  const [identifier, setIdentifier] = useState(STUDENT_ACCOUNT.email);
-  const [password, setPassword] = useState(STUDENT_ACCOUNT.password);
+  const [identifier, setIdentifier] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [autoAppendDomain, setAutoAppendDomain] = useState(true);
   const [showCredentialsSheet, setShowCredentialsSheet] = useState(false);
@@ -83,9 +83,6 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
   // Handle role change from dropdown
   const handleRoleChange = (role: UserRole) => {
     setSelectedRole(role);
-    const targetAccount = allAccounts.find((a) => a.role === role) || STUDENT_ACCOUNT;
-    setIdentifier(targetAccount.email);
-    setPassword(targetAccount.password);
     setStatusMessage(null);
   };
 
