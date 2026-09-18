@@ -44,12 +44,8 @@ export function StudentRegistryViewer({ state }: StudentRegistryViewerProps) {
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "new_registered_students" },
-        (payload) => {
+        () => {
           campusStore.loadFromSupabase();
-          const studentName = (payload.new as any)?.full_name;
-          if (studentName) {
-            toast.info(`New student registered: ${studentName}`);
-          }
         }
       )
       .on(
@@ -167,7 +163,7 @@ export function StudentRegistryViewer({ state }: StudentRegistryViewerProps) {
                 <Lock className="size-3" /> Identity Locked
               </span>
               <span className="flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[10px] font-black uppercase text-emerald-700">
-                <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live Sync Active
+                <span className="size-1.5 rounded-full bg-emerald-500" /> Live Sync Active
               </span>
             </div>
             <p className="text-xs text-slate-500">

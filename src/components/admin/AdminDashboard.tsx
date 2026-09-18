@@ -413,7 +413,7 @@ export function AdminDashboard({ state, onOpenGateModal }: AdminDashboardProps) 
                     University Event Governance & Controls
                   </h3>
                   <span className="flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[10px] font-black uppercase text-emerald-700">
-                    <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live System
+                    <span className="size-1.5 rounded-full bg-emerald-500" /> Live System
                   </span>
                 </div>
                 <p className="text-xs text-slate-500">

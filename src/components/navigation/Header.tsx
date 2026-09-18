@@ -128,7 +128,6 @@ export function Header({
               title="Ask GSFC Campus AI Assistant"
             >
               <span className="relative flex size-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#F2A93B] opacity-75" />
                 <span className="relative inline-flex size-2 rounded-full bg-[#F2A93B]" />
               </span>
               <span className="hidden sm:inline">AI Copilot</span>
@@ -197,7 +196,6 @@ export function Header({
             <Bell className="size-4" />
             {unreadCount > 0 && (
               <span className="absolute right-1.5 top-1.5 flex size-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-75" />
                 <span className="relative inline-flex size-2 rounded-full bg-accent" />
               </span>
             )}
