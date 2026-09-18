@@ -36,9 +36,9 @@ export function MyEventsView({ state, onSelectEvent, onOpenPunchModal }: MyEvent
   const [downloadingCertId, setDownloadingCertId] = useState<string | null>(null);
 
   const currentUser = state?.currentUser || {
-    id: "u-om",
-    name: "Om Thakkar",
-    rollNo: "24BT04171",
+    id: "u-demo-student",
+    name: "Demo Student",
+    rollNo: "24BT01001",
     department: "B.Tech CSE",
   };
 
@@ -110,14 +110,14 @@ export function MyEventsView({ state, onSelectEvent, onOpenPunchModal }: MyEvent
       eventId: event.id,
       eventTitle: event.title,
       userId: currentUser.id,
-      userName: currentUser.name || "Om Thakkar",
-      userRollNo: currentUser.rollNo || "24BT04171",
+      userName: currentUser.name || "Demo Student",
+      userRollNo: currentUser.rollNo || "24BT01001",
       department: currentUser.department || "Computer Science",
       timestamp: new Date().toISOString(),
       verifiedMethod: "qr_scan" as const,
       tokenUsed: "GSFC-VERIFIED",
       synced: true,
-      certificateId: `GSFC-CERT-${(event.id || "EVT").replace(/[^a-zA-Z0-9]/g, "").toUpperCase()}-${(currentUser.rollNo || "4171").slice(-4)}-98A4`,
+      certificateId: `GSFC-CERT-${(event.id || "EVT").replace(/[^a-zA-Z0-9]/g, "").toUpperCase()}-${(currentUser.rollNo || "1001").slice(-4)}-98A4`,
     };
 
     setDownloadingCertId(event.id);

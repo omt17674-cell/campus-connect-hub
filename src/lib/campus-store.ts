@@ -50,20 +50,20 @@ export interface CampusAccount {
 export const STUDENT_ACCOUNT: CampusAccount = {
   role: "student",
   roleTitle: "GSFC Student (Campus Candidate)",
-  roleBadge: "24BT04171",
-  name: "Om Thakkar",
-  idOrRoll: "24BT04171",
-  email: "omthakkar168@gsfcuniversity.ac.in",
-  password: "Student@2026",
+  roleBadge: "24BT01001",
+  name: "Demo Student",
+  idOrRoll: "24BT01001",
+  email: "demo.student@gsfcuniversity.ac.in",
+  password: "",
   profile: {
-    id: "u-om",
-    name: "Om Thakkar",
-    rollNo: "24BT04171",
-    email: "omthakkar168@gsfcuniversity.ac.in",
+    id: "u-demo-student",
+    name: "Demo Student",
+    rollNo: "24BT01001",
+    email: "demo.student@gsfcuniversity.ac.in",
     role: "student",
     department: "B.Tech Computer Science & Engineering",
     semester: 4,
-    avatar: "OT",
+    avatar: "DS",
     points: 0,
     streakDays: 0,
     volunteerHours: 0,
@@ -231,15 +231,15 @@ const INITIAL_BROADCASTS: EventBroadcast[] = [];
 
 
 const INITIAL_DIGITAL_ID: DigitalStudentIdCard = {
-  rollNo: "24BT04171",
-  name: "Om Thakkar",
+  rollNo: "24BT01001",
+  name: "Demo Student",
   program: "Bachelor of Technology (B.Tech)",
   department: "Computer Science & Engineering",
   semester: 4,
   validTill: "June 2028",
   bloodGroup: "B+ (Positive)",
-  qrVerificationCode: "GSFCU:VERIFIED:24BT04171:OM_THAKKAR:CSE:2024-28",
-  barcode: "24BT04171",
+  qrVerificationCode: "GSFCU:VERIFIED:24BT01001:DEMO_STUDENT:CSE:2024-28",
+  barcode: "24BT01001",
   photoUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80",
   status: "active",
 };
@@ -259,9 +259,9 @@ const INITIAL_CLUBS: Club[] = [
       department: "CSE Department",
     },
     studentLead: {
-      name: "Om Thakkar",
-      rollNo: "24BT04171",
-      email: "omthakkar168@gsfcuniversity.ac.in",
+      name: "Aarav Patel",
+      rollNo: "24BT01002",
+      email: "aarav.patel@gsfcuniversity.ac.in",
     },
     memberCount: 142,
     meetingSchedule: "Every Wednesday & Friday · 05:00 PM at Lab 4",
@@ -538,11 +538,11 @@ const INITIAL_SERVICES: CampusService[] = [
 
 export const INITIAL_NEW_STUDENTS: NewRegisteredStudent[] = [
   {
-    id: "stu-24bt04171",
-    fullName: "Om Thakkar",
-    mobileNumber: "+91 98765 04171",
-    rollNo: "24BT04171",
-    email: "omthakkar168@gsfcuniversity.ac.in",
+    id: "stu-24bt01001",
+    fullName: "Demo Student",
+    mobileNumber: "+91 98765 00001",
+    rollNo: "24BT01001",
+    email: "demo.student@gsfcuniversity.ac.in",
     school: "School of Technology (SOT)",
     department: "Computer Science & Engineering",
     degree: "B.Tech",
@@ -744,7 +744,7 @@ function loadSavedState(): CampusState {
       }
 
       let cleanCurrentUser = parsed.currentUser || INITIAL_USER;
-      if (cleanCurrentUser.id === "u-om" || cleanCurrentUser.rollNo === "24BT04171") {
+      if (cleanCurrentUser.id === "u-demo" || cleanCurrentUser.rollNo === "24BT01001") {
         cleanCurrentUser = {
           ...cleanCurrentUser,
           points: existingAtt.length * 50,
@@ -2983,9 +2983,9 @@ export const campusStore = {
     }
   },
   loginWithGoogle(userOverride?: { name?: string; email?: string; rollNo?: string; photo?: string }): { success: boolean; message: string } {
-    const email = userOverride?.email || "omthakkar168@gsfcuniversity.ac.in";
-    const name = userOverride?.name || "Om Thakkar";
-    const rollNo = userOverride?.rollNo || "24BT04171";
+    const email = userOverride?.email || "demo.student@gsfcuniversity.ac.in";
+    const name = userOverride?.name || "Demo Student";
+    const rollNo = userOverride?.rollNo || "24BT01001";
 
     const allAccounts = getStoredAccounts();
     let matchedAccount = allAccounts.find(

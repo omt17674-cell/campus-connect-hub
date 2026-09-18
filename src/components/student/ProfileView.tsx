@@ -25,14 +25,14 @@ export function ProfileView({ state }: ProfileViewProps) {
   const [isChangePhotoOpen, setIsChangePhotoOpen] = useState(false);
 
   const user = state?.currentUser || {
-    id: "u-om",
-    name: "Om Thakkar",
-    rollNo: "24BT04171",
-    email: "omthakkar168@gsfcuniversity.ac.in",
+    id: "u-demo-student",
+    name: "Demo Student",
+    rollNo: "24BT01001",
+    email: "demo.student@gsfcuniversity.ac.in",
     role: "student",
     department: "B.Tech Computer Science & Engineering",
     semester: 4,
-    avatar: "OT",
+    avatar: "DS",
     points: 640,
     streakDays: 9,
     volunteerHours: 18,

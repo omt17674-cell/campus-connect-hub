@@ -162,9 +162,9 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
   // 3. Authentication: Google Workspace SSO
   if (path === "/api/auth/google" && method === "POST") {
     const body = await parseBody<{ email?: string; name?: string; rollNo?: string }>(request);
-    const email = body?.email || "omthakkar168@gsfcuniversity.ac.in";
-    const name = body?.name || "Om Thakkar";
-    const rollNo = body?.rollNo || "24BT04171";
+    const email = body?.email || "demo.student@gsfcuniversity.ac.in";
+    const name = body?.name || "Demo Student";
+    const rollNo = body?.rollNo || "24BT01001";
 
     let account = await supabaseSync.getAccountByIdentifier(email);
 

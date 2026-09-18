@@ -35,13 +35,12 @@ Designed for high reliability, multi-platform accessibility (Android, iOS, Web P
 
 ---
 
-## 🔑 Login Portals & Test Credentials
+## 🔑 Authentication Portals
 
-| Role | Role Title | User ID / Email | Default Password |
-| :--- | :--- | :--- | :--- |
-| 🎓 **Student** | GSFC Student (Candidate) | `omthakkar168@gsfcuniversity.ac.in` *(or `24BT04171`)* | `Student@2026` |
-| 🏛️ **Administration** | Dean & Academic Governance | `admin.dean@gsfcuniversity.ac.in` *(or `ADM-DEAN-001`)* | `Admin@2026` |
-| 💼 **TPC Admin** | Training & Placement / Organizer | `tpc.admin@gsfcuniversity.ac.in` *(or `TPC-ADMIN-108`)* | `TPCAdmin@2026` |
+All users must register or sign in using their official GSFC University credentials or Google Workspace SSO:
+- 🎓 **Student Portal**: Sign in using your official enrollment number or university email.
+- 🏛️ **Administration Portal**: Restricted to authorized academic deans and university officers.
+- 💼 **TPC & Faculty Organizer Portal**: Accessible to Training & Placement cell coordinators and verified event leads.
 
 ---
 
@@ -59,7 +58,7 @@ Designed for high reliability, multi-platform accessibility (Android, iOS, Web P
 
 ```bash
 # Clone the repository
-git clone https://github.com/OMTHAKKAR8495/campus-connect-hub.git
+git clone https://github.com/omt17674-cell/campus-connect-hub.git
 cd campus-connect-hub
 
 # Install dependencies

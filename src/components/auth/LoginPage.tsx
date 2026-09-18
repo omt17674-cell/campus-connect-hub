@@ -192,7 +192,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
             name: supaAccount.name,
             idOrRoll: supaAccount.roll_no,
             email: supaAccount.email,
-            password: password || "Student@2026",
+            password: password || "DemoStudent@2026",
             profile: {
               id: supaAccount.id,
               name: supaAccount.name,
@@ -251,8 +251,8 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
     setRegResidence("hostel");
     setRegHostelBlock("Kasturba Hostel - Block B");
     setRegClubs(["Coding & AI Club", "Robotics Club", "Cultural Troupe"]);
-    setRegPassword("Student@2026");
-    setRegConfirmPassword("Student@2026");
+    setRegPassword("DemoStudent@2026");
+    setRegConfirmPassword("DemoStudent@2026");
     setRegIdUploaded(true);
     setRegTermsAgreed(true);
     setStatusMessage({ text: "Sample GSFC Student data auto-filled!", type: "success" });
@@ -281,7 +281,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
     try {
       const cleanRoll = regRollNo.trim().toUpperCase();
       const cleanEmail = regEmail.includes("@") ? regEmail.trim().toLowerCase() : `${regEmail.trim().toLowerCase()}@gsfcuniversity.ac.in`;
-      const passToUse = regPassword || "Student@2026";
+      const passToUse = regPassword || "DemoStudent@2026";
 
       // 1. Create real Supabase Auth user
       try {
@@ -1130,7 +1130,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
       <footer className="relative z-20 flex flex-wrap items-center justify-between gap-2 bg-[#0284C7] px-6 py-2.5 text-xs font-bold text-white sm:px-8">
         <div>All Rights Reserved ©2026</div>
         <div className="tracking-wide">
-          Developed & Managed By : <span className="font-black text-amber-300">OM THAKKAR</span>
+          Developed & Managed By : <span className="font-black text-amber-300">GSFC University IT Operations</span>
         </div>
       </footer>
     </div>

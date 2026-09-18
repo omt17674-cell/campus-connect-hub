@@ -23,9 +23,9 @@ export function GamificationView({ state }: GamificationViewProps) {
   const t = translations[state.language];
   const [leaderboardTab, setLeaderboardTab] = useState<"students" | "departments">("students");
   const user = state?.currentUser || {
-    id: "u-om",
-    name: "Om Thakkar",
-    rollNo: "24BT04171",
+    id: "u-demo-student",
+    name: "Demo Student",
+    rollNo: "24BT01001",
     department: "B.Tech CSE",
     points: 640,
     streakDays: 9,
@@ -33,7 +33,7 @@ export function GamificationView({ state }: GamificationViewProps) {
 
   const studentRankings = [
     { rank: 1, name: "Tanvi Bhatt", rollNo: "GSFC-CS-0091", dept: "Computer Science", xp: 820, streak: 14, avatar: "TB" },
-    { rank: 2, name: `${user.name || "You"} (You)`, rollNo: user.rollNo || "24BT04171", dept: user.department || "CSE", xp: user.points || 640, streak: user.streakDays || 9, avatar: user.avatar || "OT", isUser: true },
+    { rank: 2, name: `${user.name || "You"} (You)`, rollNo: user.rollNo || "24BT01001", dept: user.department || "CSE", xp: user.points || 640, streak: user.streakDays || 9, avatar: user.avatar || "DS", isUser: true },
     { rank: 3, name: "Harshil Patel", rollNo: "GSFC-CH-0044", dept: "Chemical Eng", xp: 460, streak: 6, avatar: "HP" },
     { rank: 4, name: "Sneha Desai", rollNo: "GSFC-MG-0112", dept: "Management", xp: 410, streak: 5, avatar: "SD" },
     { rank: 5, name: "Kunal Shah", rollNo: "GSFC-CS-0205", dept: "Computer Science", xp: 380, streak: 4, avatar: "KS" },
