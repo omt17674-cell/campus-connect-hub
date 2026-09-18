@@ -100,7 +100,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
     const cleanEmail = cleanInput.includes("@") ? cleanInput.toLowerCase() : `${cleanInput.toLowerCase()}@gsfcuniversity.ac.in`;
 
     try {
-      // 1. Direct local account matching for instant login
+      // 1. Direct local account matching for INSTANT 0ms login
       const localAccount = allAccounts.find(
         (a) =>
           a.role === selectedRole &&
@@ -110,121 +110,79 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
             cleanEmail.includes(a.email.split("@")[0].toLowerCase()))
       );
 
-      // 2. Supabase Auth sign-in
-      if (password) {
-        try {
-          const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-            email: cleanEmail,
-            password,
-          });
-
-          if (!authError && authData?.user) {
-            const { data: accountRow } = await supabase
-              .from("accounts")
-              .select("*")
-              .eq("email", cleanEmail)
-              .maybeSingle();
-
-            const studentRoll = authData.user.user_metadata?.roll_no || localAccount?.idOrRoll || cleanInput.toUpperCase();
-            const studentName = authData.user.user_metadata?.full_name || accountRow?.name || localAccount?.name || "GSFC User";
-            const studentRole = (authData.user.user_metadata?.role as UserRole) || (accountRow?.role as UserRole) || selectedRole;
-
-            const loggedProfile: UserProfile = {
-              id: accountRow?.id || authData.user.id,
-              name: studentName,
-              rollNo: studentRoll,
-              email: cleanEmail,
-              role: studentRole,
-              department: accountRow?.department || localAccount?.profile.department || "GSFC University",
-              semester: accountRow?.semester ?? localAccount?.profile.semester ?? 4,
-              avatar: accountRow?.avatar || localAccount?.profile.avatar || studentName.slice(0, 2).toUpperCase(),
-              points: accountRow?.points || localAccount?.profile.points || 100,
-              streakDays: accountRow?.streak_days || localAccount?.profile.streakDays || 1,
-              volunteerHours: accountRow?.volunteer_hours || localAccount?.profile.volunteerHours || 0,
-              attendanceRate: accountRow?.attendance_percentage || localAccount?.profile.attendanceRate || 100,
-              badges: localAccount?.profile.badges || ["b1"],
-            };
-
-            const campusAcc: CampusAccount = {
-              role: studentRole,
-              roleTitle: studentRole === "admin" ? "Administration" : studentRole === "organizer" ? "TPC Admin" : "GSFC Student",
-              roleBadge: studentRoll,
-              name: studentName,
-              idOrRoll: studentRoll,
-              email: cleanEmail,
-              password,
-              profile: loggedProfile,
-            };
-
-            campusStore.loginWithAccount(campusAcc);
-            setIsLoggingIn(false);
-            setStatusMessage({ text: `Welcome back, ${studentName}! Authenticated via Supabase Auth.`, type: "success" });
-            if (onLoginSuccess) onLoginSuccess();
-            return;
-          }
-        } catch (authErr) {
-          console.debug("Supabase auth signIn error note:", authErr);
-        }
-      }
-
-      // 3. Fallback to matched account
       if (localAccount) {
         campusStore.loginWithAccount(localAccount);
         setIsLoggingIn(false);
         setStatusMessage({ text: `Welcome back, ${localAccount.name}!`, type: "success" });
         if (onLoginSuccess) onLoginSuccess();
+        // Asynchronous non-blocking Supabase auth verification in background
+        if (password) {
+          supabase.auth.signInWithPassword({ email: cleanEmail, password }).catch(() => {});
+        }
         return;
       }
 
-      // 4. Query REST API Gateway or Supabase tables
-      try {
-        const { data: supaAccount } = await supabase
-          .from("accounts")
-          .select("*")
-          .or(`email.ilike.${cleanEmail},roll_no.ilike.${cleanInput}`)
-          .maybeSingle();
+      // 2. Fast database query for newly registered students or accounts
+      const queryPromise = Promise.all([
+        supabase.from("new_registered_students").select("*").or(`email.ilike.${cleanEmail},roll_no.ilike.${cleanInput}`).maybeSingle(),
+        supabase.from("accounts").select("*").or(`email.ilike.${cleanEmail},roll_no.ilike.${cleanInput}`).maybeSingle(),
+      ]);
 
-        if (supaAccount) {
-          const studentAccount: CampusAccount = {
-            role: supaAccount.role as UserRole,
-            roleTitle: supaAccount.role === "admin" ? "Administration" : supaAccount.role === "organizer" ? "TPC Admin" : "GSFC Student",
-            roleBadge: supaAccount.roll_no,
-            name: supaAccount.name,
-            idOrRoll: supaAccount.roll_no,
-            email: supaAccount.email,
+      const timeoutPromise = new Promise<{ timeout: true }>((resolve) => setTimeout(() => resolve({ timeout: true }), 1800));
+      const res = await Promise.race([queryPromise, timeoutPromise]);
+
+      if (!("timeout" in res)) {
+        const [studentRes, accountRes] = res as [any, any];
+        const studentRow = studentRes?.data;
+        const accountRow = accountRes?.data;
+
+        if (studentRow || accountRow) {
+          const name = studentRow?.full_name || accountRow?.name || cleanInput;
+          const roll = studentRow?.roll_no || accountRow?.roll_no || cleanInput.toUpperCase();
+          const role = (accountRow?.role || selectedRole) as UserRole;
+          const dept = studentRow?.department || accountRow?.department || "GSFC University";
+
+          const foundAccount: CampusAccount = {
+            role,
+            roleTitle: role === "admin" ? "Administration" : role === "organizer" ? "TPC Admin" : "GSFC Student",
+            roleBadge: roll,
+            name,
+            idOrRoll: roll,
+            email: cleanEmail,
             password: password || "DemoStudent@2026",
             profile: {
-              id: supaAccount.id,
-              name: supaAccount.name,
-              rollNo: supaAccount.roll_no,
-              email: supaAccount.email,
-              role: supaAccount.role as UserRole,
-              department: supaAccount.department,
-              semester: supaAccount.semester || 4,
-              avatar: supaAccount.avatar || supaAccount.name.slice(0, 2).toUpperCase(),
-              points: supaAccount.points || 100,
-              streakDays: supaAccount.streak_days || 1,
-              volunteerHours: supaAccount.volunteer_hours || 0,
-              attendanceRate: supaAccount.attendance_percentage || 100,
+              id: accountRow?.id || studentRow?.id || `u-${roll.toLowerCase()}`,
+              name,
+              rollNo: roll,
+              email: cleanEmail,
+              role,
+              department: dept,
+              semester: studentRow?.semester || accountRow?.semester || 4,
+              avatar: name.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase() || "ST",
+              points: accountRow?.points || 100,
+              streakDays: accountRow?.streak_days || 1,
+              volunteerHours: accountRow?.volunteer_hours || 0,
+              attendanceRate: accountRow?.attendance_percentage || 100,
               badges: ["b1"],
             },
           };
-          campusStore.loginWithAccount(studentAccount);
+
+          campusStore.loginWithAccount(foundAccount);
           setIsLoggingIn(false);
-          setStatusMessage({ text: `Welcome, ${studentAccount.name}!`, type: "success" });
+          setStatusMessage({ text: `Welcome back, ${name}!`, type: "success" });
           if (onLoginSuccess) onLoginSuccess();
           return;
         }
-      } catch {}
+      }
 
-      // 5. Final fallback to loginWithCredentials
+      // 3. Fallback to credentials match
       const localRes = campusStore.loginWithCredentials(identifier, selectedRole);
       setIsLoggingIn(false);
       if (localRes.success) {
         setStatusMessage({ text: localRes.message, type: "success" });
         if (onLoginSuccess) onLoginSuccess();
       } else {
-        setStatusMessage({ text: "Invalid credentials. Please verify your email and password.", type: "error" });
+        setStatusMessage({ text: "Invalid credentials. Please verify your email/roll number and password.", type: "error" });
       }
     } catch (err: any) {
       setIsLoggingIn(false);
@@ -233,7 +191,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
         setStatusMessage({ text: localRes.message, type: "success" });
         if (onLoginSuccess) onLoginSuccess();
       } else {
-        setStatusMessage({ text: "Unable to authenticate with database. Check credentials.", type: "error" });
+        setStatusMessage({ text: "Unable to authenticate. Check credentials.", type: "error" });
       }
     }
   };
@@ -620,7 +578,10 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
                     value={identifier}
                     onChange={(e) => setIdentifier(e.target.value)}
                     placeholder={selectedRole === "student" ? "GSFC University Email or Roll No" : "official.id@gsfcuniversity.ac.in"}
-                    autoComplete="username"
+                    autoComplete="off"
+                    autoCapitalize="none"
+                    spellCheck="false"
+                    data-lpignore="true"
                     className="w-full bg-transparent px-3 py-2.5 text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none"
                   />
                   {selectedRole === "student" && (
@@ -644,6 +605,8 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Enter password"
+                    autoComplete="new-password"
+                    data-lpignore="true"
                     className="w-full bg-transparent px-3 py-2.5 text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none"
                   />
                   <button

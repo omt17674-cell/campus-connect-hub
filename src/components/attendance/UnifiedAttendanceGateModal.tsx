@@ -67,29 +67,37 @@ export function UnifiedAttendanceGateModal({
   const [resultPassData, setResultPassData] = useState<any>(null);
 
   // --- College Student / User State ---
-  const [studentMobile, setStudentMobile] = useState("+91 98765 00001");
-  const [studentRollNo, setStudentRollNo] = useState(state.currentUser.rollNo || "24BT01001");
-  const [barcodeInput, setBarcodeInput] = useState(state.currentUser.rollNo || "24BT01001");
+  const currentStudent = state.newRegisteredStudents?.find(
+    (s) => s.rollNo?.toUpperCase() === state.currentUser.rollNo?.toUpperCase()
+  );
+  const [studentMobile, setStudentMobile] = useState(
+    currentStudent?.mobileNumber && currentStudent.mobileNumber !== "N/A"
+      ? currentStudent.mobileNumber
+      : ""
+  );
+  const [studentRollNo, setStudentRollNo] = useState(state.currentUser.rollNo || "");
+  const [barcodeInput, setBarcodeInput] = useState(state.currentUser.rollNo || "");
   const [isScanningBarcode, setIsScanningBarcode] = useState(false);
   const [barcodeVerified, setBarcodeVerified] = useState(false);
 
   // --- External Visitor State ---
-  const [visitorName, setVisitorName] = useState("Kaniya Agrawal");
-  const [visitorMobile, setVisitorMobile] = useState("+91 98765 43210");
-  const [visitorEmail, setVisitorEmail] = useState("kaniya.agrawal@lt-engineering.com");
-  const [visitorOrg, setVisitorOrg] = useState("Larsen & Toubro (L&T) Infotech");
+  const [visitorName, setVisitorName] = useState("");
+  const [visitorMobile, setVisitorMobile] = useState("");
+  const [visitorEmail, setVisitorEmail] = useState("");
+  const [visitorOrg, setVisitorOrg] = useState("");
   const [visitorPurpose, setVisitorPurpose] = useState<
     "Campus Event Attendance" | "Placement & Industry Meeting" | "Guest Lecture / Workshop" | "Official Campus Visit" | "Vendor / Contractor"
   >("Placement & Industry Meeting");
-  const [personToMeet, setPersonToMeet] = useState("Prof. Rajiv Mehta (TPC Head)");
-  const [deptToMeet, setDeptToMeet] = useState("Training & Placement Cell (TPC)");
+  const [personToMeet, setPersonToMeet] = useState("");
+  const [deptToMeet, setDeptToMeet] = useState("");
   const [idProofType, setIdProofType] = useState<"Aadhaar Card" | "Driving License" | "Voter ID / Gov ID" | "Corporate Work ID" | "Passport">("Corporate Work ID");
-  const [idProofNumber, setIdProofNumber] = useState("LTI-EMP-98214");
+  const [idProofNumber, setIdProofNumber] = useState("");
 
   // --- Shared OTP State ---
+  const generateRandomOtp = () => Math.floor(100000 + Math.random() * 900000).toString();
   const [otpSent, setOtpSent] = useState(false);
   const [otpCode, setOtpCode] = useState("");
-  const [expectedOtp, setExpectedOtp] = useState("849521");
+  const [expectedOtp, setExpectedOtp] = useState(() => Math.floor(100000 + Math.random() * 900000).toString());
   const [otpVerified, setOtpVerified] = useState(false);
   const [otpTimer, setOtpTimer] = useState(30);
 
@@ -117,25 +125,15 @@ export function UnifiedAttendanceGateModal({
     return () => clearInterval(interval);
   }, [otpSent, otpTimer]);
 
-  // Set default vehicle for external visitor
-  useEffect(() => {
-    if (userType === "visitor") {
-      setHasVehicle(true);
-      setVehicleNumber("GJ-06-AB-1234");
-      setVehicleType("4_wheeler");
-      setParkingBay("Zone A - VIP / Guest Bay #04");
-    } else {
-      setVehicleNumber("GJ-06-XX-4171");
-      setVehicleType("2_wheeler");
-      setParkingBay("Zone B - Student Parking #88");
-    }
-  }, [userType]);
-
   // Handle Send OTP
   const handleSendOtp = () => {
     const mobile = userType === "college" ? studentMobile : visitorMobile;
-    const res = campusStore.sendMobileOtp(mobile);
-    setExpectedOtp(res.otp);
+    if (!mobile.trim()) {
+      alert("Please enter a valid mobile number first.");
+      return;
+    }
+    const generated = Math.floor(100000 + Math.random() * 900000).toString();
+    setExpectedOtp(generated);
     setOtpSent(true);
     setOtpTimer(30);
   };
@@ -148,7 +146,7 @@ export function UnifiedAttendanceGateModal({
 
   // Handle Verify OTP
   const handleVerifyOtp = () => {
-    if (otpCode.trim() === expectedOtp || otpCode.trim() === "123456" || otpCode.trim() === "849521") {
+    if (otpCode.trim() === expectedOtp) {
       setOtpVerified(true);
     } else {
       alert("Invalid OTP code. Please enter the 6-digit code: " + expectedOtp);

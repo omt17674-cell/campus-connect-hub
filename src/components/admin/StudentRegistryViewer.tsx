@@ -43,6 +43,7 @@ export function StudentRegistryViewer({ state }: StudentRegistryViewerProps) {
       .channel("admin-student-registry-sync")
       .on("postgres_changes", { event: "*", schema: "public", table: "new_registered_students" }, () => {
         campusStore.loadFromSupabase();
+        toast.info("Student registry updated - new registration detected!");
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "accounts" }, () => {
         campusStore.loadFromSupabase();

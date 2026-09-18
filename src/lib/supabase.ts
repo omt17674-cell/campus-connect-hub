@@ -12,6 +12,8 @@ const supabaseAnonKey =
 
 if (!supabaseUrl || !supabaseAnonKey) {
   console.warn("Supabase credentials missing. Ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set in environment variables.");
+} else {
+  console.info(`[Supabase Init] Connecting to: ${supabaseUrl}`);
 }
 
 export const supabase = createClient(supabaseUrl || "https://placeholder.supabase.co", supabaseAnonKey || "placeholder-key", {

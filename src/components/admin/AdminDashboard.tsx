@@ -189,6 +189,10 @@ export function AdminDashboard({ state, onOpenGateModal }: AdminDashboardProps) 
               ? "bg-[#1A3C6E] text-white"
               : "text-muted-foreground hover:text-foreground"
           )}
+          onClick={() => {
+            setView("student_registry");
+            campusStore.loadFromSupabase();
+          }}
         >
           <GraduationCap className="mr-1.5 size-3.5 text-[#F2A93B]" />
           Student Identity Registry ({(state.newRegisteredStudents || []).length})
