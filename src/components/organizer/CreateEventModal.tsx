@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { EventCategory } from "@/lib/types";
 import { campusStore } from "@/lib/campus-store";
+import { toast } from "sonner";
 
 interface CreateEventModalProps {
   onClose: () => void;
@@ -66,6 +67,7 @@ export function CreateEventModal({ onClose, onSuccess }: CreateEventModalProps) 
       ],
     });
 
+    toast.success(`Event "${title}" created and scheduled!`);
     onSuccess();
   };
 

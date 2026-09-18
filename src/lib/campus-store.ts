@@ -997,7 +997,11 @@ export const campusStore = {
           reviewCount: ev.review_count || ev.reviewCount || 0,
           rules: ev.rules || [],
         }));
-        campusStore.setState(() => ({ events: eventsList }));
+        campusStore.setState((prev) => {
+          const remoteIds = new Set(eventsList.map((e) => e.id));
+          const localOnly = prev.events.filter((e) => !remoteIds.has(e.id));
+          return { events: [...eventsList, ...localOnly] };
+        });
       }
 
       // 2. Pull registrations
@@ -1836,6 +1840,15 @@ export const campusStore = {
       events: [newEvent, ...prev.events],
       auditLogs: [auditEntry, ...prev.auditLogs],
     }));
+
+    if (typeof window !== "undefined" && navigator.onLine) {
+      supabase
+        .from("events")
+        .upsert(serializeEventForDb(newEvent))
+        .then(({ error }) => {
+          if (error) logSupabaseError("upsert", "events", error);
+        });
+    }
 
     return newEvent;
   },

@@ -514,6 +514,15 @@ export function AdminDashboard({ state, onOpenGateModal }: AdminDashboardProps) 
                 <Calendar className="mx-auto size-10 text-muted-foreground/40 mb-3" />
                 <p className="font-bold text-base text-foreground">No events found matching your search.</p>
                 <p className="text-xs mt-1">Try adjusting your filters or click Generate Event to schedule one.</p>
+                <div className="mt-4 flex justify-center">
+                  <Button
+                    onClick={() => setShowCreateModal(true)}
+                    className="h-10 gap-2 rounded-2xl bg-[#1A3C6E] px-5 font-display text-xs font-black text-white shadow-md shadow-[#1A3C6E]/20 hover:bg-[#1A3C6E]/90"
+                  >
+                    <Plus className="size-4 text-[#F2A93B]" />
+                    <span>Generate New Event Now</span>
+                  </Button>
+                </div>
               </div>
             ) : (
               filteredEvents.map((event) => {
@@ -975,7 +984,6 @@ export function AdminDashboard({ state, onOpenGateModal }: AdminDashboardProps) 
           onClose={() => setShowCreateModal(false)}
           onSuccess={() => {
             setShowCreateModal(false);
-            campusStore.loadFromSupabase();
           }}
         />
       )}
