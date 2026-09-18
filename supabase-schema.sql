@@ -346,6 +346,16 @@ EXCEPTION WHEN OTHERS THEN
 END $$;
 
 -- ==============================================================================
+-- INITIAL SAMPLE DATA FOR ACCOUNTS (DEFAULT PORTAL ROLES)
+-- ==============================================================================
+INSERT INTO public.accounts (id, name, roll_no, email, role, department, semester, year, attendance_percentage, points, streak_days, volunteer_hours, avatar)
+VALUES
+  ('u-om', 'Om Thakkar', '24BT04171', 'omthakkar168@gsfcuniversity.ac.in', 'student', 'Computer Science & Engineering', 4, 2, 100, 100, 1, 0, 'OT'),
+  ('u-ananya', 'Dr. Ananya Sharma (Dean)', 'ADM-DEAN-001', 'admin.dean@gsfcuniversity.ac.in', 'admin', 'Student Affairs & Academic Governance', 0, 0, 100, 3200, 120, 95, 'AS'),
+  ('u-tpc', 'Prof. Rajiv Mehta (TPC Head)', 'TPC-ADMIN-108', 'tpc.admin@gsfcuniversity.ac.in', 'organizer', 'Training & Placement Cell / Event Convener', 0, 0, 99, 1950, 52, 65, 'RM')
+ON CONFLICT (id) DO NOTHING;
+
+-- ==============================================================================
 -- INITIAL SAMPLE DATA FOR NEW REGISTERED STUDENTS (LOCKED)
 -- ==============================================================================
 INSERT INTO public.new_registered_students (id, full_name, mobile_number, roll_no, email, school, department, degree, semester, residence_type, hostel_block_or_bus_route, clubs_interested, id_card_uploaded, is_locked, verified_by_university)
@@ -354,3 +364,19 @@ VALUES
   ('STU-PV4192', 'Pooja Varma', '+91 98240 19283', '24BT04192', 'pooja.v@gsfcuniversity.ac.in', 'School of Technology (SOT)', 'Computer Science & Engineering', 'B.Tech', 4, 'dayscholar', 'Route 4 - Vadodara Alkapuri', ARRAY['Chrysalis Cultural Guild'], true, true, true),
   ('STU-RD4205', 'Rohan Dave', '+91 97250 88205', '24BT04205', 'rohan.d@gsfcuniversity.ac.in', 'School of Technology (SOT)', 'Chemical Engineering', 'B.Tech', 4, 'hostel', 'Sardar Patel Boys Hostel - Block A', ARRAY['GSFC E-Cell'], true, true, true)
 ON CONFLICT (id) DO NOTHING;
+
+-- ==============================================================================
+-- ENABLE SUPABASE REALTIME REPLICATION
+-- ==============================================================================
+DO $$
+BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.accounts;
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.new_registered_students;
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.events;
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.registrations;
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.attendance;
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.announcements;
+EXCEPTION WHEN OTHERS THEN
+  NULL;
+END $$;
+

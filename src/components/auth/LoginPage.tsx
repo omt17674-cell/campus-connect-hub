@@ -38,8 +38,10 @@ import {
 import { UserRole, UserProfile } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { ShortCampusTourModal } from "@/components/tour/ShortCampusTourModal";
+import { supabase } from "@/lib/supabase";
 
 interface LoginPageProps {
+
   onLoginSuccess?: () => void;
 }
 
@@ -85,10 +87,21 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
   };
 
   // 1-Click Fast Role Sign-in
-  const handleFastSignIn = (account: CampusAccount) => {
+  const handleFastSignIn = async (account: CampusAccount) => {
     setSelectedRole(account.role);
     setIdentifier(account.email);
     setPassword(account.password);
+
+    try {
+      // Optional Supabase Auth sign-in
+      if (account.email && account.password) {
+        await supabase.auth.signInWithPassword({
+          email: account.email,
+          password: account.password,
+        }).catch(() => {});
+      }
+    } catch {}
+
     campusStore.loginWithAccount(account);
     setStatusMessage({ text: `Logged in as ${account.name}`, type: "success" });
     if (onLoginSuccess) {
@@ -97,21 +110,102 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
   };
 
   // Standard Login Submit
-  const handleFormSubmit = (e: React.FormEvent) => {
+  const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!identifier.trim()) {
       setStatusMessage({ text: "Please enter your GSFC University ID or Email.", type: "error" });
       return;
     }
 
-    const res = campusStore.loginWithCredentials(identifier, selectedRole);
-    if (res.success) {
-      setStatusMessage({ text: res.message, type: "success" });
-      if (onLoginSuccess) {
-        setTimeout(onLoginSuccess, 300);
+    const cleanInput = identifier.trim();
+    const cleanEmail = cleanInput.includes("@") ? cleanInput.toLowerCase() : `${cleanInput.toLowerCase()}@gsfcuniversity.ac.in`;
+
+    try {
+      // 1. First attempt Supabase Auth if password is provided
+      if (password) {
+        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+          email: cleanEmail,
+          password,
+        });
+
+        if (!authError && authData.user) {
+          // Fetch user profile from Supabase accounts or new_registered_students
+          const { data: accountRow } = await supabase
+            .from("accounts")
+            .select("*")
+            .eq("email", cleanEmail)
+            .maybeSingle();
+
+          const studentRoll = authData.user.user_metadata?.roll_no || cleanInput.toUpperCase();
+          const studentName = authData.user.user_metadata?.full_name || accountRow?.name || authData.user.email?.split("@")[0] || "GSFC Student";
+          const studentRole = (authData.user.user_metadata?.role as UserRole) || (accountRow?.role as UserRole) || selectedRole;
+
+          const loggedProfile: UserProfile = {
+            id: accountRow?.id || authData.user.id,
+            name: studentName,
+            rollNo: studentRoll,
+            email: cleanEmail,
+            role: studentRole,
+            department: accountRow?.department || "Computer Science & Engineering",
+            semester: accountRow?.semester || 4,
+            avatar: studentName.slice(0, 2).toUpperCase(),
+            points: accountRow?.points || 100,
+            streakDays: accountRow?.streak_days || 1,
+            volunteerHours: accountRow?.volunteer_hours || 0,
+            attendanceRate: accountRow?.attendance_percentage || 100,
+            badges: ["b1"],
+          };
+
+          const campusAcc: CampusAccount = {
+            role: studentRole,
+            roleTitle: studentRole === "admin" ? "Administration" : studentRole === "organizer" ? "TPC Admin" : "GSFC Student",
+            roleBadge: studentRoll,
+            name: studentName,
+            idOrRoll: studentRoll,
+            email: cleanEmail,
+            password,
+            profile: loggedProfile,
+          };
+
+          campusStore.loginWithAccount(campusAcc);
+          setStatusMessage({ text: `Welcome back, ${studentName}! Authenticated via Supabase Auth.`, type: "success" });
+          if (onLoginSuccess) setTimeout(onLoginSuccess, 300);
+          return;
+        }
       }
-    } else {
-      setStatusMessage({ text: res.message, type: "error" });
+
+      // 2. Query REST API Gateway backed by Supabase PostgreSQL tables
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ identifier: cleanInput, password, role: selectedRole }),
+      });
+
+      const data = await res.json().catch(() => null);
+
+      if (res.ok && data?.success && data?.account) {
+        campusStore.loginWithAccount(data.account);
+        setStatusMessage({ text: data.message || `Welcome, ${data.account.name}!`, type: "success" });
+        if (onLoginSuccess) setTimeout(onLoginSuccess, 300);
+        return;
+      }
+
+      // 3. Fallback to local accounts matching if offline or local state
+      const localRes = campusStore.loginWithCredentials(identifier, selectedRole);
+      if (localRes.success) {
+        setStatusMessage({ text: localRes.message, type: "success" });
+        if (onLoginSuccess) setTimeout(onLoginSuccess, 300);
+      } else {
+        setStatusMessage({ text: data?.message || "Invalid credentials or student record not found in Supabase.", type: "error" });
+      }
+    } catch (err: any) {
+      const localRes = campusStore.loginWithCredentials(identifier, selectedRole);
+      if (localRes.success) {
+        setStatusMessage({ text: localRes.message, type: "success" });
+        if (onLoginSuccess) setTimeout(onLoginSuccess, 300);
+      } else {
+        setStatusMessage({ text: "Unable to authenticate with database. Check credentials.", type: "error" });
+      }
     }
   };
 
@@ -157,9 +251,32 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
 
     try {
       const cleanRoll = regRollNo.trim().toUpperCase();
-      const cleanEmail = regEmail.includes("@") ? regEmail.trim() : `${regEmail.trim()}@gsfcuniversity.ac.in`;
+      const cleanEmail = regEmail.includes("@") ? regEmail.trim().toLowerCase() : `${regEmail.trim().toLowerCase()}@gsfcuniversity.ac.in`;
+      const passToUse = regPassword || "Student@2026";
 
-      // 1. Submit to API Gateway -> Supabase new_registered_students table
+      // 1. Create real Supabase Auth user
+      try {
+        const { error: signUpError } = await supabase.auth.signUp({
+          email: cleanEmail,
+          password: passToUse,
+          options: {
+            data: {
+              full_name: regFullName.trim(),
+              roll_no: cleanRoll,
+              role: regRole,
+              department: regDepartment,
+              semester: regSemester,
+            },
+          },
+        });
+        if (signUpError && !signUpError.message.includes("already registered")) {
+          console.debug("Supabase auth signUp notice:", signUpError.message);
+        }
+      } catch (authErr) {
+        console.debug("Supabase auth creation note:", authErr);
+      }
+
+      // 2. Submit to API Gateway -> Supabase PostgreSQL table (new_registered_students & accounts)
       const res = await fetch("/api/students/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -173,16 +290,14 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
           degree: regDegree,
           semester: regSemester,
           residenceType: regResidence,
-          hostelBlockOrBusRoute: regResidence === "hostel" ? regHostelBlock : "University Bus Route 4",
+          hostelBlockOrBusRoute: regResidence === "hostel" ? regHostelBlock : regBusRoute,
           clubsInterested: regClubs,
           idCardUploaded: regIdUploaded,
-          password: regPassword || "Student@2026",
+          password: passToUse,
         }),
       });
 
-      const resData = await res.json().catch(() => null);
-
-      if (res && res.status === 409) {
+      if (res.status === 409) {
         setStatusMessage({
           text: `⚠️ Identity Locked: Student ${cleanRoll} is already registered. Name & Mobile cannot be changed.`,
           type: "error",
@@ -221,10 +336,11 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
         name: regFullName.trim(),
         idOrRoll: cleanRoll,
         email: cleanEmail,
-        password: regPassword || "Student@2026",
+        password: passToUse,
         profile: newUserProfile,
       };
 
+      // Register and update store
       campusStore.registerNewAccount(newAccount);
       campusStore.registerNewStudent({
         id: `stu-${cleanRoll.toLowerCase()}`,
@@ -245,6 +361,9 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
         createdAt: new Date().toISOString(),
       });
       campusStore.loginWithAccount(newAccount);
+
+      // Trigger fresh load from Supabase
+      campusStore.loadFromSupabase();
 
       try {
         confetti({
@@ -257,68 +376,23 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
 
       setRegSubmitting(false);
       setStatusMessage({
-        text: `🔒 Registered & Identity Permanently Locked! Welcome to Campus Connect, ${regFullName}.`,
+        text: `🔒 Registered & Identity Permanently Synced to Supabase! Welcome, ${regFullName}.`,
         type: "success",
       });
 
       if (onLoginSuccess) {
         setTimeout(onLoginSuccess, 400);
       }
-    } catch (err) {
-      console.warn("Registration API fallback:", err);
-      // Fallback local registration
-      const initials = regFullName.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2) || "ST";
-      const cleanRoll = regRollNo.trim().toUpperCase();
-      const cleanEmail = regEmail.includes("@") ? regEmail.trim() : `${regEmail.trim()}@gsfcuniversity.ac.in`;
-      
-      const newAccount: CampusAccount = {
-        role: regRole,
-        roleTitle: "GSFC Student",
-        roleBadge: cleanRoll,
-        name: regFullName.trim(),
-        idOrRoll: cleanRoll,
-        email: cleanEmail,
-        password: regPassword || "Student@2026",
-        profile: {
-          id: `u-${cleanRoll.toLowerCase()}`,
-          name: regFullName.trim(),
-          rollNo: cleanRoll,
-          email: cleanEmail,
-          role: regRole,
-          department: `${regDegree} ${regDepartment}`,
-          semester: regSemester,
-          avatar: initials,
-          points: 100,
-          streakDays: 1,
-          volunteerHours: 0,
-          attendanceRate: 100,
-          badges: ["b1"],
-        },
-      };
-      campusStore.registerNewAccount(newAccount);
-      campusStore.registerNewStudent({
-        id: `stu-${cleanRoll.toLowerCase()}`,
-        fullName: regFullName.trim(),
-        mobileNumber: regPhone.trim(),
-        rollNo: cleanRoll,
-        email: cleanEmail,
-        school: regSchool,
-        department: regDepartment,
-        degree: regDegree,
-        semester: regSemester,
-        residenceType: regResidence,
-        hostelBlockOrBusRoute: regResidence === "hostel" ? regHostelBlock : regBusRoute,
-        clubsInterested: regClubs,
-        idCardUploaded: regIdUploaded,
-        isLocked: true,
-        verifiedByUniversity: true,
-        createdAt: new Date().toISOString(),
-      });
-      campusStore.loginWithAccount(newAccount);
+    } catch (err: any) {
+      console.warn("Registration error:", err);
       setRegSubmitting(false);
-      if (onLoginSuccess) setTimeout(onLoginSuccess, 400);
+      setStatusMessage({
+        text: `Error during registration: ${err.message || "Please check network connection"}`,
+        type: "error",
+      });
     }
   };
+
 
   // Toggle club selection
   const toggleClub = (club: string) => {

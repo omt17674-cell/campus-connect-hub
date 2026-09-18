@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   GraduationCap,
   Lock,
@@ -13,9 +13,10 @@ import {
   FileCheck2,
   Download,
   Filter,
+  RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { CampusState } from "@/lib/campus-store";
+import { CampusState, campusStore } from "@/lib/campus-store";
 import { NewRegisteredStudent } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -27,6 +28,17 @@ export function StudentRegistryViewer({ state }: StudentRegistryViewerProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("all");
   const [residenceFilter, setResidenceFilter] = useState<"all" | "hostel" | "dayscholar">("all");
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  useEffect(() => {
+    campusStore.loadFromSupabase();
+  }, []);
+
+  const handleManualSync = async () => {
+    setIsRefreshing(true);
+    await campusStore.loadFromSupabase();
+    setTimeout(() => setIsRefreshing(false), 500);
+  };
 
   const students: NewRegisteredStudent[] = state.newRegisteredStudents || [];
 
@@ -121,6 +133,14 @@ export function StudentRegistryViewer({ state }: StudentRegistryViewerProps) {
             <p className="font-display text-lg font-black text-[#1A3C6E]">{students.length} Students</p>
           </div>
           <Button
+            onClick={handleManualSync}
+            variant="outline"
+            className="h-10 gap-2 rounded-2xl border-blue-200 bg-blue-50/50 text-xs font-bold text-[#1A3C6E] hover:bg-blue-100/60"
+          >
+            <RefreshCw className={cn("size-3.5 text-[#F2A93B]", isRefreshing && "animate-spin")} />
+            Sync Supabase
+          </Button>
+          <Button
             onClick={handleExportCsv}
             variant="outline"
             className="h-10 gap-2 rounded-2xl border-slate-300 text-xs font-bold text-slate-700 hover:bg-slate-50"
@@ -130,6 +150,7 @@ export function StudentRegistryViewer({ state }: StudentRegistryViewerProps) {
           </Button>
         </div>
       </div>
+
 
       {/* Search & Filter Bar */}
       <div className="flex flex-col sm:flex-row items-center gap-3 rounded-2xl border border-border/80 bg-card p-3 shadow-xs">

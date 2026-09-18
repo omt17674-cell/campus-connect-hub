@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   AlertTriangle,
   BarChart3,
@@ -10,6 +10,7 @@ import {
   History,
   Mail,
   PieChart as PieIcon,
+  RefreshCw,
   ShieldAlert,
   ShieldCheck,
   TrendingUp,
@@ -46,6 +47,18 @@ export function AdminDashboard({ state, onOpenGateModal }: AdminDashboardProps) 
   const [adminTab, setAdminTab] = useState<
     "overview" | "students" | "roster" | "security" | "approvals" | "alerts" | "audit"
   >("overview");
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Sync fresh records directly from Supabase on load
+  useEffect(() => {
+    campusStore.loadFromSupabase();
+  }, []);
+
+  const handleManualRefresh = async () => {
+    setIsRefreshing(true);
+    await campusStore.loadFromSupabase();
+    setTimeout(() => setIsRefreshing(false), 500);
+  };
 
   const pendingApprovals = state.events.filter((e) => e.status === "pending_approval");
   const activeVisitors = state.visitorRecords.filter((v) => v.status === "active");
@@ -128,15 +141,27 @@ export function AdminDashboard({ state, onOpenGateModal }: AdminDashboardProps) 
           </p>
         </div>
 
-        <Button
-          onClick={handleExportFullCsv}
-          variant="outline"
-          className="h-10 gap-2 rounded-2xl border-border/80 text-xs font-bold shadow-sm"
-        >
-          <Download className="size-4 text-brand" />
-          Export Complete Report (CSV)
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={handleManualRefresh}
+            variant="outline"
+            className="h-10 gap-2 rounded-2xl border-blue-200 bg-blue-50/50 text-xs font-bold text-[#1A3C6E] shadow-sm hover:bg-blue-100/60"
+          >
+            <RefreshCw className={cn("size-3.5 text-[#F2A93B]", isRefreshing && "animate-spin")} />
+            <span>Sync Supabase</span>
+          </Button>
+
+          <Button
+            onClick={handleExportFullCsv}
+            variant="outline"
+            className="h-10 gap-2 rounded-2xl border-border/80 text-xs font-bold shadow-sm"
+          >
+            <Download className="size-4 text-brand" />
+            Export Complete Report (CSV)
+          </Button>
+        </div>
       </div>
+
 
       {/* Tabs */}
       <div className="flex flex-wrap items-center gap-1.5 rounded-2xl border border-border/70 bg-card/60 p-1 backdrop-blur-xl">

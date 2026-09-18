@@ -1166,6 +1166,23 @@ function loadSavedState(): CampusState {
     digitalId: INITIAL_DIGITAL_ID,
     newRegisteredStudents: INITIAL_NEW_STUDENTS,
   };
+}let realtimeChannelInitialized = false;
+
+export function initSupabaseRealtimeSync() {
+  if (realtimeChannelInitialized || typeof window === "undefined") return;
+  realtimeChannelInitialized = true;
+
+  try {
+    supabase
+      .channel("public-db-changes")
+      .on("postgres_changes", { event: "*", schema: "public" }, (payload) => {
+        console.debug("Supabase realtime Postgres change:", payload.table, payload.eventType);
+        campusStore.loadFromSupabase();
+      })
+      .subscribe();
+  } catch (err) {
+    console.debug("Supabase realtime init note:", err);
+  }
 }
 
 export async function syncStateToSupabase(state: CampusState): Promise<void> {
@@ -1257,51 +1274,105 @@ export const campusStore = {
 
   async loadFromSupabase(): Promise<void> {
     if (typeof window === "undefined" || !navigator.onLine) return;
+    initSupabaseRealtimeSync();
+
     try {
       // 1. Pull events
-      const { data: supaEvents } = await supabase.from("events").select("*");
+      const { data: supaEvents } = await supabase.from("events").select("*").order("date", { ascending: true });
       if (supaEvents && supaEvents.length > 0) {
         campusStore.setState((prev) => {
-          const merged = [...prev.events];
-          for (const ev of supaEvents as CampusEvent[]) {
-            if (!merged.some((e) => e.id === ev.id)) {
-              merged.push(ev);
-            }
-          }
-          return { events: merged };
+          const map = new Map<string, CampusEvent>();
+          prev.events.forEach((e) => map.set(e.id, e));
+          (supaEvents as any[]).forEach((ev) => {
+            map.set(ev.id, {
+              id: ev.id,
+              title: ev.title,
+              description: ev.description || "",
+              category: ev.category,
+              department: ev.department,
+              date: ev.date,
+              time: ev.time,
+              venue: ev.venue,
+              organizerName: ev.organizer_name || ev.organizerName || "",
+              organizerEmail: ev.organizer_email || ev.organizerEmail || "",
+              capacity: ev.capacity || 100,
+              registeredCount: ev.registered_count || ev.registeredCount || 0,
+              waitlistCount: ev.waitlist_count || ev.waitlistCount || 0,
+              approvalRequired: Boolean(ev.approval_required ?? ev.approvalRequired),
+              isTeamEvent: Boolean(ev.is_team_event ?? ev.isTeamEvent),
+              minTeamSize: ev.min_team_size || ev.minTeamSize || 1,
+              maxTeamSize: ev.max_team_size || ev.maxTeamSize || 4,
+              volunteerHoursReward: ev.volunteer_hours_reward || ev.volunteerHoursReward || 0,
+              bannerImage: ev.banner_image || ev.bannerImage || "",
+              status: ev.status || "upcoming",
+              averageRating: ev.average_rating || ev.averageRating || 5.0,
+              reviewCount: ev.review_count || ev.reviewCount || 0,
+              rules: ev.rules || [],
+            });
+          });
+          return { events: Array.from(map.values()) };
         });
       }
 
       // 2. Pull registrations
-      const { data: supaRegs } = await supabase.from("registrations").select("*");
+      const { data: supaRegs } = await supabase.from("registrations").select("*").order("registered_at", { ascending: false });
       if (supaRegs && supaRegs.length > 0) {
         campusStore.setState((prev) => {
-          const merged = [...prev.registrations];
-          for (const r of supaRegs as Registration[]) {
-            if (!merged.some((existing) => existing.id === r.id || (existing.eventId === r.eventId && existing.userRollNo === r.userRollNo))) {
-              merged.push(r);
-            }
-          }
-          return { registrations: merged };
+          const map = new Map<string, Registration>();
+          prev.registrations.forEach((r) => map.set(r.id, r));
+          (supaRegs as any[]).forEach((r) => {
+            map.set(r.id, {
+              id: r.id,
+              eventId: r.event_id || r.eventId,
+              userId: r.user_id || r.userId,
+              userRollNo: r.user_roll_no || r.userRollNo,
+              userName: r.user_name || r.userName,
+              department: r.department,
+              registeredAt: r.registered_at || r.registeredAt,
+              status: r.status || "confirmed",
+              isTeam: Boolean(r.is_team ?? r.isTeam),
+              teamName: r.team_name || r.teamName,
+              teamMembers: r.team_members || r.teamMembers,
+            });
+          });
+          return { registrations: Array.from(map.values()) };
         });
       }
 
       // 3. Pull attendance
-      const { data: supaAtt } = await supabase.from("attendance").select("*");
+      const { data: supaAtt } = await supabase.from("attendance").select("*").order("timestamp", { ascending: false });
       if (supaAtt && supaAtt.length > 0) {
         campusStore.setState((prev) => {
-          const merged = [...prev.attendanceRecords];
-          for (const a of supaAtt as AttendanceRecord[]) {
-            if (!merged.some((existing) => existing.id === a.id)) {
-              merged.push(a);
-            }
-          }
-          return { attendanceRecords: merged };
+          const map = new Map<string, AttendanceRecord>();
+          prev.attendanceRecords.forEach((a) => map.set(a.id, a));
+          (supaAtt as any[]).forEach((a) => {
+            map.set(a.id, {
+              id: a.id,
+              eventId: a.event_id || a.eventId,
+              eventTitle: a.event_title || a.eventTitle || "",
+              userId: a.user_id || a.userId,
+              userName: a.user_name || a.userName,
+              userRollNo: a.user_roll_no || a.userRollNo,
+              department: a.department,
+              timestamp: a.timestamp,
+              punchInTime: a.punch_in_time || a.punchInTime,
+              punchOutTime: a.punch_out_time || a.punchOutTime,
+              verifiedMethod: a.verified_method || a.verifiedMethod || "qr_scan",
+              tokenUsed: a.token_used || a.tokenUsed || "",
+              certificateId: a.certificate_id || a.certificateId,
+              userLatitude: a.user_latitude || a.userLatitude,
+              userLongitude: a.user_longitude || a.userLongitude,
+              distanceFromVenueMeters: a.distance_from_venue_meters || a.distanceFromVenueMeters,
+              locationVerified: a.location_verified ?? a.locationVerified ?? true,
+              synced: true,
+            });
+          });
+          return { attendanceRecords: Array.from(map.values()) };
         });
       }
 
       // 4. Pull new registered students
-      const { data: supaStudents } = await supabase.from("new_registered_students").select("*");
+      const { data: supaStudents } = await supabase.from("new_registered_students").select("*").order("created_at", { ascending: false });
       if (supaStudents && supaStudents.length > 0) {
         const mappedStudents: NewRegisteredStudent[] = supaStudents.map((d: any) => ({
           id: d.id,
@@ -1316,39 +1387,44 @@ export const campusStore = {
           residenceType: d.residence_type || d.residenceType || "hostel",
           hostelBlockOrBusRoute: d.hostel_block_or_bus_route || d.hostelBlockOrBusRoute,
           clubsInterested: d.clubs_interested || d.clubsInterested || [],
-          idCardUploaded: d.id_card_uploaded || d.idCardUploaded || true,
+          idCardUploaded: Boolean(d.id_card_uploaded ?? d.idCardUploaded ?? true),
           isLocked: true,
-          verifiedByUniversity: true,
+          verifiedByUniversity: Boolean(d.verified_by_university ?? d.verifiedByUniversity ?? true),
           createdAt: d.created_at || d.createdAt || new Date().toISOString(),
         }));
-        campusStore.setState((prev) => {
-          const merged = [...(prev.newRegisteredStudents || [])];
-          for (const s of mappedStudents) {
-            if (!merged.some((existing) => existing.rollNo.toUpperCase() === s.rollNo.toUpperCase())) {
-              merged.push(s);
-            }
-          }
-          return { newRegisteredStudents: merged };
-        });
+        campusStore.setState(() => ({
+          newRegisteredStudents: mappedStudents,
+        }));
       }
 
       // 5. Pull announcements
-      const { data: supaAnnouncements } = await supabase.from("announcements").select("*");
+      const { data: supaAnnouncements } = await supabase.from("announcements").select("*").order("created_at", { ascending: false });
       if (supaAnnouncements && supaAnnouncements.length > 0) {
         campusStore.setState((prev) => {
-          const merged = [...prev.announcements];
-          for (const ann of supaAnnouncements as CampusAnnouncement[]) {
-            if (!merged.some((a) => a.id === ann.id)) {
-              merged.push(ann);
-            }
-          }
-          return { announcements: merged };
+          const map = new Map<string, CampusAnnouncement>();
+          prev.announcements.forEach((a) => map.set(a.id, a));
+          (supaAnnouncements as any[]).forEach((ann) => {
+            map.set(ann.id, {
+              id: ann.id,
+              title: ann.title,
+              content: ann.content,
+              category: ann.category,
+              authorName: ann.author_name || ann.authorName,
+              authorRole: ann.author_role || ann.authorRole,
+              departmentTarget: ann.department_target || ann.departmentTarget,
+              priority: ann.priority,
+              readBy: ann.read_by || ann.readBy || [],
+              createdAt: ann.created_at || ann.createdAt,
+            });
+          });
+          return { announcements: Array.from(map.values()) };
         });
       }
     } catch (e) {
       console.debug("Supabase realtime sync note:", e);
     }
   },
+
 
   registerNewAccount(account: CampusAccount) {
     const current = getStoredAccounts();
@@ -2034,13 +2110,20 @@ export const campusStore = {
     });
 
     const updatedEvents = state.events.map((e) =>
-      e.id === eventId ? { ...e, status: "completed" as const } : e
+      e.id === eventId
+        ? {
+            ...e,
+            status: "completed" as const,
+            certificatesReleased: true,
+            isLive: false,
+          }
+        : e
     );
 
     const notif: NotificationItem = {
       id: `notif-cert-${Date.now()}`,
       title: `🎓 Certificates Issued: ${event.title}`,
-      message: `The event has concluded. Verified participation certificates with GSFC seal have been generated for all attendees!`,
+      message: `The event has concluded. Verified participation certificates with GSFC seal are now available to download!`,
       type: "achievement",
       timestamp: "Just now",
       read: false,
@@ -2053,18 +2136,18 @@ export const campusStore = {
       performedBy: `${state.currentUser.name} (${state.currentUser.role})`,
       target: event.title,
       timestamp: now.replace("T", " ").slice(0, 19),
-      details: `Generated and digitally signed participation certificates for ${issuedCount} verified attendees with official GSFC seal.`,
+      details: `Generated and digitally signed participation certificates for ${issuedCount} attendees with official GSFC seal.`,
     };
 
     // If current logged-in user is an attendee, award XP and volunteer hours
     let updatedCurrentUser = state.currentUser;
-    const isCurrentUserAttendee = eventRegistrations.some((r) => r.userId === state.currentUser.id);
+    const isCurrentUserAttendee = eventRegistrations.some((r) => r.userId === state.currentUser.id || r.userRollNo === state.currentUser.rollNo);
     if (isCurrentUserAttendee) {
       updatedCurrentUser = {
         ...state.currentUser,
-        points: state.currentUser.points + 50,
-        volunteerHours: state.currentUser.volunteerHours + (event.volunteerHoursReward || 3),
-        attendanceRate: Math.min(100, state.currentUser.attendanceRate + 2),
+        points: (state.currentUser.points || 0) + 50,
+        volunteerHours: (state.currentUser.volunteerHours || 0) + (event.volunteerHoursReward || 3),
+        attendanceRate: Math.min(100, (state.currentUser.attendanceRate || 95) + 2),
       };
     }
 
@@ -2079,7 +2162,7 @@ export const campusStore = {
 
     return {
       success: true,
-      message: `Event concluded! Generated ${issuedCount} participation certificates with GSFC seal.`,
+      message: `Event concluded successfully! Certificates issued with official GSFC seal.`,
       attendeesCount: issuedCount,
     };
   },
