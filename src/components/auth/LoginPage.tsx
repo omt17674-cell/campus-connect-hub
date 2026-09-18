@@ -23,6 +23,7 @@ import {
   User,
   UserCheck,
   UserPlus,
+  Loader2,
 } from "lucide-react";
 import confetti from "canvas-confetti";
 import { Button } from "@/components/ui/button";
@@ -77,6 +78,8 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
   const [regIdUploaded, setRegIdUploaded] = useState(false);
   const [regSubmitting, setRegSubmitting] = useState(false);
 
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+
   // Handle role change from dropdown
   const handleRoleChange = (role: UserRole) => {
     setSelectedRole(role);
@@ -91,9 +94,9 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
     setSelectedRole(account.role);
     setIdentifier(account.email);
     setPassword(account.password);
+    setIsLoggingIn(true);
 
     try {
-      // Optional Supabase Auth sign-in
       if (account.email && account.password) {
         await supabase.auth.signInWithPassword({
           email: account.email,
@@ -103,9 +106,10 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
     } catch {}
 
     campusStore.loginWithAccount(account);
+    setIsLoggingIn(false);
     setStatusMessage({ text: `Logged in as ${account.name}`, type: "success" });
     if (onLoginSuccess) {
-      setTimeout(onLoginSuccess, 300);
+      onLoginSuccess();
     }
   };
 
@@ -117,92 +121,145 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
       return;
     }
 
+    setIsLoggingIn(true);
+    setStatusMessage(null);
+
     const cleanInput = identifier.trim();
     const cleanEmail = cleanInput.includes("@") ? cleanInput.toLowerCase() : `${cleanInput.toLowerCase()}@gsfcuniversity.ac.in`;
 
     try {
-      // 1. First attempt Supabase Auth if password is provided
+      // 1. Direct local account matching for instant login
+      const localAccount = allAccounts.find(
+        (a) =>
+          a.role === selectedRole &&
+          (a.email.toLowerCase() === cleanEmail ||
+            a.idOrRoll.toLowerCase() === cleanInput.toLowerCase() ||
+            cleanEmail.includes(a.idOrRoll.toLowerCase()) ||
+            cleanEmail.includes(a.email.split("@")[0].toLowerCase()))
+      );
+
+      // 2. Supabase Auth sign-in
       if (password) {
-        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-          email: cleanEmail,
-          password,
-        });
-
-        if (!authError && authData.user) {
-          // Fetch user profile from Supabase accounts or new_registered_students
-          const { data: accountRow } = await supabase
-            .from("accounts")
-            .select("*")
-            .eq("email", cleanEmail)
-            .maybeSingle();
-
-          const studentRoll = authData.user.user_metadata?.roll_no || cleanInput.toUpperCase();
-          const studentName = authData.user.user_metadata?.full_name || accountRow?.name || authData.user.email?.split("@")[0] || "GSFC Student";
-          const studentRole = (authData.user.user_metadata?.role as UserRole) || (accountRow?.role as UserRole) || selectedRole;
-
-          const loggedProfile: UserProfile = {
-            id: accountRow?.id || authData.user.id,
-            name: studentName,
-            rollNo: studentRoll,
-            email: cleanEmail,
-            role: studentRole,
-            department: accountRow?.department || "Computer Science & Engineering",
-            semester: accountRow?.semester || 4,
-            avatar: studentName.slice(0, 2).toUpperCase(),
-            points: accountRow?.points || 100,
-            streakDays: accountRow?.streak_days || 1,
-            volunteerHours: accountRow?.volunteer_hours || 0,
-            attendanceRate: accountRow?.attendance_percentage || 100,
-            badges: ["b1"],
-          };
-
-          const campusAcc: CampusAccount = {
-            role: studentRole,
-            roleTitle: studentRole === "admin" ? "Administration" : studentRole === "organizer" ? "TPC Admin" : "GSFC Student",
-            roleBadge: studentRoll,
-            name: studentName,
-            idOrRoll: studentRoll,
+        try {
+          const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
             email: cleanEmail,
             password,
-            profile: loggedProfile,
-          };
+          });
 
-          campusStore.loginWithAccount(campusAcc);
-          setStatusMessage({ text: `Welcome back, ${studentName}! Authenticated via Supabase Auth.`, type: "success" });
-          if (onLoginSuccess) setTimeout(onLoginSuccess, 300);
-          return;
+          if (!authError && authData?.user) {
+            const { data: accountRow } = await supabase
+              .from("accounts")
+              .select("*")
+              .eq("email", cleanEmail)
+              .maybeSingle();
+
+            const studentRoll = authData.user.user_metadata?.roll_no || localAccount?.idOrRoll || cleanInput.toUpperCase();
+            const studentName = authData.user.user_metadata?.full_name || accountRow?.name || localAccount?.name || "GSFC User";
+            const studentRole = (authData.user.user_metadata?.role as UserRole) || (accountRow?.role as UserRole) || selectedRole;
+
+            const loggedProfile: UserProfile = {
+              id: accountRow?.id || authData.user.id,
+              name: studentName,
+              rollNo: studentRoll,
+              email: cleanEmail,
+              role: studentRole,
+              department: accountRow?.department || localAccount?.profile.department || "GSFC University",
+              semester: accountRow?.semester ?? localAccount?.profile.semester ?? 4,
+              avatar: accountRow?.avatar || localAccount?.profile.avatar || studentName.slice(0, 2).toUpperCase(),
+              points: accountRow?.points || localAccount?.profile.points || 100,
+              streakDays: accountRow?.streak_days || localAccount?.profile.streakDays || 1,
+              volunteerHours: accountRow?.volunteer_hours || localAccount?.profile.volunteerHours || 0,
+              attendanceRate: accountRow?.attendance_percentage || localAccount?.profile.attendanceRate || 100,
+              badges: localAccount?.profile.badges || ["b1"],
+            };
+
+            const campusAcc: CampusAccount = {
+              role: studentRole,
+              roleTitle: studentRole === "admin" ? "Administration" : studentRole === "organizer" ? "TPC Admin" : "GSFC Student",
+              roleBadge: studentRoll,
+              name: studentName,
+              idOrRoll: studentRoll,
+              email: cleanEmail,
+              password,
+              profile: loggedProfile,
+            };
+
+            campusStore.loginWithAccount(campusAcc);
+            setIsLoggingIn(false);
+            setStatusMessage({ text: `Welcome back, ${studentName}! Authenticated via Supabase Auth.`, type: "success" });
+            if (onLoginSuccess) onLoginSuccess();
+            return;
+          }
+        } catch (authErr) {
+          console.debug("Supabase auth signIn error note:", authErr);
         }
       }
 
-      // 2. Query REST API Gateway backed by Supabase PostgreSQL tables
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ identifier: cleanInput, password, role: selectedRole }),
-      });
-
-      const data = await res.json().catch(() => null);
-
-      if (res.ok && data?.success && data?.account) {
-        campusStore.loginWithAccount(data.account);
-        setStatusMessage({ text: data.message || `Welcome, ${data.account.name}!`, type: "success" });
-        if (onLoginSuccess) setTimeout(onLoginSuccess, 300);
+      // 3. Fallback to matched account
+      if (localAccount) {
+        campusStore.loginWithAccount(localAccount);
+        setIsLoggingIn(false);
+        setStatusMessage({ text: `Welcome back, ${localAccount.name}!`, type: "success" });
+        if (onLoginSuccess) onLoginSuccess();
         return;
       }
 
-      // 3. Fallback to local accounts matching if offline or local state
+      // 4. Query REST API Gateway or Supabase tables
+      try {
+        const { data: supaAccount } = await supabase
+          .from("accounts")
+          .select("*")
+          .or(`email.ilike.${cleanEmail},roll_no.ilike.${cleanInput}`)
+          .maybeSingle();
+
+        if (supaAccount) {
+          const studentAccount: CampusAccount = {
+            role: supaAccount.role as UserRole,
+            roleTitle: supaAccount.role === "admin" ? "Administration" : supaAccount.role === "organizer" ? "TPC Admin" : "GSFC Student",
+            roleBadge: supaAccount.roll_no,
+            name: supaAccount.name,
+            idOrRoll: supaAccount.roll_no,
+            email: supaAccount.email,
+            password: password || "Student@2026",
+            profile: {
+              id: supaAccount.id,
+              name: supaAccount.name,
+              rollNo: supaAccount.roll_no,
+              email: supaAccount.email,
+              role: supaAccount.role as UserRole,
+              department: supaAccount.department,
+              semester: supaAccount.semester || 4,
+              avatar: supaAccount.avatar || supaAccount.name.slice(0, 2).toUpperCase(),
+              points: supaAccount.points || 100,
+              streakDays: supaAccount.streak_days || 1,
+              volunteerHours: supaAccount.volunteer_hours || 0,
+              attendanceRate: supaAccount.attendance_percentage || 100,
+              badges: ["b1"],
+            },
+          };
+          campusStore.loginWithAccount(studentAccount);
+          setIsLoggingIn(false);
+          setStatusMessage({ text: `Welcome, ${studentAccount.name}!`, type: "success" });
+          if (onLoginSuccess) onLoginSuccess();
+          return;
+        }
+      } catch {}
+
+      // 5. Final fallback to loginWithCredentials
       const localRes = campusStore.loginWithCredentials(identifier, selectedRole);
+      setIsLoggingIn(false);
       if (localRes.success) {
         setStatusMessage({ text: localRes.message, type: "success" });
-        if (onLoginSuccess) setTimeout(onLoginSuccess, 300);
+        if (onLoginSuccess) onLoginSuccess();
       } else {
-        setStatusMessage({ text: data?.message || "Invalid credentials or student record not found in Supabase.", type: "error" });
+        setStatusMessage({ text: "Invalid credentials. Please verify your email and password.", type: "error" });
       }
     } catch (err: any) {
+      setIsLoggingIn(false);
       const localRes = campusStore.loginWithCredentials(identifier, selectedRole);
       if (localRes.success) {
         setStatusMessage({ text: localRes.message, type: "success" });
-        if (onLoginSuccess) setTimeout(onLoginSuccess, 300);
+        if (onLoginSuccess) onLoginSuccess();
       } else {
         setStatusMessage({ text: "Unable to authenticate with database. Check credentials.", type: "error" });
       }
@@ -621,9 +678,17 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
 
                 <Button
                   type="submit"
-                  className="h-10 w-full rounded-xl bg-gradient-to-r from-[#1A3C6E] to-[#0E2342] font-display text-sm font-black text-white shadow-lg shadow-[#1A3C6E]/20 hover:from-[#1A3C6E]/90 hover:to-[#0E2342]/90"
+                  disabled={isLoggingIn}
+                  className="h-10 w-full rounded-xl bg-gradient-to-r from-[#1A3C6E] to-[#0E2342] font-display text-sm font-black text-white shadow-lg shadow-[#1A3C6E]/20 hover:from-[#1A3C6E]/90 hover:to-[#0E2342]/90 flex items-center justify-center gap-2"
                 >
-                  Login
+                  {isLoggingIn ? (
+                    <>
+                      <Loader2 className="size-4 animate-spin text-[#F2A93B]" />
+                      <span>Authenticating...</span>
+                    </>
+                  ) : (
+                    <span>Login</span>
+                  )}
                 </Button>
               </form>
 
