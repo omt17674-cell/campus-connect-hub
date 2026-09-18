@@ -272,12 +272,12 @@ export function HomeFeed({
                     ) : (
                       <Button
                         size="sm"
-                        onClick={() => {
+                        onClick={async () => {
                           if (event.isTeamEvent) {
                             onSelectEvent(event);
                           } else {
-                            campusStore.registerForEvent(event.id, false);
-                            if (onOpenPunchModal) {
+                            const res = await campusStore.registerForEvent(event.id, false);
+                            if (res.success && onOpenPunchModal) {
                               onOpenPunchModal(event);
                             }
                           }

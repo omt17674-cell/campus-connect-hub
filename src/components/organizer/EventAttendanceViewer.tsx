@@ -54,8 +54,10 @@ export function EventAttendanceViewer({
   useEffect(() => {
     if (selectedEventId) {
       setCurrentEventId(selectedEventId);
+    } else if (!currentEventId && state.events.length > 0) {
+      setCurrentEventId(state.events[0].id);
     }
-  }, [selectedEventId]);
+  }, [selectedEventId, state.events, currentEventId]);
   const [searchQuery, setSearchQuery] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<"all" | "punched_in" | "attended" | "pending">("all");
@@ -69,7 +71,7 @@ export function EventAttendanceViewer({
 
   // Fetch registrations directly from Supabase for this event
   const loadRegistrations = useCallback(async (eventId?: string) => {
-    const targetId = eventId || activeEvent?.id;
+    const targetId = eventId || currentEventId || activeEvent?.id || state.events[0]?.id;
     if (!targetId) return;
 
     try {
@@ -79,6 +81,8 @@ export function EventAttendanceViewer({
         .select("*")
         .eq("event_id", targetId)
         .order("registered_at", { ascending: false });
+
+      console.log("[Roster] Fetched registrations from Supabase:", data);
 
       if (!error && Array.isArray(data)) {
         const mapped: Registration[] = data.map((d: any) => ({
@@ -93,9 +97,14 @@ export function EventAttendanceViewer({
           isTeam: Boolean(d.is_team ?? d.isTeam),
           teamName: d.team_name || d.teamName,
           teamMembers: d.team_members || d.teamMembers,
+          punchInTime: d.punch_in_time || d.punchInTime,
+          punchOutTime: d.punch_out_time || d.punchOutTime,
         }));
         setFetchedRegistrations(mapped);
       } else {
+        if (error) {
+          console.error("[Roster] Supabase fetch error:", error);
+        }
         // Fallback to API endpoint
         const res = await apiClient.getEventRegistrations(targetId);
         if (res?.success && Array.isArray(res.registrations)) {
@@ -105,10 +114,10 @@ export function EventAttendanceViewer({
     } catch (e) {
       console.debug("Error fetching event registrations:", e);
     }
-  }, [activeEvent?.id]);
+  }, [currentEventId, activeEvent?.id, state.events]);
 
   useEffect(() => {
-    loadRegistrations();
+    loadRegistrations(currentEventId);
   }, [currentEventId, loadRegistrations]);
 
   // Subscribe to Supabase Realtime registrations changes
@@ -119,7 +128,7 @@ export function EventAttendanceViewer({
         "postgres_changes",
         { event: "*", schema: "public", table: "registrations" },
         () => {
-          loadRegistrations();
+          loadRegistrations(currentEventId);
           campusStore.loadFromSupabase();
         }
       )
@@ -132,14 +141,14 @@ export function EventAttendanceViewer({
 
   const handleManualSync = async () => {
     setIsSyncing(true);
-    await Promise.all([loadRegistrations(), campusStore.loadFromSupabase()]);
+    await Promise.all([loadRegistrations(currentEventId), campusStore.loadFromSupabase()]);
     setTimeout(() => setIsSyncing(false), 500);
   };
 
   // Merge fetched registrations from Supabase with state.registrations
-  const storeEventRegs = state.registrations.filter((r) => r.eventId === activeEvent?.id);
+  const storeEventRegs = state.registrations.filter((r) => r.eventId === (activeEvent?.id || currentEventId));
   const eventRegistrations = fetchedRegistrations !== null ? fetchedRegistrations : storeEventRegs;
-  const eventAttendanceRecords = state.attendanceRecords.filter((a) => a.eventId === activeEvent?.id);
+  const eventAttendanceRecords = state.attendanceRecords.filter((a) => a.eventId === (activeEvent?.id || currentEventId));
 
   // Compute distinct departments
   const availableDepartments = Array.from(
@@ -337,7 +346,7 @@ export function EventAttendanceViewer({
             className="h-9 gap-1.5 rounded-xl border-blue-200 bg-blue-50/50 text-xs font-bold text-[#1A3C6E] hover:bg-blue-100/60 dark:bg-slate-800 dark:border-slate-700 dark:text-blue-300"
           >
             <RefreshCw className={cn("size-3.5 text-[#F2A93B]", isSyncing && "animate-spin")} />
-            Sync Roster
+            {isSyncing ? "Syncing..." : "Refresh Roster"}
           </Button>
 
           {/* Broadcast Alert Button */}

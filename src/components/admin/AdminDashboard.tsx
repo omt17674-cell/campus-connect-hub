@@ -182,17 +182,16 @@ export function AdminDashboard({ state, onOpenGateModal }: AdminDashboardProps) 
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => setAdminTab("students")}
+          onClick={() => {
+            setView("student_registry");
+            campusStore.loadFromSupabase();
+          }}
           className={cn(
             "rounded-xl text-xs font-bold",
             adminTab === "students"
               ? "bg-[#1A3C6E] text-white"
               : "text-muted-foreground hover:text-foreground"
           )}
-          onClick={() => {
-            setView("student_registry");
-            campusStore.loadFromSupabase();
-          }}
         >
           <GraduationCap className="mr-1.5 size-3.5 text-[#F2A93B]" />
           Student Identity Registry ({(state.newRegisteredStudents || []).length})
@@ -201,7 +200,10 @@ export function AdminDashboard({ state, onOpenGateModal }: AdminDashboardProps) 
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => setAdminTab("roster")}
+          onClick={() => {
+            setAdminTab("roster");
+            campusStore.loadFromSupabase();
+          }}
           className={cn(
             "rounded-xl text-xs font-bold",
             adminTab === "roster"

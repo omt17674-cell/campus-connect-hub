@@ -1478,6 +1478,7 @@ export const campusStore = {
       const { error: evError } = await supabase.from("events").upsert(serializedEv);
 
       if (evError) {
+        console.error("[Supabase Error] Event capacity upsert failed:", evError, { targetEv, serializedEv });
         logSupabaseError("upsert", "events", evError, { targetEv, serializedEv });
         // Rollback optimistic update
         campusStore.setState(() => previousState);
@@ -1491,6 +1492,7 @@ export const campusStore = {
       const { error: regError } = await supabase.from("registrations").upsert(serializedReg);
 
       if (regError) {
+        console.error("[Supabase Error] Registration upsert failed:", regError, { newRegistration, serializedReg });
         logSupabaseError("upsert", "registrations", regError, { newRegistration, serializedReg });
         // Rollback optimistic update
         campusStore.setState(() => previousState);
@@ -1527,6 +1529,7 @@ export const campusStore = {
         waitlisted: isFull,
       };
     } catch (err: any) {
+      console.error("[Supabase Error] registerForEvent exception:", err);
       logSupabaseError("registerForEvent", "registrations/events", err);
       campusStore.setState(() => previousState);
       const errMsg = `Registration failed: ${err?.message || "Unexpected network error"}`;
@@ -2273,8 +2276,8 @@ export const campusStore = {
   // Send Mobile OTP simulation
   sendMobileOtp(mobile: string): { success: boolean; otp: string; message: string } {
     const cleanMobile = mobile.trim();
-    // Deterministic 6-digit OTP for testing convenience
-    const otp = "849521";
+    // Secure randomized 6-digit OTP per session
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const notif: NotificationItem = {
       id: `notif-otp-${Date.now()}`,
       title: "📱 GSFC SMS OTP Verification Code",
@@ -2469,9 +2472,18 @@ export const campusStore = {
     const now = new Date().toISOString();
     const event = state.events.find((e) => e.id === data.eventId) || state.events[0];
 
-    const studentName = state.currentUser.rollNo === data.studentRollNo ? state.currentUser.name : "Om Thakkar";
-    const studentDept = state.currentUser.rollNo === data.studentRollNo ? state.currentUser.department : "B.Tech Computer Science & Engineering";
-    const userId = state.currentUser.rollNo === data.studentRollNo ? state.currentUser.id : "u-om";
+    const matchedStudent = state.newRegisteredStudents?.find(
+      (s) => s.rollNo?.toUpperCase() === data.studentRollNo?.toUpperCase()
+    );
+    const studentName = state.currentUser.rollNo === data.studentRollNo
+      ? state.currentUser.name
+      : matchedStudent?.fullName || state.currentUser.name || "Student";
+    const studentDept = state.currentUser.rollNo === data.studentRollNo
+      ? state.currentUser.department
+      : matchedStudent?.department || state.currentUser.department || "School of Technology";
+    const userId = state.currentUser.rollNo === data.studentRollNo
+      ? state.currentUser.id
+      : `u-${data.studentRollNo.toLowerCase().replace(/[^a-z0-9]/g, "")}`;
 
     let vehicleRecord: VehicleRecord | undefined = undefined;
     if (data.hasVehicle && data.vehicleNumber) {

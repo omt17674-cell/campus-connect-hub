@@ -13,7 +13,7 @@ const supabaseAnonKey =
 if (!supabaseUrl || !supabaseAnonKey) {
   console.warn("Supabase credentials missing. Ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set in environment variables.");
 } else {
-  console.info(`[Supabase Init] Connecting to: ${supabaseUrl}`);
+  console.log(`[Supabase Init] Connecting to: ${supabaseUrl}`);
 }
 
 export const supabase = createClient(supabaseUrl || "https://placeholder.supabase.co", supabaseAnonKey || "placeholder-key", {
@@ -22,6 +22,7 @@ export const supabase = createClient(supabaseUrl || "https://placeholder.supabas
     autoRefreshToken: true,
   },
 });
+console.log(`[Supabase Client Ready] URL: ${supabaseUrl || "placeholder"}`);
 
 // Admin / Service Role client for backend server operations
 const supabaseServiceKey =

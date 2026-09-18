@@ -88,11 +88,13 @@ export function EventDetailModal({
     }
   };
 
-  const handleRegisterSingle = () => {
-    campusStore.registerForEvent(event.id, false);
-    if (onOpenPunchModal) {
-      onClose();
-      onOpenPunchModal(event);
+  const handleRegisterSingle = async () => {
+    const res = await campusStore.registerForEvent(event.id, false);
+    if (res.success) {
+      if (onOpenPunchModal) {
+        onClose();
+        onOpenPunchModal(event);
+      }
     }
   };
 

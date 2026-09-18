@@ -70,15 +70,34 @@ export function UnifiedAttendanceGateModal({
   const currentStudent = state.newRegisteredStudents?.find(
     (s) => s.rollNo?.toUpperCase() === state.currentUser.rollNo?.toUpperCase()
   );
-  const [studentMobile, setStudentMobile] = useState(
-    currentStudent?.mobileNumber && currentStudent.mobileNumber !== "N/A"
-      ? currentStudent.mobileNumber
-      : ""
-  );
+  const initialMobile =
+    (state.currentUser as any)?.mobile ||
+    (state.currentUser as any)?.phone ||
+    (currentStudent?.mobileNumber && currentStudent.mobileNumber !== "N/A" ? currentStudent.mobileNumber : "") ||
+    "";
+  const [studentMobile, setStudentMobile] = useState(initialMobile);
   const [studentRollNo, setStudentRollNo] = useState(state.currentUser.rollNo || "");
   const [barcodeInput, setBarcodeInput] = useState(state.currentUser.rollNo || "");
   const [isScanningBarcode, setIsScanningBarcode] = useState(false);
   const [barcodeVerified, setBarcodeVerified] = useState(false);
+
+  useEffect(() => {
+    const updatedStudent = state.newRegisteredStudents?.find(
+      (s) => s.rollNo?.toUpperCase() === state.currentUser.rollNo?.toUpperCase()
+    );
+    const updatedMobile =
+      (state.currentUser as any)?.mobile ||
+      (state.currentUser as any)?.phone ||
+      (updatedStudent?.mobileNumber && updatedStudent.mobileNumber !== "N/A" ? updatedStudent.mobileNumber : "") ||
+      "";
+    if (updatedMobile && !studentMobile) {
+      setStudentMobile(updatedMobile);
+    }
+    if (state.currentUser.rollNo) {
+      setStudentRollNo(state.currentUser.rollNo);
+      setBarcodeInput(state.currentUser.rollNo);
+    }
+  }, [state.currentUser, state.newRegisteredStudents]);
 
   // --- External Visitor State ---
   const [visitorName, setVisitorName] = useState("");
@@ -94,7 +113,6 @@ export function UnifiedAttendanceGateModal({
   const [idProofNumber, setIdProofNumber] = useState("");
 
   // --- Shared OTP State ---
-  const generateRandomOtp = () => Math.floor(100000 + Math.random() * 900000).toString();
   const [otpSent, setOtpSent] = useState(false);
   const [otpCode, setOtpCode] = useState("");
   const [expectedOtp, setExpectedOtp] = useState(() => Math.floor(100000 + Math.random() * 900000).toString());
@@ -114,7 +132,7 @@ export function UnifiedAttendanceGateModal({
   const [hasVehicle, setHasVehicle] = useState(false);
   const [vehicleNumber, setVehicleNumber] = useState("");
   const [vehicleType, setVehicleType] = useState<VehicleType>("2_wheeler");
-  const [parkingBay, setParkingBay] = useState("Zone B - Student Stand #88");
+  const [parkingBay, setParkingBay] = useState("");
 
   // Timer for OTP resend
   useEffect(() => {
@@ -132,7 +150,8 @@ export function UnifiedAttendanceGateModal({
       alert("Please enter a valid mobile number first.");
       return;
     }
-    const generated = Math.floor(100000 + Math.random() * 900000).toString();
+    const res = campusStore.sendMobileOtp(mobile);
+    const generated = res.otp || Math.floor(100000 + Math.random() * 900000).toString();
     setExpectedOtp(generated);
     setOtpSent(true);
     setOtpTimer(30);
@@ -216,7 +235,7 @@ export function UnifiedAttendanceGateModal({
       setResultPassData({
         type: "college",
         id: studentRollNo,
-        name: state.currentUser.name || "Om Thakkar",
+        name: state.currentUser.name || "Student",
         department: state.currentUser.department,
         eventTitle: activeEvent.title,
         timestamp: new Date().toLocaleTimeString(),
@@ -468,7 +487,7 @@ export function UnifiedAttendanceGateModal({
                         maxLength={6}
                         value={otpCode}
                         onChange={(e) => setOtpCode(e.target.value)}
-                        placeholder="e.g. 849521"
+                        placeholder="Enter 6-digit OTP"
                         disabled={otpVerified || !otpSent}
                         className="h-9 flex-1 rounded-xl border border-border/80 bg-background px-3 font-mono text-xs font-bold tracking-widest text-center focus:border-[#1A3C6E] focus:outline-none"
                       />

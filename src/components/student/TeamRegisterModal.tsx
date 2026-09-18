@@ -52,7 +52,7 @@ export function TeamRegisterModal({
     setMembers(updated);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!teamName.trim()) return;
 
@@ -63,8 +63,10 @@ export function TeamRegisterModal({
       return;
     }
 
-    campusStore.registerForEvent(event.id, true, teamName, validMembers);
-    onSuccess();
+    const res = await campusStore.registerForEvent(event.id, true, teamName, validMembers);
+    if (res.success) {
+      onSuccess();
+    }
   };
 
   return (
