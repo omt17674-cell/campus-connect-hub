@@ -41,21 +41,34 @@ export function StudentRegistryViewer({ state }: StudentRegistryViewerProps) {
 
     const channel = supabase
       .channel("admin-student-registry-sync")
-      .on("postgres_changes", { event: "*", schema: "public", table: "new_registered_students" }, () => {
-        campusStore.loadFromSupabase();
-        toast.info("Student registry updated - new registration detected!");
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "accounts" }, () => {
-        campusStore.loadFromSupabase();
-      })
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "new_registered_students" },
+        (payload) => {
+          campusStore.loadFromSupabase();
+          const studentName = (payload.new as any)?.full_name;
+          if (studentName) {
+            toast.info(`New student registered: ${studentName}`);
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "new_registered_students" },
+        () => {
+          campusStore.loadFromSupabase();
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "accounts" },
+        () => {
+          campusStore.loadFromSupabase();
+        }
+      )
       .subscribe();
 
-    const interval = setInterval(() => {
-      campusStore.loadFromSupabase();
-    }, 4000);
-
     return () => {
-      clearInterval(interval);
       supabase.removeChannel(channel);
     };
   }, []);

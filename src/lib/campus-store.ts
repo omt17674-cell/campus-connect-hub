@@ -863,11 +863,15 @@ export async function syncStateToSupabase(state: CampusState): Promise<void> {
   }
 }
 
+let isSyncingFromRemote = false;
+
 export function saveState(state: CampusState): void {
   if (typeof window === "undefined") return;
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    syncStateToSupabase(state);
+    if (!isSyncingFromRemote) {
+      syncStateToSupabase(state);
+    }
   } catch (e) {
     console.error("Failed to save state to localStorage", e);
   }
@@ -963,6 +967,7 @@ export const campusStore = {
     if (typeof window === "undefined" || !navigator.onLine) return;
     initSupabaseRealtimeSync();
 
+    isSyncingFromRemote = true;
     try {
       // 1. Pull events
       const { data: supaEvents, error: supaEvErr } = await supabase.from("events").select("*").order("date", { ascending: true });
@@ -1154,6 +1159,8 @@ export const campusStore = {
       }
     } catch (e) {
       console.debug("Supabase realtime sync note:", e);
+    } finally {
+      isSyncingFromRemote = false;
     }
   },
 
