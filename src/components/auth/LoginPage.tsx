@@ -169,24 +169,69 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
     try {
       // Resolve target email if student entered roll number
       let targetEmail = cleanEmail;
+      let matchedStudent: any = null;
+      let matchedAccount: any = null;
+
       if (!cleanInput.includes("@")) {
         const { data: stu } = await supabase
           .from("new_registered_students")
-          .select("email")
+          .select("*")
           .ilike("roll_no", cleanInput)
           .maybeSingle();
-        if (stu?.email) {
+        if (stu) {
           targetEmail = stu.email;
+          matchedStudent = stu;
         } else {
           const { data: acc } = await supabase
             .from("accounts")
-            .select("email")
+            .select("*")
             .ilike("roll_no", cleanInput)
             .maybeSingle();
-          if (acc?.email) {
+          if (acc) {
             targetEmail = acc.email;
+            matchedAccount = acc;
           }
         }
+      } else {
+        const { data: stu } = await supabase
+          .from("new_registered_students")
+          .select("*")
+          .ilike("email", cleanInput)
+          .maybeSingle();
+        if (stu) {
+          matchedStudent = stu;
+        } else {
+          const { data: acc } = await supabase
+            .from("accounts")
+            .select("*")
+            .ilike("email", cleanInput)
+            .maybeSingle();
+          if (acc) {
+            matchedAccount = acc;
+          }
+        }
+      }
+
+      // Check local state if table did not return yet
+      if (!matchedStudent) {
+        matchedStudent = campusStore.getState().newRegisteredStudents?.find(
+          (s) => s.rollNo.toUpperCase() === cleanInput.toUpperCase() || s.email.toLowerCase() === targetEmail.toLowerCase()
+        );
+      }
+      if (!matchedAccount) {
+        matchedAccount = campusStore.getState().accounts?.find(
+          (a) => a.idOrRoll?.toUpperCase() === cleanInput.toUpperCase() || a.email?.toLowerCase() === targetEmail.toLowerCase()
+        );
+      }
+
+      // If logging in as student and account does not exist in registry, guide them to register
+      if (selectedRole === "student" && !matchedStudent && !matchedAccount) {
+        setIsLoggingIn(false);
+        setStatusMessage({
+          text: `Student "${cleanInput.toUpperCase()}" is not registered yet. Please click "New Student Registration" above to create your student account.`,
+          type: "error",
+        });
+        return;
       }
 
       // Real Supabase Auth: signInWithPassword is the primary authentication path
@@ -288,8 +333,13 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
       if (onLoginSuccess) onLoginSuccess();
     } catch (err: any) {
       setIsLoggingIn(false);
+      const isFetchErr =
+        err?.message?.toLowerCase().includes("failed to fetch") ||
+        err?.name === "TypeError";
       setStatusMessage({
-        text: err?.message || "Unable to authenticate. Please check your connection and credentials.",
+        text: isFetchErr
+          ? "Unable to connect to authentication server. If you are a new student, please click 'New Student Registration' above."
+          : (err?.message || "Unable to authenticate. Please check your connection and credentials."),
         type: "error",
       });
     }
