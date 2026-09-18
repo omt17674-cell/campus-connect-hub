@@ -329,7 +329,7 @@ export const supabaseSync = {
         avatar: account.avatar || account.name?.slice(0, 2).toUpperCase() || "ST",
         updated_at: new Date().toISOString(),
       };
-      const { error } = await supabaseAdmin.from("accounts").upsert(payload);
+      const { error } = await supabaseAdmin.from("accounts").upsert(payload, { onConflict: "roll_no" });
       return !error;
     } catch (e) {
       console.warn("Supabase save account error:", e);
@@ -359,7 +359,7 @@ export const supabaseSync = {
         created_at: student.createdAt || new Date().toISOString(),
       };
 
-      const { error } = await supabaseAdmin.from("new_registered_students").insert(payload);
+      const { error } = await supabaseAdmin.from("new_registered_students").upsert(payload, { onConflict: "roll_no" });
       if (error) {
         return { success: false, message: error.message };
       }

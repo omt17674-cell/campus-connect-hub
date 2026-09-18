@@ -861,7 +861,7 @@ export async function syncStateToSupabase(state: CampusState): Promise<void> {
     // 5. Sync newly registered students
     if (state.newRegisteredStudents && state.newRegisteredStudents.length > 0) {
       const mappedStudents = state.newRegisteredStudents.map(serializeStudentForDb);
-      const { error: stuErr } = await supabase.from("new_registered_students").upsert(mappedStudents);
+      const { error: stuErr } = await supabase.from("new_registered_students").upsert(mappedStudents, { onConflict: "roll_no" });
       if (stuErr) logSupabaseError("upsert", "new_registered_students", stuErr);
     }
   } catch (err) {
@@ -912,7 +912,7 @@ export const campusStore = {
     if (typeof window !== "undefined" && navigator.onLine) {
       try {
         const dbStudent = serializeStudentForDb(student);
-        const { error: stuErr } = await supabase.from("new_registered_students").upsert(dbStudent);
+        const { error: stuErr } = await supabase.from("new_registered_students").upsert(dbStudent, { onConflict: "roll_no" });
         if (stuErr) {
           logSupabaseError("upsert", "new_registered_students", stuErr);
         }
@@ -940,7 +940,7 @@ export const campusStore = {
           avatar: initials,
           updated_at: new Date().toISOString(),
         };
-        const { error: accErr } = await supabase.from("accounts").upsert(dbAccount);
+        const { error: accErr } = await supabase.from("accounts").upsert(dbAccount, { onConflict: "roll_no" });
         if (accErr) {
           logSupabaseError("upsert", "accounts", accErr);
         }
