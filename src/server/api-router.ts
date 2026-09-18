@@ -494,17 +494,19 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
       }, 400);
     }
 
-    // Check if roll number or email or mobile already registered in Supabase
     const cleanRoll = body.rollNo.trim().toUpperCase();
     const cleanMobile = body.mobileNumber.trim();
     const cleanEmail = body.email.trim().toLowerCase();
 
+    // Check if roll number or email already registered in Supabase new_registered_students or accounts
     const existingStudent = await supabaseSync.getStudentByRollOrEmail(cleanRoll, cleanEmail);
+    const existingAccount = await supabaseSync.getAccountByIdentifier(cleanEmail);
+    const existingAccountRoll = await supabaseSync.getAccountByIdentifier(cleanRoll);
 
-    if (existingStudent) {
+    if (existingStudent || existingAccount || existingAccountRoll) {
       return jsonResponse({
         success: false,
-        message: `Student with Roll Number ${cleanRoll} is already registered in the database. Name & Mobile are permanently locked.`,
+        message: `Student with Roll Number '${cleanRoll}' or Email '${cleanEmail}' is already registered in the database.`,
         isLocked: true,
       }, 409);
     }
@@ -517,19 +519,25 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
       email: cleanEmail,
       school: body.school || "School of Technology (SOT)",
       department: body.department || "Computer Science & Engineering",
-      degree: body.degree || "B.Tech CSE",
-      semester: Number(body.semester) || 1,
+      degree: body.degree || "B.Tech",
+      semester: Number(body.semester) || 4,
       residenceType: body.residenceType || "dayscholar",
       hostelBlockOrBusRoute: body.hostelBlockOrBusRoute || "",
       clubsInterested: body.clubsInterested || [],
       idCardUploaded: Boolean(body.idCardUploaded),
       isLocked: true, // Permanent lock enforced
-      verifiedByUniversity: false,
+      verifiedByUniversity: true,
       createdAt: new Date().toISOString(),
     };
 
     // 1. Sync to Supabase table: new_registered_students
     const supabaseResult = await supabaseSync.saveNewStudent(newStudent);
+    if (!supabaseResult.success) {
+      return jsonResponse({
+        success: false,
+        message: `Database insertion failed: ${supabaseResult.message || "Unable to save to Supabase."}`,
+      }, 500);
+    }
 
     // 2. Also create login account in Supabase accounts table
     await supabaseSync.saveAccount({
@@ -540,7 +548,7 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
       role: "student",
       department: newStudent.department,
       semester: newStudent.semester,
-      year: 1,
+      year: Math.ceil(newStudent.semester / 2) || 2,
       attendance_percentage: 100,
       points: 100,
       streak_days: 1,
@@ -553,7 +561,7 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
       message: "Student registration saved to Supabase and permanently locked. Full Name and Mobile Number cannot be modified.",
       student: newStudent,
       identityLocked: true,
-      supabaseSyncStatus: supabaseResult.success ? "synced" : "error",
+      supabaseSyncStatus: "synced",
     }, 201);
   }
 

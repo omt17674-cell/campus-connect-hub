@@ -536,26 +536,7 @@ const INITIAL_SERVICES: CampusService[] = [
   },
 ];
 
-export const INITIAL_NEW_STUDENTS: NewRegisteredStudent[] = [
-  {
-    id: "stu-24bt01001",
-    fullName: "Demo Student",
-    mobileNumber: "+91 98765 00001",
-    rollNo: "24BT01001",
-    email: "demo.student@gsfcuniversity.ac.in",
-    school: "School of Technology (SOT)",
-    department: "Computer Science & Engineering",
-    degree: "B.Tech",
-    semester: 4,
-    residenceType: "hostel",
-    hostelBlockOrBusRoute: "Sardar Patel Boys Hostel - Block A",
-    clubsInterested: ["Coding & AI Club", "Robotics Club"],
-    idCardUploaded: true,
-    isLocked: true,
-    verifiedByUniversity: true,
-    createdAt: "2026-06-01T10:00:00Z",
-  },
-];
+export const INITIAL_NEW_STUDENTS: NewRegisteredStudent[] = [];
 
 const STORAGE_KEY = "gsfc_campus_connect_state_v5";
 const ACCOUNTS_STORAGE_KEY = "gsfc_campus_accounts_v5";
@@ -924,19 +905,13 @@ export const campusStore = {
   },
 
   async registerNewStudent(student: NewRegisteredStudent): Promise<{ success: boolean; message?: string }> {
-    campusStore.setState((prev) => {
-      const filtered = (prev.newRegisteredStudents || []).filter(
-        (s) => s.rollNo.toUpperCase() !== student.rollNo.toUpperCase()
-      );
-      return { newRegisteredStudents: [student, ...filtered] };
-    });
-
     if (typeof window !== "undefined" && navigator.onLine) {
       try {
         const dbStudent = serializeStudentForDb(student);
         const { error: stuErr } = await supabase.from("new_registered_students").upsert(dbStudent, { onConflict: "roll_no" });
         if (stuErr) {
           logSupabaseError("upsert", "new_registered_students", stuErr);
+          return { success: false, message: stuErr.message };
         }
 
         const initials = student.fullName
@@ -967,7 +942,14 @@ export const campusStore = {
           logSupabaseError("upsert", "accounts", accErr);
         }
 
-        return { success: !stuErr, message: stuErr?.message };
+        campusStore.setState((prev) => {
+          const filtered = (prev.newRegisteredStudents || []).filter(
+            (s) => s.rollNo.toUpperCase() !== student.rollNo.toUpperCase()
+          );
+          return { newRegisteredStudents: [student, ...filtered] };
+        });
+
+        return { success: true };
       } catch (err: any) {
         logSupabaseError("upsert_catch", "new_registered_students", err);
         return { success: false, message: err.message };
@@ -1067,65 +1049,65 @@ export const campusStore = {
       }
 
       // 4. Pull new registered students & accounts with student role (Merge deduplicated)
-      const { data: supaStudents } = await supabase.from("new_registered_students").select("*").order("created_at", { ascending: false });
+      const { data: supaStudents, error: stuFetchErr } = await supabase.from("new_registered_students").select("*").order("created_at", { ascending: false });
       const { data: supaAccounts } = await supabase.from("accounts").select("*").eq("role", "student");
 
-      const studentMap = new Map<string, NewRegisteredStudent>();
+      if (!stuFetchErr) {
+        const studentMap = new Map<string, NewRegisteredStudent>();
 
-      if (supaStudents && Array.isArray(supaStudents)) {
-        supaStudents.forEach((d: any) => {
-          const s: NewRegisteredStudent = {
-            id: d.id,
-            fullName: d.full_name || d.fullName || "Student",
-            mobileNumber: d.mobile_number || d.mobileNumber || "N/A",
-            rollNo: d.roll_no || d.rollNo || "N/A",
-            email: d.email || "",
-            school: d.school || "School of Technology (SOT)",
-            department: d.department || "Computer Science & Engineering",
-            degree: d.degree || "B.Tech",
-            semester: d.semester || 4,
-            residenceType: d.residence_type || d.residenceType || "hostel",
-            hostelBlockOrBusRoute: d.hostel_block_or_bus_route || d.hostelBlockOrBusRoute || "Campus Resident",
-            clubsInterested: d.clubs_interested || d.clubsInterested || [],
-            idCardUploaded: Boolean(d.id_card_uploaded ?? d.idCardUploaded ?? true),
-            isLocked: true,
-            verifiedByUniversity: Boolean(d.verified_by_university ?? d.verifiedByUniversity ?? true),
-            createdAt: d.created_at || d.createdAt || new Date().toISOString(),
-          };
-          if (s.rollNo && s.rollNo !== "N/A") {
-            studentMap.set(s.rollNo.toUpperCase(), s);
-          }
-        });
-      }
-
-      // Merge accounts table students if missing from new_registered_students
-      if (supaAccounts && Array.isArray(supaAccounts)) {
-        supaAccounts.forEach((acc: any) => {
-          const roll = (acc.roll_no || "").toUpperCase();
-          if (roll && !studentMap.has(roll)) {
-            studentMap.set(roll, {
-              id: `stu-${roll.toLowerCase()}`,
-              fullName: acc.name,
-              mobileNumber: "N/A",
-              rollNo: roll,
-              email: acc.email,
-              school: "School of Technology (SOT)",
-              department: acc.department || "Computer Science & Engineering",
-              degree: "B.Tech",
-              semester: acc.semester || 4,
-              residenceType: "hostel",
-              hostelBlockOrBusRoute: "Campus Resident",
-              clubsInterested: ["Coding & AI Club"],
-              idCardUploaded: true,
+        if (supaStudents && Array.isArray(supaStudents)) {
+          supaStudents.forEach((d: any) => {
+            const s: NewRegisteredStudent = {
+              id: d.id,
+              fullName: d.full_name || d.fullName || "Student",
+              mobileNumber: d.mobile_number || d.mobileNumber || "N/A",
+              rollNo: d.roll_no || d.rollNo || "N/A",
+              email: d.email || "",
+              school: d.school || "School of Technology (SOT)",
+              department: d.department || "Computer Science & Engineering",
+              degree: d.degree || "B.Tech",
+              semester: d.semester || 4,
+              residenceType: d.residence_type || d.residenceType || "hostel",
+              hostelBlockOrBusRoute: d.hostel_block_or_bus_route || d.hostelBlockOrBusRoute || "Campus Resident",
+              clubsInterested: d.clubs_interested || d.clubsInterested || [],
+              idCardUploaded: Boolean(d.id_card_uploaded ?? d.idCardUploaded ?? true),
               isLocked: true,
-              verifiedByUniversity: true,
-              createdAt: acc.created_at || new Date().toISOString(),
-            });
-          }
-        });
-      }
+              verifiedByUniversity: Boolean(d.verified_by_university ?? d.verifiedByUniversity ?? true),
+              createdAt: d.created_at || d.createdAt || new Date().toISOString(),
+            };
+            if (s.rollNo && s.rollNo !== "N/A") {
+              studentMap.set(s.rollNo.toUpperCase(), s);
+            }
+          });
+        }
 
-      if (studentMap.size > 0) {
+        // Merge accounts table students if missing from new_registered_students
+        if (supaAccounts && Array.isArray(supaAccounts)) {
+          supaAccounts.forEach((acc: any) => {
+            const roll = (acc.roll_no || "").toUpperCase();
+            if (roll && !studentMap.has(roll)) {
+              studentMap.set(roll, {
+                id: `stu-${roll.toLowerCase()}`,
+                fullName: acc.name,
+                mobileNumber: "N/A",
+                rollNo: roll,
+                email: acc.email,
+                school: "School of Technology (SOT)",
+                department: acc.department || "Computer Science & Engineering",
+                degree: "B.Tech",
+                semester: acc.semester || 4,
+                residenceType: "hostel",
+                hostelBlockOrBusRoute: "Campus Resident",
+                clubsInterested: ["Coding & AI Club"],
+                idCardUploaded: true,
+                isLocked: true,
+                verifiedByUniversity: true,
+                createdAt: acc.created_at || new Date().toISOString(),
+              });
+            }
+          });
+        }
+
         campusStore.setState(() => ({
           newRegisteredStudents: Array.from(studentMap.values()),
         }));

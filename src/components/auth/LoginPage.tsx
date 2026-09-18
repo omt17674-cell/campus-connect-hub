@@ -395,8 +395,17 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
       };
 
       // Register and update store (with direct Supabase upsert)
+      const regRes = await campusStore.registerNewStudent(newStudentObj);
+      if (!regRes.success) {
+        setRegSubmitting(false);
+        setStatusMessage({
+          text: `Registration failed on database: ${regRes.message || "Please check network connection"}`,
+          type: "error",
+        });
+        return;
+      }
+
       campusStore.registerNewAccount(newAccount);
-      await campusStore.registerNewStudent(newStudentObj);
       campusStore.loginWithAccount(newAccount);
 
       // Trigger fresh load from Supabase

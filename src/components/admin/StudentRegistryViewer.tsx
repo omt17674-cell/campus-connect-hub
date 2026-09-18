@@ -61,10 +61,15 @@ export function StudentRegistryViewer({ state }: StudentRegistryViewerProps) {
 
   const handleManualSync = async () => {
     setIsRefreshing(true);
-    await campusStore.loadFromSupabase();
-    const count = campusStore.getState().newRegisteredStudents?.length || 0;
-    toast.success(`Synced with Supabase: ${count} students in registry.`);
-    setTimeout(() => setIsRefreshing(false), 500);
+    try {
+      await campusStore.loadFromSupabase();
+      const count = campusStore.getState().newRegisteredStudents?.length || 0;
+      toast.success(`Synced with Supabase: ${count} student${count === 1 ? "" : "s"} in registry.`);
+    } catch (err: any) {
+      toast.error(`Supabase sync failed: ${err.message || "Network error"}`);
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   const students: NewRegisteredStudent[] = state.newRegisteredStudents || [];
@@ -160,7 +165,7 @@ export function StudentRegistryViewer({ state }: StudentRegistryViewerProps) {
         <div className="flex items-center gap-2.5">
           <div className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-center shadow-xs">
             <p className="text-[10px] font-bold uppercase text-slate-400">Total Enrolled</p>
-            <p className="font-display text-lg font-black text-[#1A3C6E]">{students.length} Students</p>
+            <p className="font-display text-lg font-black text-[#1A3C6E]">{students.length} Student{students.length === 1 ? "" : "s"}</p>
           </div>
           <Button
             onClick={handleManualSync}
