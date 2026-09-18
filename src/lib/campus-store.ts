@@ -548,8 +548,8 @@ export const INITIAL_NEW_STUDENTS: NewRegisteredStudent[] = [
   },
 ];
 
-const STORAGE_KEY = "gsfc_campus_connect_state_v4";
-const ACCOUNTS_STORAGE_KEY = "gsfc_campus_accounts_v4";
+const STORAGE_KEY = "gsfc_campus_connect_state_v5";
+const ACCOUNTS_STORAGE_KEY = "gsfc_campus_accounts_v5";
 
 
 export function getStoredAccounts(): CampusAccount[] {
@@ -915,97 +915,79 @@ export const campusStore = {
 
     try {
       // 1. Pull events
-      const { data: supaEvents } = await supabase.from("events").select("*").order("date", { ascending: true });
-      if (supaEvents && supaEvents.length > 0) {
-        campusStore.setState((prev) => {
-          const map = new Map<string, CampusEvent>();
-          prev.events.forEach((e) => map.set(e.id, e));
-          (supaEvents as any[]).forEach((ev) => {
-            map.set(ev.id, {
-              id: ev.id,
-              title: ev.title,
-              description: ev.description || "",
-              category: ev.category,
-              department: ev.department,
-              date: ev.date,
-              time: ev.time,
-              venue: ev.venue,
-              organizerName: ev.organizer_name || ev.organizerName || "",
-              organizerEmail: ev.organizer_email || ev.organizerEmail || "",
-              capacity: ev.capacity || 100,
-              registeredCount: ev.registered_count || ev.registeredCount || 0,
-              waitlistCount: ev.waitlist_count || ev.waitlistCount || 0,
-              approvalRequired: Boolean(ev.approval_required ?? ev.approvalRequired),
-              isTeamEvent: Boolean(ev.is_team_event ?? ev.isTeamEvent),
-              minTeamSize: ev.min_team_size || ev.minTeamSize || 1,
-              maxTeamSize: ev.max_team_size || ev.maxTeamSize || 4,
-              volunteerHoursReward: ev.volunteer_hours_reward || ev.volunteerHoursReward || 0,
-              bannerImage: ev.banner_image || ev.bannerImage || "",
-              status: ev.status || "upcoming",
-              averageRating: ev.average_rating || ev.averageRating || 5.0,
-              reviewCount: ev.review_count || ev.reviewCount || 0,
-              rules: ev.rules || [],
-            });
-          });
-          return { events: Array.from(map.values()) };
-        });
+      const { data: supaEvents, error: supaEvErr } = await supabase.from("events").select("*").order("date", { ascending: true });
+      if (!supaEvErr && Array.isArray(supaEvents)) {
+        const eventsList: CampusEvent[] = (supaEvents as any[]).map((ev) => ({
+          id: ev.id,
+          title: ev.title,
+          description: ev.description || "",
+          category: ev.category,
+          department: ev.department,
+          date: ev.date,
+          time: ev.time,
+          venue: ev.venue,
+          organizerName: ev.organizer_name || ev.organizerName || "",
+          organizerEmail: ev.organizer_email || ev.organizerEmail || "",
+          capacity: ev.capacity || 100,
+          registeredCount: ev.registered_count || ev.registeredCount || 0,
+          waitlistCount: ev.waitlist_count || ev.waitlistCount || 0,
+          approvalRequired: Boolean(ev.approval_required ?? ev.approvalRequired),
+          isTeamEvent: Boolean(ev.is_team_event ?? ev.isTeamEvent),
+          minTeamSize: ev.min_team_size || ev.minTeamSize || 1,
+          maxTeamSize: ev.max_team_size || ev.maxTeamSize || 4,
+          volunteerHoursReward: ev.volunteer_hours_reward || ev.volunteerHoursReward || 0,
+          bannerImage: ev.banner_image || ev.bannerImage || "",
+          status: ev.status || "upcoming",
+          averageRating: ev.average_rating || ev.averageRating || 5.0,
+          reviewCount: ev.review_count || ev.reviewCount || 0,
+          rules: ev.rules || [],
+        }));
+        campusStore.setState(() => ({ events: eventsList }));
       }
 
       // 2. Pull registrations
-      const { data: supaRegs } = await supabase.from("registrations").select("*").order("registered_at", { ascending: false });
-      if (supaRegs && supaRegs.length > 0) {
-        campusStore.setState((prev) => {
-          const map = new Map<string, Registration>();
-          prev.registrations.forEach((r) => map.set(r.id, r));
-          (supaRegs as any[]).forEach((r) => {
-            map.set(r.id, {
-              id: r.id,
-              eventId: r.event_id || r.eventId,
-              userId: r.user_id || r.userId,
-              userRollNo: r.user_roll_no || r.userRollNo,
-              userName: r.user_name || r.userName,
-              department: r.department,
-              registeredAt: r.registered_at || r.registeredAt,
-              status: r.status || "confirmed",
-              isTeam: Boolean(r.is_team ?? r.isTeam),
-              teamName: r.team_name || r.teamName,
-              teamMembers: r.team_members || r.teamMembers,
-            });
-          });
-          return { registrations: Array.from(map.values()) };
-        });
+      const { data: supaRegs, error: supaRegErr } = await supabase.from("registrations").select("*").order("registered_at", { ascending: false });
+      if (!supaRegErr && Array.isArray(supaRegs)) {
+        const regsList: Registration[] = (supaRegs as any[]).map((r) => ({
+          id: r.id,
+          eventId: r.event_id || r.eventId,
+          userId: r.user_id || r.userId,
+          userRollNo: r.user_roll_no || r.userRollNo,
+          userName: r.user_name || r.userName,
+          department: r.department,
+          registeredAt: r.registered_at || r.registeredAt,
+          status: r.status || "confirmed",
+          isTeam: Boolean(r.is_team ?? r.isTeam),
+          teamName: r.team_name || r.teamName,
+          teamMembers: r.team_members || r.teamMembers,
+        }));
+        campusStore.setState(() => ({ registrations: regsList }));
       }
 
       // 3. Pull attendance
-      const { data: supaAtt } = await supabase.from("attendance").select("*").order("timestamp", { ascending: false });
-      if (supaAtt && supaAtt.length > 0) {
-        campusStore.setState((prev) => {
-          const map = new Map<string, AttendanceRecord>();
-          prev.attendanceRecords.forEach((a) => map.set(a.id, a));
-          (supaAtt as any[]).forEach((a) => {
-            map.set(a.id, {
-              id: a.id,
-              eventId: a.event_id || a.eventId,
-              eventTitle: a.event_title || a.eventTitle || "",
-              userId: a.user_id || a.userId,
-              userName: a.user_name || a.userName,
-              userRollNo: a.user_roll_no || a.userRollNo,
-              department: a.department,
-              timestamp: a.timestamp,
-              punchInTime: a.punch_in_time || a.punchInTime,
-              punchOutTime: a.punch_out_time || a.punchOutTime,
-              verifiedMethod: a.verified_method || a.verifiedMethod || "qr_scan",
-              tokenUsed: a.token_used || a.tokenUsed || "",
-              certificateId: a.certificate_id || a.certificateId,
-              userLatitude: a.user_latitude || a.userLatitude,
-              userLongitude: a.user_longitude || a.userLongitude,
-              distanceFromVenueMeters: a.distance_from_venue_meters || a.distanceFromVenueMeters,
-              locationVerified: a.location_verified ?? a.locationVerified ?? true,
-              synced: true,
-            });
-          });
-          return { attendanceRecords: Array.from(map.values()) };
-        });
+      const { data: supaAtt, error: supaAttErr } = await supabase.from("attendance").select("*").order("timestamp", { ascending: false });
+      if (!supaAttErr && Array.isArray(supaAtt)) {
+        const attList: AttendanceRecord[] = (supaAtt as any[]).map((a) => ({
+          id: a.id,
+          eventId: a.event_id || a.eventId,
+          eventTitle: a.event_title || a.eventTitle || "",
+          userId: a.user_id || a.userId,
+          userName: a.user_name || a.userName,
+          userRollNo: a.user_roll_no || a.userRollNo,
+          department: a.department,
+          timestamp: a.timestamp,
+          punchInTime: a.punch_in_time || a.punchInTime,
+          punchOutTime: a.punch_out_time || a.punchOutTime,
+          verifiedMethod: a.verified_method || a.verifiedMethod || "qr_scan",
+          tokenUsed: a.token_used || a.tokenUsed || "",
+          certificateId: a.certificate_id || a.certificateId,
+          userLatitude: a.user_latitude || a.userLatitude,
+          userLongitude: a.user_longitude || a.userLongitude,
+          distanceFromVenueMeters: a.distance_from_venue_meters || a.distanceFromVenueMeters,
+          locationVerified: a.location_verified ?? a.locationVerified ?? true,
+          synced: true,
+        }));
+        campusStore.setState(() => ({ attendanceRecords: attList }));
       }
 
       // 4. Pull new registered students
