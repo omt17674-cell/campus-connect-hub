@@ -98,3 +98,55 @@ export function getGeoapifyStaticMapUrl({
 
   return `https://maps.geoapify.com/v1/staticmap?style=osm-bright-smooth&width=${width}&height=${height}&center=lonlat:${longitude},${latitude}&zoom=${zoom}&${markersParam}&apiKey=${GEOAPIFY_API_KEY}`;
 }
+
+export interface GeoapifySearchResult {
+  formatted: string;
+  name?: string;
+  street?: string;
+  city?: string;
+  state?: string;
+  postcode?: string;
+  country?: string;
+  latitude: number;
+  longitude: number;
+}
+
+/**
+ * Forward geocode / search address text using Geoapify Search API.
+ * e.g. "GSFC University, Vadodara" or "38 Upper Montagu Street, Westminster"
+ */
+export async function searchAddressWithGeoapify(
+  query: string,
+  limit = 5
+): Promise<GeoapifySearchResult[]> {
+  if (!query || query.trim().length < 2) return [];
+
+  const url = `https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(
+    query.trim()
+  )}&limit=${limit}&apiKey=${GEOAPIFY_API_KEY}`;
+
+  try {
+    const res = await fetch(url);
+    if (!res.ok) {
+      throw new Error(`Geoapify search error: HTTP ${res.status}`);
+    }
+    const data = await res.json();
+    if (data.features && Array.isArray(data.features)) {
+      return data.features.map((f: any) => ({
+        formatted: f.properties.formatted || "",
+        name: f.properties.name,
+        street: f.properties.street,
+        city: f.properties.city || f.properties.county,
+        state: f.properties.state,
+        postcode: f.properties.postcode,
+        country: f.properties.country,
+        latitude: f.properties.lat,
+        longitude: f.properties.lon,
+      }));
+    }
+  } catch (err) {
+    console.warn("[Geoapify] Search address error:", err);
+  }
+
+  return [];
+}

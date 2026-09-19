@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { EventCategory } from "@/lib/types";
 import { campusStore } from "@/lib/campus-store";
+import { GeoapifyAddressSearch } from "@/components/common/GeoapifyAddressSearch";
 import { toast } from "sonner";
 
 interface CreateEventModalProps {
@@ -178,15 +179,21 @@ export function CreateEventModal({ onClose, onSuccess }: CreateEventModalProps) 
             </div>
 
             <div>
-              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                Campus Venue
-              </Label>
-              <Input
-                required
-                placeholder="e.g. Vigyan Bhavan Hall"
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Campus Venue / Location
+                </Label>
+                <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                  Geoapify GPS Search
+                </span>
+              </div>
+              <GeoapifyAddressSearch
                 value={venue}
-                onChange={(e) => setVenue(e.target.value)}
-                className="mt-1 rounded-xl text-xs"
+                placeholder="Search venue or address (e.g. Vigyan Bhavan Hall, GSFC)..."
+                onSelectLocation={(loc) => {
+                  setVenue(loc.name || loc.formatted.split(",")[0]);
+                }}
+                className="mt-1"
               />
             </div>
           </div>
