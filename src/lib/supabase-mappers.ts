@@ -38,6 +38,15 @@ export function logSupabaseError(
  * Map camelCase CampusEvent to snake_case Postgres columns
  */
 export function serializeEventForDb(event: Partial<CampusEvent>): any {
+  // Supabase check constraint: [ 'upcoming', 'completed', 'cancelled', 'pending_approval', 'live' ]
+  let normalizedStatus: string = event.status || "upcoming";
+  if (normalizedStatus === "published") {
+    normalizedStatus = "upcoming";
+  }
+  if (!["upcoming", "completed", "cancelled", "pending_approval", "live"].includes(normalizedStatus)) {
+    normalizedStatus = "upcoming";
+  }
+
   return {
     id: event.id,
     title: event.title,
@@ -58,7 +67,7 @@ export function serializeEventForDb(event: Partial<CampusEvent>): any {
     max_team_size: event.maxTeamSize ?? 4,
     volunteer_hours_reward: event.volunteerHoursReward ?? 0,
     banner_image: event.bannerImage || "",
-    status: event.status || "upcoming",
+    status: normalizedStatus,
     average_rating: event.averageRating ?? 5.0,
     review_count: event.reviewCount ?? 0,
   };
@@ -68,6 +77,12 @@ export function serializeEventForDb(event: Partial<CampusEvent>): any {
  * Map camelCase Registration to snake_case Postgres columns
  */
 export function serializeRegistrationForDb(reg: Partial<Registration>): any {
+  // Supabase check constraint: [ 'confirmed', 'cancelled', 'waitlisted', 'attended' ]
+  let regStatus = reg.status || "confirmed";
+  if (!["confirmed", "cancelled", "waitlisted", "attended"].includes(regStatus)) {
+    regStatus = "confirmed";
+  }
+
   return {
     id: reg.id,
     event_id: reg.eventId,
@@ -76,7 +91,7 @@ export function serializeRegistrationForDb(reg: Partial<Registration>): any {
     user_name: reg.userName,
     department: reg.department,
     registered_at: reg.registeredAt || new Date().toISOString(),
-    status: reg.status || "confirmed",
+    status: regStatus,
     is_team: Boolean(reg.isTeam),
     team_name: reg.teamName || null,
     team_members: reg.teamMembers || null,

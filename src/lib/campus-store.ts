@@ -858,7 +858,7 @@ export async function syncStateToSupabase(state: CampusState): Promise<void> {
         volunteer_hours: u.volunteerHours || 0,
         avatar: u.avatar || u.name?.slice(0, 2).toUpperCase() || "ST",
         mobile_number: u.mobileNumber || null,
-        updated_at: new Date().toISOString(),
+        created_at: new Date().toISOString(),
       };
       await supabase.from("accounts").upsert(dbAcc, { onConflict: "roll_no" });
     }
@@ -938,7 +938,7 @@ export const campusStore = {
           volunteer_hours: 0,
           avatar: initials,
           mobile_number: student.mobileNumber,
-          updated_at: new Date().toISOString(),
+          created_at: new Date().toISOString(),
         };
         const { error: accErr } = await supabase.from("accounts").upsert(dbAccount, { onConflict: "roll_no" });
         if (accErr) {
