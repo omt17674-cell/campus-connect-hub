@@ -533,12 +533,72 @@ CREATE TABLE IF NOT EXISTS public.internship_notifications (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Indexes for fast lookups
+-- ==============================================================================
+-- PRODUCTION SCALABILITY INDEXES & CONSTRAINTS (100+ CONCURRENT USERS)
+-- ==============================================================================
+
+-- 1. Internships Indexes
+CREATE INDEX IF NOT EXISTS idx_internships_status ON public.internships(status);
+CREATE INDEX IF NOT EXISTS idx_internships_deadline ON public.internships(application_deadline);
+CREATE INDEX IF NOT EXISTS idx_internships_dates ON public.internships(start_date, end_date);
+
+-- 2. Internship Applications Indexes
 CREATE INDEX IF NOT EXISTS idx_internship_apps_student ON public.internship_applications(student_id);
+CREATE INDEX IF NOT EXISTS idx_internship_apps_internship ON public.internship_applications(internship_id);
 CREATE INDEX IF NOT EXISTS idx_internship_apps_status ON public.internship_applications(status);
+CREATE INDEX IF NOT EXISTS idx_internship_apps_app_no ON public.internship_applications(application_number);
+CREATE INDEX IF NOT EXISTS idx_internship_apps_created ON public.internship_applications(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_internship_apps_enrollment ON public.internship_applications(enrollment_number);
+CREATE INDEX IF NOT EXISTS idx_internship_apps_status_created ON public.internship_applications(status, created_at DESC);
+
+-- 3. Internship Attendance Indexes
 CREATE INDEX IF NOT EXISTS idx_internship_att_student ON public.internship_attendance(student_id);
+CREATE INDEX IF NOT EXISTS idx_internship_att_internship ON public.internship_attendance(internship_id);
+CREATE INDEX IF NOT EXISTS idx_internship_att_app ON public.internship_attendance(application_id);
 CREATE INDEX IF NOT EXISTS idx_internship_att_date ON public.internship_attendance(attendance_date);
+CREATE INDEX IF NOT EXISTS idx_internship_att_punch_in ON public.internship_attendance(punch_in_time);
+CREATE INDEX IF NOT EXISTS idx_internship_att_student_date ON public.internship_attendance(student_id, attendance_date);
+
+-- 4. Internship Approvals Indexes
+CREATE INDEX IF NOT EXISTS idx_internship_approvals_app ON public.internship_approvals(application_id);
+CREATE INDEX IF NOT EXISTS idx_internship_approvals_type ON public.internship_approvals(approval_type);
+CREATE INDEX IF NOT EXISTS idx_internship_approvals_status ON public.internship_approvals(status);
+CREATE INDEX IF NOT EXISTS idx_internship_approvals_created ON public.internship_approvals(created_at);
+
+-- 5. Internship Notifications Indexes
 CREATE INDEX IF NOT EXISTS idx_internship_notif_student ON public.internship_notifications(student_id);
+CREATE INDEX IF NOT EXISTS idx_internship_notif_read ON public.internship_notifications(is_read);
+CREATE INDEX IF NOT EXISTS idx_internship_notif_created ON public.internship_notifications(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_internship_notif_student_read ON public.internship_notifications(student_id, is_read);
+
+-- Safe position check trigger: Prevents race conditions from exceeding positions
+CREATE OR REPLACE FUNCTION public.check_internship_positions_capacity()
+RETURNS TRIGGER AS $$
+DECLARE
+  v_positions INT;
+  v_accepted_count INT;
+BEGIN
+  IF NEW.status IN ('APPROVED', 'ACTIVE') AND (OLD.status IS NULL OR OLD.status NOT IN ('APPROVED', 'ACTIVE')) THEN
+    SELECT positions INTO v_positions FROM public.internships WHERE id = NEW.internship_id;
+    IF v_positions IS NOT NULL AND v_positions > 0 THEN
+      SELECT count(*) INTO v_accepted_count
+      FROM public.internship_applications
+      WHERE internship_id = NEW.internship_id AND status IN ('APPROVED', 'ACTIVE') AND id <> NEW.id;
+      
+      IF v_accepted_count >= v_positions THEN
+        RAISE EXCEPTION 'CAPACITY_EXCEEDED: All available positions (%) for this internship have already been filled.', v_positions;
+      END IF;
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_check_internship_positions ON public.internship_applications;
+CREATE TRIGGER trg_check_internship_positions
+BEFORE UPDATE ON public.internship_applications
+FOR EACH ROW
+EXECUTE FUNCTION public.check_internship_positions_capacity();
 
 -- Enable RLS
 ALTER TABLE public.internships ENABLE ROW LEVEL SECURITY;

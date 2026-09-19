@@ -1116,20 +1116,92 @@ function loadSavedState(): CampusState {
   };
 }let realtimeChannelInitialized = false;
 
-export function initSupabaseRealtimeSync() {
-  if (realtimeChannelInitialized || typeof window === "undefined") return;
-  realtimeChannelInitialized = true;
+// Concurrency locks to prevent double-submissions under 100+ concurrent user spikes
+const inFlightApplications = new Set<string>();
+const inFlightPunches = new Set<string>();
 
+/**
+ * Optimized Realtime Sync:
+ * Removed global wildcard listener that caused 9x query cascades on every database change.
+ */
+export function initSupabaseRealtimeSync() {
+  // Global wildcard disabled to prevent server overload and query storms
+}
+
+/**
+ * Scoped realtime subscription for an individual student.
+ * Subscribes strictly to notifications and application updates where student_id matches.
+ * Returns an unsubscribe cleanup function.
+ */
+export function subscribeStudentInternshipRealtime(studentId: string, onUpdate?: () => void): () => void {
+  if (typeof window === "undefined" || !studentId) return () => {};
   try {
-    supabase
-      .channel("public-db-changes")
-      .on("postgres_changes", { event: "*", schema: "public" }, (payload) => {
-        console.debug("Supabase realtime Postgres change:", payload.table, payload.eventType);
-        campusStore.loadFromSupabase(true);
-      })
+    const channelName = `student-int-${studentId.replace(/[^a-zA-Z0-9_-]/g, "_")}`;
+    const channel = supabase
+      .channel(channelName)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "internship_notifications",
+          filter: `student_id=eq.${studentId}`,
+        },
+        () => {
+          if (onUpdate) onUpdate();
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "internship_applications",
+          filter: `student_id=eq.${studentId}`,
+        },
+        () => {
+          if (onUpdate) onUpdate();
+        }
+      )
       .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   } catch (err) {
-    console.debug("Supabase realtime init note:", err);
+    console.debug("Student realtime sub error:", err);
+    return () => {};
+  }
+}
+
+/**
+ * Scoped realtime subscription for Administration / Dean review queues.
+ * Returns an unsubscribe cleanup function.
+ */
+export function subscribeAdminInternshipRealtime(onUpdate?: () => void): () => void {
+  if (typeof window === "undefined") return () => {};
+  try {
+    const channel = supabase
+      .channel("admin-internship-queue")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "internship_applications",
+        },
+        () => {
+          if (onUpdate) onUpdate();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  } catch (err) {
+    console.debug("Admin realtime sub error:", err);
+    return () => {};
   }
 }
 
@@ -1323,27 +1395,27 @@ export const campusStore = {
         );
 
         const fetchBatch = Promise.allSettled([
-          // 1. Events
-          supabase.from("events").select("*").order("date", { ascending: true }),
+          // 1. Events (bounded limit to prevent unbounded memory usage)
+          supabase.from("events").select("*").limit(50).order("date", { ascending: true }),
           // 2. Registrations
-          supabase.from("registrations").select("*").order("registered_at", { ascending: false }),
+          supabase.from("registrations").select("*").limit(50).order("registered_at", { ascending: false }),
           // 3. Attendance
-          supabase.from("attendance").select("*").order("timestamp", { ascending: false }),
+          supabase.from("attendance").select("*").limit(50).order("timestamp", { ascending: false }),
           // 4. Students & Accounts
           Promise.allSettled([
-            supabase.from("new_registered_students").select("*").order("created_at", { ascending: false }),
-            supabase.from("accounts").select("*").eq("role", "student"),
+            supabase.from("new_registered_students").select("*").limit(50).order("created_at", { ascending: false }),
+            supabase.from("accounts").select("*").eq("role", "student").limit(50),
           ]),
           // 5. Announcements
-          supabase.from("announcements").select("*").order("created_at", { ascending: false }),
+          supabase.from("announcements").select("*").limit(50).order("created_at", { ascending: false }),
           // 6. Internships
-          supabase.from("internships").select("*").order("created_at", { ascending: false }),
+          supabase.from("internships").select("*").limit(50).order("created_at", { ascending: false }),
           // 7. Internship Applications
-          supabase.from("internship_applications").select("*").order("created_at", { ascending: false }),
+          supabase.from("internship_applications").select("*").limit(50).order("created_at", { ascending: false }),
           // 8. Internship Attendance
-          supabase.from("internship_attendance").select("*").order("punch_in_time", { ascending: false }),
+          supabase.from("internship_attendance").select("*").limit(50).order("punch_in_time", { ascending: false }),
           // 9. Internship Notifications
-          supabase.from("internship_notifications").select("*").order("created_at", { ascending: false }),
+          supabase.from("internship_notifications").select("*").limit(50).order("created_at", { ascending: false }),
         ]);
 
         const outcome = await Promise.race([fetchBatch, timeoutPromise]);
@@ -4025,6 +4097,15 @@ export const campusStore = {
       };
     }
 
+    const lockKey = `${studentId}:${applicationData.internshipId}`;
+    if (inFlightApplications.has(lockKey)) {
+      return {
+        success: false,
+        message: "An application submission is already currently processing for this internship. Please wait.",
+      };
+    }
+    inFlightApplications.add(lockKey);
+
     const year = new Date().getFullYear();
     const count = (state.internshipApplications || []).length + 1;
     const applicationNumber = `INT-${year}-${String(count).padStart(6, "0")}`;
@@ -4082,7 +4163,22 @@ export const campusStore = {
     try {
       if (typeof window !== "undefined" && navigator.onLine) {
         const dbPayload = serializeInternshipApplicationForDb(newApplication);
-        await supabase.from("internship_applications").insert(dbPayload);
+        const { error: dbErr } = await supabase.from("internship_applications").insert(dbPayload);
+        if (dbErr) {
+          // Check for unique constraint violation (student_id + internship_id)
+          if (dbErr.code === "23505" || dbErr.message?.includes("unq_student_internship") || dbErr.message?.includes("duplicate key")) {
+            // Roll back optimistic local state
+            campusStore.setState((prev) => ({
+              internshipApplications: (prev.internshipApplications || []).filter((a) => a.id !== newId),
+              internshipNotifications: (prev.internshipNotifications || []).filter((n) => n.id !== studentNotif.id),
+            }));
+            return {
+              success: false,
+              message: "You have already submitted an application for this internship. Multiple concurrent applications are prevented.",
+            };
+          }
+          console.debug("Supabase application insert note:", dbErr);
+        }
         await supabase.from("internship_notifications").insert({
           id: studentNotif.id,
           student_id: studentNotif.studentId,
@@ -4096,6 +4192,8 @@ export const campusStore = {
       }
     } catch (err) {
       console.debug("Supabase application insert note:", err);
+    } finally {
+      inFlightApplications.delete(lockKey);
     }
 
     return {
@@ -4220,6 +4318,20 @@ export const campusStore = {
 
     const reviewerName = state.currentUser.name || "Dr. Ananya Sharma (Dean)";
     const nowIso = new Date().toISOString();
+
+    const targetInternship = (state.internships || []).find((i) => i.id === app.internshipId);
+    if (decision === "approve" && targetInternship && targetInternship.positions) {
+      const alreadyApprovedCount = (state.internshipApplications || []).filter(
+        (a) => a.internshipId === app.internshipId && (a.status === "APPROVED" || a.status === "ACTIVE") && a.id !== applicationId
+      ).length;
+      if (alreadyApprovedCount >= targetInternship.positions) {
+        return {
+          success: false,
+          message: `Cannot approve application: all ${targetInternship.positions} available positions for this internship have already been filled.`,
+        };
+      }
+    }
+
     const newStatus: InternshipApplicationStatus = decision === "approve" ? "APPROVED" : "REJECTED";
 
     const updatedApp: InternshipApplication = {
@@ -4245,7 +4357,6 @@ export const campusStore = {
       createdAt: nowIso,
     };
 
-    const targetInternship = (state.internships || []).find((i) => i.id === app.internshipId);
     const startDateText = targetInternship?.startDate || "scheduled start date";
 
     const studentNotif: InternshipNotification = {
@@ -4350,6 +4461,15 @@ export const campusStore = {
       };
     }
 
+    const lockKey = `${app.studentId}:${todayStr}`;
+    if (inFlightPunches.has(lockKey)) {
+      return {
+        success: false,
+        message: "An attendance punch request is already processing. Please wait.",
+      };
+    }
+    inFlightPunches.add(lockKey);
+
     const newRecord: InternshipAttendanceRecord = {
       id: `att-int-${Date.now()}`,
       applicationId,
@@ -4384,10 +4504,26 @@ export const campusStore = {
 
     try {
       if (typeof window !== "undefined" && navigator.onLine) {
-        await supabase.from("internship_attendance").insert(serializeInternshipAttendanceForDb(newRecord));
+        const { error: dbErr } = await supabase.from("internship_attendance").insert(serializeInternshipAttendanceForDb(newRecord));
+        if (dbErr) {
+          if (dbErr.code === "23505" || dbErr.message?.includes("unq_attendance_day") || dbErr.message?.includes("duplicate key")) {
+            // Roll back optimistic state
+            campusStore.setState((prev) => ({
+              internshipAttendance: (prev.internshipAttendance || []).filter((a) => a.id !== newRecord.id),
+              internshipNotifications: (prev.internshipNotifications || []).filter((n) => n.id !== notif.id),
+            }));
+            return {
+              success: false,
+              message: "You have already logged your attendance for today. Duplicate punches are prevented.",
+            };
+          }
+          console.debug("Supabase punch in note:", dbErr);
+        }
       }
     } catch (err) {
       console.debug("Supabase punch in note:", err);
+    } finally {
+      inFlightPunches.delete(lockKey);
     }
 
     return {

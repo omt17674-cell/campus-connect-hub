@@ -160,14 +160,27 @@ export function InternshipApplicationModal({
 
   if (!isOpen) return null;
 
+  const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
+  const ALLOWED_MIME_TYPES = ["application/pdf", "image/png", "image/jpeg", "image/webp"];
+
   const handleResumeFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
+      if (file.size > MAX_FILE_SIZE_BYTES) {
+        toast.error(`Resume file exceeds 5MB limit (${(file.size / (1024 * 1024)).toFixed(1)}MB). Please upload a smaller file.`);
+        e.target.value = "";
+        return;
+      }
+      if (!ALLOWED_MIME_TYPES.includes(file.type) && !file.name.toLowerCase().endsWith(".pdf")) {
+        toast.error("Unsupported file format. Please upload a PDF, PNG, or JPEG file.");
+        e.target.value = "";
+        return;
+      }
       setIsUploadingResume(true);
       setTimeout(() => {
         setResumeFileName(file.name);
         setIsUploadingResume(false);
-        toast.success(`Resume "${file.name}" uploaded successfully!`);
+        toast.success(`Resume "${file.name}" validated and uploaded successfully!`);
       }, 600);
     }
   };
@@ -175,12 +188,22 @@ export function InternshipApplicationModal({
   const handleOfferDocumentSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
+      if (file.size > MAX_FILE_SIZE_BYTES) {
+        toast.error(`Offer document exceeds 5MB limit (${(file.size / (1024 * 1024)).toFixed(1)}MB). Please upload a smaller file.`);
+        e.target.value = "";
+        return;
+      }
+      if (!ALLOWED_MIME_TYPES.includes(file.type) && !file.name.toLowerCase().endsWith(".pdf")) {
+        toast.error("Unsupported file format. Please upload a PDF, PNG, or JPEG file.");
+        e.target.value = "";
+        return;
+      }
       setIsUploadingOffer(true);
       setTimeout(() => {
         setOfferDocumentName(file.name);
         setIsUploadingOffer(false);
         toast.success(
-          `${offerDocumentType === "offer_letter" ? "Company offer letter" : "Confirmation mail"} "${file.name}" uploaded successfully!`
+          `${offerDocumentType === "offer_letter" ? "Company offer letter" : "Confirmation mail"} "${file.name}" validated and attached!`
         );
       }, 600);
     }
@@ -1046,11 +1069,11 @@ export function InternshipApplicationModal({
 
               <Button
                 type="submit"
-                disabled={isSubmitting || !declarationAccepted}
+                disabled={isSubmitting || isUploadingResume || isUploadingOffer || !declarationAccepted}
                 className="gap-2 rounded-2xl bg-gradient-to-r from-[#1A3C6E] to-[#0E2342] px-8 text-xs font-black text-white shadow-lg shadow-[#1A3C6E]/20 hover:opacity-95 disabled:opacity-50"
               >
                 <Send className="size-4 text-[#F2A93B]" />
-                {isSubmitting ? "Submitting..." : "Submit Application"}
+                {isUploadingResume || isUploadingOffer ? "Uploading Document..." : isSubmitting ? "Submitting Application..." : "Submit Application"}
               </Button>
             </div>
           </form>

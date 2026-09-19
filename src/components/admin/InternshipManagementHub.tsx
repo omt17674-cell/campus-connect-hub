@@ -1,4 +1,7 @@
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useDebounce } from "@/hooks/useDebounce";
+import { PaginationControls } from "@/components/common/PaginationControls";
+import { subscribeAdminInternshipRealtime } from "@/lib/campus-store";
 import {
   AlertCircle,
   AlertTriangle,
@@ -93,36 +96,88 @@ export function InternshipManagementHub({ state }: InternshipManagementHubProps)
   const [newSkills, setNewSkills] = useState("Python, React, SQL, Problem Solving");
   const [newDescription, setNewDescription] = useState("");
 
+  const debouncedSearch = useDebounce(searchQuery, 350);
+  const [appPage, setAppPage] = useState(1);
+  const [appPageSize, setAppPageSize] = useState(25);
+  const [attPage, setAttPage] = useState(1);
+  const [attPageSize, setAttPageSize] = useState(25);
+
+  useEffect(() => {
+    const unsub = subscribeAdminInternshipRealtime(() => {
+      campusStore.loadFromSupabase(true);
+    });
+    return () => unsub();
+  }, []);
+
+  useEffect(() => {
+    setAppPage(1);
+  }, [debouncedSearch, statusFilter, activeTab]);
+
   const internships = state.internships || [];
   const applications = state.internshipApplications || [];
   const attendanceRecords = state.internshipAttendance || [];
 
-  // Metrics
-  const totalApps = applications.length;
-  const pendingAdminApps = applications.filter((a) => a.status === "ADMIN_REVIEW" || a.status === "SUBMITTED");
-  const pendingDeanApps = applications.filter((a) => a.status === "DEAN_REVIEW" || a.status === "ADMIN_APPROVED");
-  const approvedActiveApps = applications.filter((a) => a.status === "APPROVED" || a.status === "ACTIVE");
-  const rejectedApps = applications.filter((a) => a.status === "REJECTED");
-  const changesRequestedApps = applications.filter((a) => a.status === "CHANGES_REQUESTED");
-
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const todayAttendance = attendanceRecords.filter((a) => a.attendanceDate === todayStr);
+  // Memoized Metrics for production performance (100+ concurrent records)
+  const {
+    totalApps,
+    pendingAdminApps,
+    pendingDeanApps,
+    approvedActiveApps,
+    rejectedApps,
+    changesRequestedApps,
+    todayAttendance,
+  } = useMemo(() => {
+    const todayStr = new Date().toISOString().slice(0, 10);
+    return {
+      totalApps: applications.length,
+      pendingAdminApps: applications.filter((a) => a.status === "ADMIN_REVIEW" || a.status === "SUBMITTED"),
+      pendingDeanApps: applications.filter((a) => a.status === "DEAN_REVIEW" || a.status === "ADMIN_APPROVED"),
+      approvedActiveApps: applications.filter((a) => a.status === "APPROVED" || a.status === "ACTIVE"),
+      rejectedApps: applications.filter((a) => a.status === "REJECTED"),
+      changesRequestedApps: applications.filter((a) => a.status === "CHANGES_REQUESTED"),
+      todayAttendance: attendanceRecords.filter((a) => a.attendanceDate === todayStr),
+    };
+  }, [applications, attendanceRecords]);
 
   const getInternship = (id: string) => internships.find((i) => i.id === id);
 
-  // Filtered Applications for Admin Queue
-  const filteredApplications = applications.filter((app) => {
-    const intn = getInternship(app.internshipId);
-    const matchesSearch =
-      app.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      app.enrollmentNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      app.applicationNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (intn?.companyName.toLowerCase().includes(searchQuery.toLowerCase()) ?? false) ||
-      (intn?.title.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
+  // Filtered Applications with debounced search
+  const filteredApplications = useMemo(() => {
+    const q = debouncedSearch.trim().toLowerCase();
+    return applications.filter((app) => {
+      const intn = getInternship(app.internshipId);
+      const matchesSearch =
+        !q ||
+        app.fullName.toLowerCase().includes(q) ||
+        app.enrollmentNumber.toLowerCase().includes(q) ||
+        app.applicationNumber.toLowerCase().includes(q) ||
+        (intn?.companyName.toLowerCase().includes(q) ?? false) ||
+        (intn?.title.toLowerCase().includes(q) ?? false);
 
-    const matchesStatus = statusFilter === "all" || app.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+      const matchesStatus = statusFilter === "all" || app.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [applications, debouncedSearch, statusFilter, internships]);
+
+  const queueFilteredApplications = useMemo(() => {
+    return filteredApplications.filter((app) => {
+      if (activeTab === "admin_queue") {
+        return app.status === "ADMIN_REVIEW" || app.status === "SUBMITTED";
+      }
+      if (activeTab === "dean_queue") {
+        return app.status === "DEAN_REVIEW" || app.status === "ADMIN_APPROVED";
+      }
+      return true;
+    });
+  }, [filteredApplications, activeTab]);
+
+  const paginatedApplications = useMemo(() => {
+    return queueFilteredApplications.slice((appPage - 1) * appPageSize, appPage * appPageSize);
+  }, [queueFilteredApplications, appPage, appPageSize]);
+
+  const paginatedAttendance = useMemo(() => {
+    return attendanceRecords.slice((attPage - 1) * attPageSize, attPage * attPageSize);
+  }, [attendanceRecords, attPage, attPageSize]);
 
   // Action Handlers
   const handleOpenReviewDialog = (
@@ -494,17 +549,7 @@ export function InternshipManagementHub({ state }: InternshipManagementHubProps)
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/40">
-                  {filteredApplications
-                    .filter((app) => {
-                      if (activeTab === "admin_queue") {
-                        return app.status === "ADMIN_REVIEW" || app.status === "SUBMITTED";
-                      }
-                      if (activeTab === "dean_queue") {
-                        return app.status === "DEAN_REVIEW" || app.status === "ADMIN_APPROVED";
-                      }
-                      return true;
-                    })
-                    .map((app) => {
+                  {paginatedApplications.map((app) => {
                       const intn = getInternship(app.internshipId);
 
                       return (
@@ -557,6 +602,16 @@ export function InternshipManagementHub({ state }: InternshipManagementHubProps)
                 </tbody>
               </table>
             </div>
+
+            {/* Pagination Controls for Applications */}
+            <PaginationControls
+              currentPage={appPage}
+              totalItems={queueFilteredApplications.length}
+              pageSize={appPageSize}
+              onPageChange={setAppPage}
+              onPageSizeChange={setAppPageSize}
+              pageSizeOptions={[10, 25, 50]}
+            />
           </div>
         </div>
       )}
@@ -601,7 +656,7 @@ export function InternshipManagementHub({ state }: InternshipManagementHubProps)
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/40">
-                {attendanceRecords.map((rec) => {
+                {paginatedAttendance.map((rec) => {
                   const app = applications.find((a) => a.id === rec.applicationId);
                   const intn = getInternship(rec.internshipId);
 
@@ -649,6 +704,16 @@ export function InternshipManagementHub({ state }: InternshipManagementHubProps)
               </tbody>
             </table>
           </div>
+
+          {/* Pagination Controls for Attendance */}
+          <PaginationControls
+            currentPage={attPage}
+            totalItems={attendanceRecords.length}
+            pageSize={attPageSize}
+            onPageChange={setAttPage}
+            onPageSizeChange={setAttPageSize}
+            pageSizeOptions={[10, 25, 50]}
+          />
         </div>
       )}
 

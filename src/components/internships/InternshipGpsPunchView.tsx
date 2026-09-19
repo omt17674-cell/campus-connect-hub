@@ -37,6 +37,7 @@ import {
   GeoapifyLocationDetails,
 } from "@/lib/geoapify";
 import { GeoapifyLiveMapCard } from "@/components/common/GeoapifyLiveMapCard";
+import { PaginationControls } from "@/components/common/PaginationControls";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -126,6 +127,14 @@ export function InternshipGpsPunchView({
   // Statistics
   const totalDaysPresent = myAttendance.length;
   const completedSessions = myAttendance.filter((a) => a.punchOutTime);
+
+  // Pagination for Attendance History (Item 29)
+  const [historyPage, setHistoryPage] = useState(1);
+  const [historyPageSize, setHistoryPageSize] = useState(10);
+  const paginatedHistory = myAttendance.slice(
+    (historyPage - 1) * historyPageSize,
+    historyPage * historyPageSize
+  );
 
   const handlePunchIn = async () => {
     if (!selectedApp) return;
@@ -480,57 +489,114 @@ export function InternshipGpsPunchView({
             No attendance punches recorded yet for this internship.
           </div>
         ) : (
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="border-b border-border/60 text-[10px] font-black uppercase tracking-wider text-muted-foreground">
-                  <th className="pb-3">Date</th>
-                  <th className="pb-3">Punch In</th>
-                  <th className="pb-3">Punch Out</th>
-                  <th className="pb-3">Duration</th>
-                  <th className="pb-3">Verified Location</th>
-                  <th className="pb-3">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/40">
-                {myAttendance.map((record) => (
-                  <tr key={record.id} className="hover:bg-muted/20 transition-colors">
-                    <td className="py-3 font-bold text-foreground">
+          <div className="mt-4 space-y-3">
+            {/* Mobile Card Layout */}
+            <div className="grid grid-cols-1 gap-2.5 sm:hidden">
+              {paginatedHistory.map((record) => (
+                <div
+                  key={record.id}
+                  className="rounded-2xl border border-border/70 bg-card p-3.5 space-y-2 shadow-xs"
+                >
+                  <div className="flex items-center justify-between text-xs font-bold">
+                    <span className="font-mono text-foreground">
                       {new Date(record.attendanceDate).toLocaleDateString(undefined, {
                         month: "short",
                         day: "numeric",
                         year: "numeric",
                       })}
-                    </td>
-                    <td className="py-3 font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                      {new Date(record.punchInTime).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </td>
-                    <td className="py-3 font-mono font-bold text-amber-600 dark:text-amber-400">
-                      {record.punchOutTime
-                        ? new Date(record.punchOutTime).toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })
-                        : "—"}
-                    </td>
-                    <td className="py-3 font-bold text-foreground">
-                      {record.workingDuration || "In Progress"}
-                    </td>
-                    <td className="py-3 max-w-xs truncate text-muted-foreground" title={record.punchInAddress}>
-                      {record.punchInAddress}
-                    </td>
-                    <td className="py-3">
-                      <span className="rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase">
-                        {record.status}
-                      </span>
-                    </td>
+                    </span>
+                    <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[9px] font-black text-emerald-600 dark:text-emerald-400 uppercase">
+                      {record.status}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-[11px]">
+                    <div>
+                      <span className="text-muted-foreground text-[10px]">Punch In:</span>
+                      <p className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                        {new Date(record.punchInTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground text-[10px]">Punch Out:</span>
+                      <p className="font-mono font-bold text-amber-600 dark:text-amber-400">
+                        {record.punchOutTime
+                          ? new Date(record.punchOutTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                          : "In Progress"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="border-t border-border/40 pt-1.5 text-[10px] text-muted-foreground truncate">
+                    📍 {record.punchInAddress}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop Table View */}
+            <div className="hidden sm:block overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-border/60 text-[10px] font-black uppercase tracking-wider text-muted-foreground">
+                    <th className="pb-3">Date</th>
+                    <th className="pb-3">Punch In</th>
+                    <th className="pb-3">Punch Out</th>
+                    <th className="pb-3">Duration</th>
+                    <th className="pb-3">Verified Location</th>
+                    <th className="pb-3">Status</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-border/40">
+                  {paginatedHistory.map((record) => (
+                    <tr key={record.id} className="hover:bg-muted/20 transition-colors">
+                      <td className="py-3 font-bold text-foreground">
+                        {new Date(record.attendanceDate).toLocaleDateString(undefined, {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        })}
+                      </td>
+                      <td className="py-3 font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                        {new Date(record.punchInTime).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </td>
+                      <td className="py-3 font-mono font-bold text-amber-600 dark:text-amber-400">
+                        {record.punchOutTime
+                          ? new Date(record.punchOutTime).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })
+                          : "—"}
+                      </td>
+                      <td className="py-3 font-bold text-foreground">
+                        {record.workingDuration || "In Progress"}
+                      </td>
+                      <td className="py-3 max-w-xs truncate text-muted-foreground" title={record.punchInAddress}>
+                        {record.punchInAddress}
+                      </td>
+                      <td className="py-3">
+                        <span className="rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase">
+                          {record.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination Controls */}
+            <PaginationControls
+              currentPage={historyPage}
+              totalItems={myAttendance.length}
+              pageSize={historyPageSize}
+              onPageChange={setHistoryPage}
+              onPageSizeChange={setHistoryPageSize}
+              pageSizeOptions={[5, 10, 20]}
+            />
           </div>
         )}
       </div>
