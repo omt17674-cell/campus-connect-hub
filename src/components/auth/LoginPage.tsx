@@ -1118,10 +1118,9 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
                       value={identifier}
                       onChange={(e) => setIdentifier(e.target.value)}
                       placeholder={selectedRole === "student" ? "GSFC University Email or Roll No" : "official.id@gsfcuniversity.ac.in"}
-                      autoComplete="off"
+                      autoComplete="username"
                       autoCapitalize="none"
                       spellCheck="false"
-                      data-lpignore="true"
                       className="w-full bg-transparent px-3 py-2.5 text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none"
                     />
                     {selectedRole === "student" && (
@@ -1145,8 +1144,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="Enter password"
-                      autoComplete="new-password"
-                      data-lpignore="true"
+                      autoComplete="current-password"
                       className="w-full bg-transparent px-3 py-2.5 text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none"
                     />
                     <button

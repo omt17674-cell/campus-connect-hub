@@ -566,7 +566,11 @@ export function getStoredAccounts(): CampusAccount[] {
 export function saveStoredAccounts(accounts: CampusAccount[]): void {
   if (typeof window === "undefined") return;
   try {
-    localStorage.setItem(ACCOUNTS_STORAGE_KEY, JSON.stringify(accounts));
+    const sanitized = accounts.map((acc) => ({
+      ...acc,
+      password: "", // Security: Never persist plaintext passwords into browser localStorage
+    }));
+    localStorage.setItem(ACCOUNTS_STORAGE_KEY, JSON.stringify(sanitized));
   } catch (e) {
     console.error("Failed to save accounts", e);
   }
@@ -864,6 +868,9 @@ export async function syncStateToSupabase(state: CampusState): Promise<void> {
 }
 
 let isSyncingFromRemote = false;
+let activeSyncPromise: Promise<void> | null = null;
+let lastSyncTimestamp = 0;
+const MIN_SYNC_INTERVAL_MS = 2500;
 
 export function saveState(state: CampusState): void {
   if (typeof window === "undefined") return;
@@ -965,209 +972,251 @@ export const campusStore = {
     });
   },
 
-  async loadFromSupabase(): Promise<void> {
+  async loadFromSupabase(force = false): Promise<void> {
     if (typeof window === "undefined" || !navigator.onLine) return;
     initSupabaseRealtimeSync();
 
-    isSyncingFromRemote = true;
-    try {
-      // 1. Pull events
-      const { data: supaEvents, error: supaEvErr } = await supabase.from("events").select("*").order("date", { ascending: true });
-      if (!supaEvErr && Array.isArray(supaEvents)) {
-        const eventsList: CampusEvent[] = (supaEvents as any[]).map((ev) => ({
-          id: ev.id,
-          title: ev.title,
-          description: ev.description || "",
-          category: ev.category,
-          department: ev.department,
-          date: ev.date,
-          time: ev.time,
-          venue: ev.venue,
-          organizerName: ev.organizer_name || ev.organizerName || "",
-          organizerEmail: ev.organizer_email || ev.organizerEmail || "",
-          capacity: ev.capacity || 100,
-          registeredCount: ev.registered_count || ev.registeredCount || 0,
-          waitlistCount: ev.waitlist_count || ev.waitlistCount || 0,
-          approvalRequired: Boolean(ev.approval_required ?? ev.approvalRequired),
-          isTeamEvent: Boolean(ev.is_team_event ?? ev.isTeamEvent),
-          minTeamSize: ev.min_team_size || ev.minTeamSize || 1,
-          maxTeamSize: ev.max_team_size || ev.maxTeamSize || 4,
-          volunteerHoursReward: ev.volunteer_hours_reward || ev.volunteerHoursReward || 0,
-          bannerImage: ev.banner_image || ev.bannerImage || "",
-          status: ev.status || "upcoming",
-          averageRating: ev.average_rating || ev.averageRating || 5.0,
-          reviewCount: ev.review_count || ev.reviewCount || 0,
-          rules: ev.rules || [],
-        }));
-        campusStore.setState((prev) => {
-          const remoteIds = new Set(eventsList.map((e) => e.id));
-          const localOnly = prev.events.filter((e) => !remoteIds.has(e.id));
-          return { events: [...eventsList, ...localOnly] };
-        });
-      }
-
-      // 2. Pull registrations
-      const { data: supaRegs, error: supaRegErr } = await supabase.from("registrations").select("*").order("registered_at", { ascending: false });
-      if (!supaRegErr && Array.isArray(supaRegs)) {
-        const regsList: Registration[] = (supaRegs as any[]).map((r) => ({
-          id: r.id,
-          eventId: r.event_id || r.eventId,
-          userId: r.user_id || r.userId,
-          userRollNo: r.user_roll_no || r.userRollNo,
-          userName: r.user_name || r.userName,
-          department: r.department,
-          registeredAt: r.registered_at || r.registeredAt,
-          status: r.status || "confirmed",
-          isTeam: Boolean(r.is_team ?? r.isTeam),
-          teamName: r.team_name || r.teamName,
-          teamMembers: r.team_members || r.teamMembers,
-        }));
-        campusStore.setState(() => ({ registrations: regsList }));
-      }
-
-      // 3. Pull attendance
-      const { data: supaAtt, error: supaAttErr } = await supabase.from("attendance").select("*").order("timestamp", { ascending: false });
-      if (!supaAttErr && Array.isArray(supaAtt)) {
-        const attList: AttendanceRecord[] = (supaAtt as any[]).map((a) => ({
-          id: a.id,
-          eventId: a.event_id || a.eventId,
-          eventTitle: a.event_title || a.eventTitle || "",
-          userId: a.user_id || a.userId,
-          userName: a.user_name || a.userName,
-          userRollNo: a.user_roll_no || a.userRollNo,
-          department: a.department,
-          timestamp: a.timestamp,
-          punchInTime: a.punch_in_time || a.punchInTime,
-          punchOutTime: a.punch_out_time || a.punchOutTime,
-          verifiedMethod: a.verified_method || a.verifiedMethod || "qr_scan",
-          tokenUsed: a.token_used || a.tokenUsed || "",
-          certificateId: a.certificate_id || a.certificateId,
-          userLatitude: a.user_latitude || a.userLatitude,
-          userLongitude: a.user_longitude || a.userLongitude,
-          distanceFromVenueMeters: a.distance_from_venue_meters || a.distanceFromVenueMeters,
-          locationVerified: a.location_verified ?? a.locationVerified ?? true,
-          synced: true,
-        }));
-        campusStore.setState(() => ({ attendanceRecords: attList }));
-      }
-
-      // 4. Pull new registered students & accounts with student role (Merge deduplicated)
-      const { data: supaStudents, error: stuFetchErr } = await supabase.from("new_registered_students").select("*").order("created_at", { ascending: false });
-      const { data: supaAccounts } = await supabase.from("accounts").select("*").eq("role", "student");
-
-      if (!stuFetchErr) {
-        const studentMap = new Map<string, NewRegisteredStudent>();
-
-        if (supaStudents && Array.isArray(supaStudents)) {
-          supaStudents.forEach((d: any) => {
-            const s: NewRegisteredStudent = {
-              id: d.id,
-              fullName: d.full_name || d.fullName || "Student",
-              mobileNumber: d.mobile_number || d.mobileNumber || "N/A",
-              rollNo: d.roll_no || d.rollNo || "N/A",
-              email: d.email || "",
-              school: d.school || "School of Technology (SOT)",
-              department: d.department || "Computer Science & Engineering",
-              degree: d.degree || "B.Tech",
-              semester: d.semester || 4,
-              residenceType: d.residence_type || d.residenceType || "hostel",
-              hostelBlockOrBusRoute: d.hostel_block_or_bus_route || d.hostelBlockOrBusRoute || "Campus Resident",
-              clubsInterested: d.clubs_interested || d.clubsInterested || [],
-              idCardUploaded: Boolean(d.id_card_uploaded ?? d.idCardUploaded ?? true),
-              isLocked: true,
-              verifiedByUniversity: Boolean(d.verified_by_university ?? d.verifiedByUniversity ?? true),
-              createdAt: d.created_at || d.createdAt || new Date().toISOString(),
-            };
-            if (s.rollNo && s.rollNo !== "N/A") {
-              studentMap.set(s.rollNo.toUpperCase(), s);
-            }
-          });
-        }
-
-        // Merge accounts table students if missing from new_registered_students
-        if (supaAccounts && Array.isArray(supaAccounts)) {
-          supaAccounts.forEach((acc: any) => {
-            const roll = (acc.roll_no || "").toUpperCase();
-            if (roll && !studentMap.has(roll)) {
-              studentMap.set(roll, {
-                id: `stu-${roll.toLowerCase()}`,
-                fullName: acc.name,
-                mobileNumber: acc.mobile_number || "Not provided",
-                rollNo: roll,
-                email: acc.email,
-                school: "School of Technology (SOT)",
-                department: acc.department || "Computer Science & Engineering",
-                degree: "B.Tech",
-                semester: acc.semester || 4,
-                residenceType: "hostel",
-                hostelBlockOrBusRoute: "Campus Resident",
-                clubsInterested: ["Coding & AI Club"],
-                idCardUploaded: true,
-                isLocked: true,
-                verifiedByUniversity: true,
-                createdAt: acc.created_at || new Date().toISOString(),
-              });
-            }
-          });
-        }
-
-        const studentList = Array.from(studentMap.values());
-        campusStore.setState((prev) => {
-          let updatedCurrentUser = prev.currentUser;
-          if (prev.isAuthenticated && prev.currentRole === "student" && prev.currentUser.rollNo) {
-            const myRecord = studentMap.get(prev.currentUser.rollNo.toUpperCase());
-            if (myRecord) {
-              updatedCurrentUser = {
-                ...prev.currentUser,
-                name: myRecord.fullName || prev.currentUser.name,
-                mobileNumber: (myRecord.mobileNumber && myRecord.mobileNumber !== "N/A" && myRecord.mobileNumber !== "Not provided")
-                  ? myRecord.mobileNumber
-                  : prev.currentUser.mobileNumber,
-                school: myRecord.school || prev.currentUser.school,
-                degree: myRecord.degree || prev.currentUser.degree,
-                department: myRecord.department || prev.currentUser.department,
-                semester: myRecord.semester || prev.currentUser.semester,
-                residenceType: myRecord.residenceType || prev.currentUser.residenceType,
-                hostelBlockOrBusRoute: myRecord.hostelBlockOrBusRoute || prev.currentUser.hostelBlockOrBusRoute,
-                clubsInterested: myRecord.clubsInterested || prev.currentUser.clubsInterested,
-              };
-            }
-          }
-          return {
-            newRegisteredStudents: studentList,
-            currentUser: updatedCurrentUser,
-          };
-        });
-      }
-
-      // 5. Pull announcements
-      const { data: supaAnnouncements } = await supabase.from("announcements").select("*").order("created_at", { ascending: false });
-      if (supaAnnouncements && supaAnnouncements.length > 0) {
-        campusStore.setState((prev) => {
-          const map = new Map<string, CampusAnnouncement>();
-          prev.announcements.forEach((a) => map.set(a.id, a));
-          (supaAnnouncements as any[]).forEach((ann) => {
-            map.set(ann.id, {
-              id: ann.id,
-              title: ann.title,
-              content: ann.content,
-              category: ann.category,
-              authorName: ann.author_name || ann.authorName,
-              authorRole: ann.author_role || ann.authorRole,
-              departmentTarget: ann.department_target || ann.departmentTarget,
-              priority: ann.priority,
-              readBy: ann.read_by || ann.readBy || [],
-              createdAt: ann.created_at || ann.createdAt,
-            });
-          });
-          return { announcements: Array.from(map.values()) };
-        });
-      }
-    } catch (e) {
-      console.debug("Supabase realtime sync note:", e);
-    } finally {
-      isSyncingFromRemote = false;
+    // If an in-flight sync is already running, deduplicate and await the same promise
+    if (activeSyncPromise) {
+      return activeSyncPromise;
     }
+
+    // Debounce rapid successive calls within MIN_SYNC_INTERVAL_MS unless explicitly forced
+    const now = Date.now();
+    if (!force && now - lastSyncTimestamp < MIN_SYNC_INTERVAL_MS) {
+      return;
+    }
+
+    activeSyncPromise = (async () => {
+      isSyncingFromRemote = true;
+      try {
+        // Run all 5 remote table queries in parallel with a 4500ms timeout cap
+        const timeoutPromise = new Promise<{ isTimeout: true }>((resolve) =>
+          setTimeout(() => resolve({ isTimeout: true }), 4500)
+        );
+
+        const fetchBatch = Promise.allSettled([
+          // 1. Events
+          supabase.from("events").select("*").order("date", { ascending: true }),
+          // 2. Registrations
+          supabase.from("registrations").select("*").order("registered_at", { ascending: false }),
+          // 3. Attendance
+          supabase.from("attendance").select("*").order("timestamp", { ascending: false }),
+          // 4. Students & Accounts
+          Promise.allSettled([
+            supabase.from("new_registered_students").select("*").order("created_at", { ascending: false }),
+            supabase.from("accounts").select("*").eq("role", "student"),
+          ]),
+          // 5. Announcements
+          supabase.from("announcements").select("*").order("created_at", { ascending: false }),
+        ]);
+
+        const outcome = await Promise.race([fetchBatch, timeoutPromise]);
+        if ("isTimeout" in outcome) {
+          console.warn("Supabase initial load timed out after 4500ms; continuing with cached data.");
+          return;
+        }
+
+        const [evRes, regRes, attRes, stuGroupRes, annRes] = outcome;
+
+        // 1. Process Events
+        if (evRes.status === "fulfilled" && !evRes.value.error && Array.isArray(evRes.value.data)) {
+          const eventsList: CampusEvent[] = (evRes.value.data as any[]).map((ev) => ({
+            id: ev.id,
+            title: ev.title,
+            description: ev.description || "",
+            category: ev.category,
+            department: ev.department,
+            date: ev.date,
+            time: ev.time,
+            venue: ev.venue,
+            organizerName: ev.organizer_name || ev.organizerName || "",
+            organizerEmail: ev.organizer_email || ev.organizerEmail || "",
+            capacity: ev.capacity || 100,
+            registeredCount: ev.registered_count || ev.registeredCount || 0,
+            waitlistCount: ev.waitlist_count || ev.waitlistCount || 0,
+            approvalRequired: Boolean(ev.approval_required ?? ev.approvalRequired),
+            isTeamEvent: Boolean(ev.is_team_event ?? ev.isTeamEvent),
+            minTeamSize: ev.min_team_size || ev.minTeamSize || 1,
+            maxTeamSize: ev.max_team_size || ev.maxTeamSize || 4,
+            volunteerHoursReward: ev.volunteer_hours_reward || ev.volunteerHoursReward || 0,
+            bannerImage: ev.banner_image || ev.bannerImage || "",
+            status: ev.status || "upcoming",
+            averageRating: ev.average_rating || ev.averageRating || 5.0,
+            reviewCount: ev.review_count || ev.reviewCount || 0,
+            rules: ev.rules || [],
+          }));
+          campusStore.setState((prev) => {
+            const remoteIds = new Set(eventsList.map((e) => e.id));
+            const localOnly = prev.events.filter((e) => !remoteIds.has(e.id));
+            return { events: [...eventsList, ...localOnly] };
+          });
+        }
+
+        // 2. Process Registrations
+        if (regRes.status === "fulfilled" && !regRes.value.error && Array.isArray(regRes.value.data)) {
+          const regsList: Registration[] = (regRes.value.data as any[]).map((r) => ({
+            id: r.id,
+            eventId: r.event_id || r.eventId,
+            userId: r.user_id || r.userId,
+            userRollNo: r.user_roll_no || r.userRollNo,
+            userName: r.user_name || r.userName,
+            department: r.department,
+            registeredAt: r.registered_at || r.registeredAt,
+            status: r.status || "confirmed",
+            isTeam: Boolean(r.is_team ?? r.isTeam),
+            teamName: r.team_name || r.teamName,
+            teamMembers: r.team_members || r.teamMembers,
+          }));
+          campusStore.setState(() => ({ registrations: regsList }));
+        }
+
+        // 3. Process Attendance
+        if (attRes.status === "fulfilled" && !attRes.value.error && Array.isArray(attRes.value.data)) {
+          const attList: AttendanceRecord[] = (attRes.value.data as any[]).map((a) => ({
+            id: a.id,
+            eventId: a.event_id || a.eventId,
+            eventTitle: a.event_title || a.eventTitle || "",
+            userId: a.user_id || a.userId,
+            userName: a.user_name || a.userName,
+            userRollNo: a.user_roll_no || a.userRollNo,
+            department: a.department,
+            timestamp: a.timestamp,
+            punchInTime: a.punch_in_time || a.punchInTime,
+            punchOutTime: a.punch_out_time || a.punchOutTime,
+            verifiedMethod: a.verified_method || a.verifiedMethod || "qr_scan",
+            tokenUsed: a.token_used || a.tokenUsed || "",
+            certificateId: a.certificate_id || a.certificateId,
+            userLatitude: a.user_latitude || a.userLatitude,
+            userLongitude: a.user_longitude || a.userLongitude,
+            distanceFromVenueMeters: a.distance_from_venue_meters || a.distanceFromVenueMeters,
+            locationVerified: a.location_verified ?? a.locationVerified ?? true,
+            synced: true,
+          }));
+          campusStore.setState(() => ({ attendanceRecords: attList }));
+        }
+
+        // 4. Process New Registered Students & Accounts
+        if (stuGroupRes.status === "fulfilled") {
+          const [studentsRes, accountsRes] = stuGroupRes.value;
+          const supaStudents = studentsRes.status === "fulfilled" && !studentsRes.value.error ? studentsRes.value.data : null;
+          const supaAccounts = accountsRes.status === "fulfilled" && !accountsRes.value.error ? accountsRes.value.data : null;
+
+          const studentMap = new Map<string, NewRegisteredStudent>();
+
+          if (supaStudents && Array.isArray(supaStudents)) {
+            supaStudents.forEach((d: any) => {
+              const s: NewRegisteredStudent = {
+                id: d.id,
+                fullName: d.full_name || d.fullName || "Student",
+                mobileNumber: d.mobile_number || d.mobileNumber || "N/A",
+                rollNo: d.roll_no || d.rollNo || "N/A",
+                email: d.email || "",
+                school: d.school || "School of Technology (SOT)",
+                department: d.department || "Computer Science & Engineering",
+                degree: d.degree || "B.Tech",
+                semester: d.semester || 4,
+                residenceType: d.residence_type || d.residenceType || "hostel",
+                hostelBlockOrBusRoute: d.hostel_block_or_bus_route || d.hostelBlockOrBusRoute || "Campus Resident",
+                clubsInterested: d.clubs_interested || d.clubsInterested || [],
+                idCardUploaded: Boolean(d.id_card_uploaded ?? d.idCardUploaded ?? true),
+                isLocked: true,
+                verifiedByUniversity: Boolean(d.verified_by_university ?? d.verifiedByUniversity ?? true),
+                createdAt: d.created_at || d.createdAt || new Date().toISOString(),
+              };
+              if (s.rollNo && s.rollNo !== "N/A") {
+                studentMap.set(s.rollNo.toUpperCase(), s);
+              }
+            });
+          }
+
+          if (supaAccounts && Array.isArray(supaAccounts)) {
+            supaAccounts.forEach((acc: any) => {
+              const roll = (acc.roll_no || "").toUpperCase();
+              if (roll && !studentMap.has(roll)) {
+                studentMap.set(roll, {
+                  id: `stu-${roll.toLowerCase()}`,
+                  fullName: acc.name,
+                  mobileNumber: acc.mobile_number || "Not provided",
+                  rollNo: roll,
+                  email: acc.email,
+                  school: "School of Technology (SOT)",
+                  department: acc.department || "Computer Science & Engineering",
+                  degree: "B.Tech",
+                  semester: acc.semester || 4,
+                  residenceType: "hostel",
+                  hostelBlockOrBusRoute: "Campus Resident",
+                  clubsInterested: ["Coding & AI Club"],
+                  idCardUploaded: true,
+                  isLocked: true,
+                  verifiedByUniversity: true,
+                  createdAt: acc.created_at || new Date().toISOString(),
+                });
+              }
+            });
+          }
+
+          const studentList = Array.from(studentMap.values());
+          campusStore.setState((prev) => {
+            let updatedCurrentUser = prev.currentUser;
+            if (prev.isAuthenticated && prev.currentRole === "student" && prev.currentUser.rollNo) {
+              const myRecord = studentMap.get(prev.currentUser.rollNo.toUpperCase());
+              if (myRecord) {
+                updatedCurrentUser = {
+                  ...prev.currentUser,
+                  name: myRecord.fullName || prev.currentUser.name,
+                  mobileNumber: (myRecord.mobileNumber && myRecord.mobileNumber !== "N/A" && myRecord.mobileNumber !== "Not provided")
+                    ? myRecord.mobileNumber
+                    : prev.currentUser.mobileNumber,
+                  school: myRecord.school || prev.currentUser.school,
+                  degree: myRecord.degree || prev.currentUser.degree,
+                  department: myRecord.department || prev.currentUser.department,
+                  semester: myRecord.semester || prev.currentUser.semester,
+                  residenceType: myRecord.residenceType || prev.currentUser.residenceType,
+                  hostelBlockOrBusRoute: myRecord.hostelBlockOrBusRoute || prev.currentUser.hostelBlockOrBusRoute,
+                  clubsInterested: myRecord.clubsInterested || prev.currentUser.clubsInterested,
+                };
+              }
+            }
+            return {
+              newRegisteredStudents: studentList,
+              currentUser: updatedCurrentUser,
+            };
+          });
+        }
+
+        // 5. Process Announcements
+        if (annRes.status === "fulfilled" && !annRes.value.error && Array.isArray(annRes.value.data) && annRes.value.data.length > 0) {
+          campusStore.setState((prev) => {
+            const map = new Map<string, CampusAnnouncement>();
+            prev.announcements.forEach((a) => map.set(a.id, a));
+            (annRes.value.data as any[]).forEach((ann) => {
+              map.set(ann.id, {
+                id: ann.id,
+                title: ann.title,
+                content: ann.content,
+                category: ann.category,
+                authorName: ann.author_name || ann.authorName,
+                authorRole: ann.author_role || ann.authorRole,
+                departmentTarget: ann.department_target || ann.departmentTarget,
+                priority: ann.priority,
+                readBy: ann.read_by || ann.readBy || [],
+                createdAt: ann.created_at || ann.createdAt,
+              });
+            });
+            return { announcements: Array.from(map.values()) };
+          });
+        }
+      } catch (e) {
+        console.debug("Supabase load note:", e);
+      } finally {
+        isSyncingFromRemote = false;
+        lastSyncTimestamp = Date.now();
+        activeSyncPromise = null;
+      }
+    })();
+
+    return activeSyncPromise;
   },
 
 
