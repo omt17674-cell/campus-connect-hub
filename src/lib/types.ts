@@ -401,4 +401,143 @@ export interface AssistantMessage {
   actionLink?: { label: string; view: string; eventId?: string };
 }
 
+// ==========================================
+// INTERNSHIP SYSTEM TYPES
+// ==========================================
+
+export type InternshipMode = "On-site" | "Remote" | "Hybrid";
+
+export type InternshipStatus = "open" | "closed" | "draft";
+
+export type InternshipApplicationStatus =
+  | "DRAFT"
+  | "SUBMITTED"
+  | "ADMIN_REVIEW"
+  | "ADMIN_APPROVED"
+  | "DEAN_REVIEW"
+  | "APPROVED"
+  | "REJECTED"
+  | "CHANGES_REQUESTED"
+  | "ACTIVE"
+  | "COMPLETED"
+  | "CANCELLED";
+
+export interface Internship {
+  id: string;
+  title: string;
+  companyName: string;
+  description: string;
+  department: string;
+  skillsRequired: string[];
+  eligibility: string;
+  positions: number;
+  location: string;
+  mode: InternshipMode;
+  startDate: string; // YYYY-MM-DD
+  endDate: string; // YYYY-MM-DD
+  duration: string;
+  stipend: string;
+  workingHours: string;
+  contactPerson: string;
+  contactEmail: string;
+  applicationDeadline: string;
+  requiredDocuments: string[];
+  status: InternshipStatus;
+  createdBy?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface InternshipApplication {
+  id: string;
+  applicationNumber: string; // e.g. INT-2026-000001
+  internshipId: string;
+  studentId: string;
+  fullName: string;
+  enrollmentNumber: string;
+  email: string;
+  phone: string;
+  course: string;
+  branch: string;
+  semester: number;
+  cgpa: number;
+  tenthPercentage?: number;
+  twelfthPercentage?: number;
+  backlogs?: number;
+  academicDetails?: Record<string, any>;
+  address?: {
+    street?: string;
+    city?: string;
+    state?: string;
+    pincode?: string;
+  };
+  skills: string[];
+  projects?: string;
+  experience?: string;
+  whyInternship?: string;
+  careerObjective?: string;
+  coverLetter?: string;
+  resumeUrl?: string;
+  collegeIdUrl?: string;
+  documents?: Array<{ name: string; url: string; type: string }>;
+  declarationAccepted: boolean;
+  status: InternshipApplicationStatus;
+  adminReviewedBy?: string;
+  adminReviewedAt?: string;
+  adminComment?: string;
+  deanReviewedBy?: string;
+  deanReviewedAt?: string;
+  deanComment?: string;
+  approvedAt?: string;
+  rejectedAt?: string;
+  rejectionReason?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface InternshipAttendanceRecord {
+  id: string;
+  applicationId: string;
+  studentId: string;
+  internshipId: string;
+  attendanceDate: string; // YYYY-MM-DD
+  punchInTime: string; // ISO string
+  punchInLatitude: number;
+  punchInLongitude: number;
+  punchInAccuracy: number;
+  punchInAddress: string;
+  punchOutTime?: string; // ISO string
+  punchOutLatitude?: number;
+  punchOutLongitude?: number;
+  punchOutAccuracy?: number;
+  punchOutAddress?: string;
+  workingDuration?: string; // e.g. "8h 09m"
+  status: "present" | "half_day" | "auto_closed";
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface InternshipApprovalRecord {
+  id: string;
+  applicationId: string;
+  approvalType: "ADMIN" | "DEAN";
+  approvedBy: string;
+  status: "approved" | "rejected" | "changes_requested";
+  comment?: string;
+  approvedAt: string;
+  createdAt: string;
+}
+
+export interface InternshipNotification {
+  id: string;
+  studentId: string;
+  applicationId?: string;
+  type: "submitted" | "admin_approved" | "dean_approved" | "rejected" | "changes_requested" | "active" | "punch";
+  title: string;
+  message: string;
+  isRead: boolean;
+  createdAt: string;
+}
+
+
 

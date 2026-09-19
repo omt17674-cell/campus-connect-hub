@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import {
   Award,
+  Briefcase,
   Building2,
   Calendar,
   CalendarDays,
@@ -30,6 +31,7 @@ import { StudentPassportView } from "@/components/student/StudentPassportView";
 import { ClubsHubView } from "@/components/clubs/ClubsHubView";
 import { CampusFeedView } from "@/components/feed/CampusFeedView";
 import { CampusServicesView } from "@/components/campus/CampusServicesView";
+import { StudentInternshipsHub } from "@/components/internships/StudentInternshipsHub";
 import { DigitalCampusIdModal } from "@/components/student/DigitalCampusIdModal";
 import { CampusAssistantModal } from "@/components/ai/CampusAssistantModal";
 import { EventDetailModal } from "@/components/student/EventDetailModal";
@@ -247,6 +249,21 @@ function CampusConnectApp() {
                   <Button
                     variant="ghost"
                     size="sm"
+                    onClick={() => setStudentView("internships")}
+                    className={cn(
+                      "rounded-xl text-xs font-bold",
+                      studentView === "internships"
+                        ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <Briefcase className="mr-1.5 size-3.5 text-[#F2A93B]" />
+                    Internships
+                  </Button>
+
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={() => setStudentView("gamification")}
                     className={cn(
                       "rounded-xl text-xs font-bold",
@@ -350,6 +367,10 @@ function CampusConnectApp() {
 
               {studentView === "services" && (
                 <CampusServicesView />
+              )}
+
+              {studentView === "internships" && (
+                <StudentInternshipsHub state={state} />
               )}
 
               {studentView === "gamification" && (

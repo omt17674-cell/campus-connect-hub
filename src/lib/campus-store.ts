@@ -12,6 +12,14 @@ import {
   DigitalStudentIdCard,
   EventBroadcast,
   EventFeedback,
+  Internship,
+  InternshipApplication,
+  InternshipAttendanceRecord,
+  InternshipApprovalRecord,
+  InternshipNotification,
+  InternshipMode,
+  InternshipStatus,
+  InternshipApplicationStatus,
   Language,
   NotificationItem,
   NewRegisteredStudent,
@@ -33,8 +41,15 @@ import {
   serializeAttendanceForDb,
   serializeStudentForDb,
   serializeAnnouncementForDb,
+  serializeInternshipForDb,
+  deserializeInternshipFromDb,
+  serializeInternshipApplicationForDb,
+  deserializeInternshipApplicationFromDb,
+  serializeInternshipAttendanceForDb,
+  deserializeInternshipAttendanceFromDb,
   logSupabaseError,
 } from "./supabase-mappers";
+
 
 export interface CampusAccount {
   role: UserRole;
@@ -150,6 +165,11 @@ export interface CampusState {
   auditLogs: AuditLogEntry[];
   lowAttendanceAlertSent: boolean;
   newRegisteredStudents: NewRegisteredStudent[];
+  internships: Internship[];
+  internshipApplications: InternshipApplication[];
+  internshipAttendance: InternshipAttendanceRecord[];
+  internshipApprovals: InternshipApprovalRecord[];
+  internshipNotifications: InternshipNotification[];
 }
 
 const INITIAL_USER: UserProfile = STUDENT_ACCOUNT.profile;
@@ -538,7 +558,254 @@ const INITIAL_SERVICES: CampusService[] = [
 
 export const INITIAL_NEW_STUDENTS: NewRegisteredStudent[] = [];
 
-const STORAGE_KEY = "gsfc_campus_connect_state_v5";
+export const INITIAL_INTERNSHIPS: Internship[] = [
+  {
+    id: "int-gsfc-01",
+    title: "Industrial Process Automation & IoT Intern",
+    companyName: "Gujarat State Fertilizers & Chemicals (GSFC) Ltd.",
+    description: "Work with the Central Instrumentation & IoT Department at GSFC Fertilizernagar complex. Build SCADA integration scripts, telemetry ingestion pipelines, and live predictive maintenance dashboards.",
+    department: "Computer Science / Chemical / Mechanical",
+    skillsRequired: ["Python", "Industrial IoT", "MQTT", "React", "PostgreSQL"],
+    eligibility: "Min CGPA: 7.0, Semester 4 or 6, No active backlogs",
+    positions: 4,
+    location: "GSFC Fertilizernagar, Vadodara, Gujarat",
+    mode: "On-site",
+    startDate: "2026-09-01",
+    endDate: "2027-02-28",
+    duration: "6 Months",
+    stipend: "₹25,000 / month",
+    workingHours: "09:00 AM - 05:30 PM (Mon-Fri)",
+    contactPerson: "Er. Rajesh Varma (Chief Technology Officer)",
+    contactEmail: "internships@gsfcltd.com",
+    applicationDeadline: "2026-10-31",
+    requiredDocuments: ["Resume/CV", "College ID Card", "NOC from Dean"],
+    status: "open",
+    createdAt: "2026-08-15T09:00:00Z",
+  },
+  {
+    id: "int-tcs-02",
+    title: "Full-Stack Cloud & AI Systems Intern",
+    companyName: "Tata Consultancy Services (TCS)",
+    description: "Participate in enterprise cloud modernization, fine-tuning retrieval-augmented generation (RAG) models, and containerized deployment with Kubernetes and Docker.",
+    department: "Computer Science & Engineering / IT",
+    skillsRequired: ["TypeScript", "Next.js", "Python", "Docker", "AWS / Azure"],
+    eligibility: "Min CGPA: 7.5, Semester 6 or 8",
+    positions: 6,
+    location: "TCS Garima Park, Gandhinagar / Vadodara Sub-Center",
+    mode: "Hybrid",
+    startDate: "2026-09-15",
+    endDate: "2027-03-15",
+    duration: "6 Months",
+    stipend: "₹30,000 / month",
+    workingHours: "09:30 AM - 06:00 PM (Mon-Fri)",
+    contactPerson: "Ms. Neha Parikh (Talent Acquisition Lead)",
+    contactEmail: "campus.connect@tcs.com",
+    applicationDeadline: "2026-11-15",
+    requiredDocuments: ["Resume/CV", "Semester Grade Sheets", "College ID"],
+    status: "open",
+    createdAt: "2026-08-20T10:00:00Z",
+  },
+  {
+    id: "int-ltts-03",
+    title: "Smart Mobility & Embedded Edge Intern",
+    companyName: "L&T Technology Services",
+    description: "Design hardware-in-the-loop embedded software, CAN bus diagnostic telemetry, and real-time firmware verification for electric vehicle control units.",
+    department: "Electrical / Electronics / Computer Science",
+    skillsRequired: ["Embedded C/C++", "RTOS", "CAN Bus", "Microcontrollers"],
+    eligibility: "Min CGPA: 6.8, Semester 6 or 8",
+    positions: 3,
+    location: "L&T Knowledge City, NH-8, Vadodara",
+    mode: "On-site",
+    startDate: "2026-10-01",
+    endDate: "2027-04-01",
+    duration: "6 Months",
+    stipend: "₹22,000 / month",
+    workingHours: "08:30 AM - 05:00 PM (Mon-Fri)",
+    contactPerson: "Dr. K. S. Raman (Lead Embedded Systems Architect)",
+    contactEmail: "ltts.careers@lnttechservices.com",
+    applicationDeadline: "2026-10-25",
+    requiredDocuments: ["Resume", "College ID", "Project Portfolio"],
+    status: "open",
+    createdAt: "2026-08-25T11:00:00Z",
+  },
+  {
+    id: "int-vmc-04",
+    title: "Urban Geospatial & Citizen Data Analytics Intern",
+    companyName: "Vadodara Smart City Development Ltd.",
+    description: "Analyze municipal GPS transit patterns, environmental sensors, and optimize smart traffic signal timings using GIS spatial data and dashboards.",
+    department: "All Departments (Engineering & Sciences)",
+    skillsRequired: ["Data Analytics", "GIS / Geoapify", "Python", "SQL"],
+    eligibility: "Min CGPA: 6.5, Semester 4, 6 or 8",
+    positions: 5,
+    location: "Khanderao Market Complex, Vadodara",
+    mode: "Hybrid",
+    startDate: "2026-08-01",
+    endDate: "2027-01-31",
+    duration: "6 Months",
+    stipend: "₹18,000 / month",
+    workingHours: "10:00 AM - 05:00 PM (Mon-Fri)",
+    contactPerson: "Shri Amit Shah (Municipal Analytics Director)",
+    contactEmail: "smartcity.internships@vmc.gov.in",
+    applicationDeadline: "2026-09-30",
+    requiredDocuments: ["Resume", "College ID Card"],
+    status: "open",
+    createdAt: "2026-08-10T12:00:00Z",
+  },
+];
+
+export const INITIAL_INTERNSHIP_APPLICATIONS: InternshipApplication[] = [
+  {
+    id: "app-int-001",
+    applicationNumber: "INT-2026-000001",
+    internshipId: "int-gsfc-01",
+    studentId: "u-student-1",
+    fullName: "Om Thakkar",
+    enrollmentNumber: "STU-2024-001",
+    email: "om.thakkar@gsfcuniversity.ac.in",
+    phone: "+91 95584 13347",
+    course: "B.Tech",
+    branch: "Computer Science & Engineering",
+    semester: 4,
+    cgpa: 8.9,
+    tenthPercentage: 92.4,
+    twelfthPercentage: 89.6,
+    backlogs: 0,
+    academicDetails: { school: "School of Technology (SOT)", degree: "B.Tech CSE" },
+    address: {
+      street: "Kasturba Hostel - Block B, Room 204",
+      city: "Vadodara",
+      state: "Gujarat",
+      pincode: "391750",
+    },
+    skills: ["Python", "IoT Systems", "React", "PostgreSQL", "MQTT"],
+    projects: "Campus Connect Hub Geofencing Engine, SCADA Sensor Dashboard",
+    experience: "Technical Committee Member at Coding & AI Club",
+    whyInternship: "GSFC Ltd offers an outstanding industrial proving ground to deploy predictive maintenance models on live chemical plant telemetry.",
+    careerObjective: "To specialize in intelligent industrial automation and high-reliability edge systems.",
+    coverLetter: "Dear Hiring Team, I am thrilled to apply for the Industrial IoT Internship at GSFC Ltd...",
+    declarationAccepted: true,
+    status: "APPROVED",
+    adminReviewedBy: "Prof. Rajiv Mehta (TPC Head)",
+    adminReviewedAt: "2026-09-02T11:00:00Z",
+    adminComment: "Verified eligibility (8.9 CGPA, 0 backlogs). Academic track record is exceptional. Recommended for Dean approval.",
+    deanReviewedBy: "Dr. Ananya Sharma (Dean)",
+    deanReviewedAt: "2026-09-03T14:30:00Z",
+    deanComment: "Formally approved and sanctioned. Student is officially registered for GSFC Ltd industrial internship and granted attendance punch access.",
+    approvedAt: "2026-09-03T14:30:00Z",
+    createdAt: "2026-09-01T10:00:00Z",
+    updatedAt: "2026-09-03T14:30:00Z",
+  },
+  {
+    id: "app-int-002",
+    applicationNumber: "INT-2026-000002",
+    internshipId: "int-tcs-02",
+    studentId: "u-student-2",
+    fullName: "Priya Patel",
+    enrollmentNumber: "STU-2024-002",
+    email: "priya.patel@gsfcuniversity.ac.in",
+    phone: "+91 98765 43210",
+    course: "B.Tech",
+    branch: "Computer Science & Engineering",
+    semester: 6,
+    cgpa: 8.4,
+    tenthPercentage: 88.5,
+    twelfthPercentage: 86.2,
+    backlogs: 0,
+    skills: ["TypeScript", "Next.js", "Docker", "Python"],
+    whyInternship: "Passionate about enterprise microservices and building scalable RAG pipelines.",
+    careerObjective: "Full-stack cloud engineering architect.",
+    declarationAccepted: true,
+    status: "ADMIN_REVIEW",
+    createdAt: "2026-09-18T14:20:00Z",
+  },
+  {
+    id: "app-int-003",
+    applicationNumber: "INT-2026-000003",
+    internshipId: "int-ltts-03",
+    studentId: "u-student-3",
+    fullName: "Rohan Dave",
+    enrollmentNumber: "STU-2024-003",
+    email: "rohan.dave@gsfcuniversity.ac.in",
+    phone: "+91 98250 12345",
+    course: "B.Tech",
+    branch: "Mechanical Engineering",
+    semester: 6,
+    cgpa: 8.1,
+    tenthPercentage: 85.0,
+    twelfthPercentage: 82.5,
+    backlogs: 0,
+    skills: ["Embedded C", "RTOS", "CAD / SolidWorks", "CAN Bus"],
+    whyInternship: "Desire hands-on electric vehicle powertrain diagnostics at L&T Knowledge City.",
+    declarationAccepted: true,
+    status: "DEAN_REVIEW",
+    adminReviewedBy: "Prof. Rajiv Mehta (TPC Head)",
+    adminReviewedAt: "2026-09-18T16:45:00Z",
+    adminComment: "Eligible and recommended. Completed prerequisites.",
+    createdAt: "2026-09-17T09:15:00Z",
+  },
+];
+
+export const INITIAL_INTERNSHIP_ATTENDANCE: InternshipAttendanceRecord[] = [
+  {
+    id: "att-int-01",
+    applicationId: "app-int-001",
+    studentId: "u-student-1",
+    internshipId: "int-gsfc-01",
+    attendanceDate: "2026-09-18",
+    punchInTime: "2026-09-18T09:12:00Z",
+    punchInLatitude: 22.3688,
+    punchInLongitude: 73.1893,
+    punchInAccuracy: 12,
+    punchInAddress: "GSFC Fertilizernagar Plant Complex, Vadodara, Gujarat",
+    punchOutTime: "2026-09-18T17:42:00Z",
+    punchOutLatitude: 22.3689,
+    punchOutLongitude: 73.1894,
+    punchOutAccuracy: 14,
+    punchOutAddress: "GSFC Fertilizernagar Plant Complex, Vadodara, Gujarat",
+    workingDuration: "8h 30m",
+    status: "present",
+    createdAt: "2026-09-18T09:12:00Z",
+    updatedAt: "2026-09-18T17:42:00Z",
+  },
+];
+
+export const INITIAL_INTERNSHIP_APPROVALS: InternshipApprovalRecord[] = [
+  {
+    id: "apprv-01",
+    applicationId: "app-int-001",
+    approvalType: "ADMIN",
+    approvedBy: "Prof. Rajiv Mehta (TPC Head)",
+    status: "approved",
+    comment: "Verified eligibility (8.9 CGPA, 0 backlogs). Forwarded to Dean.",
+    approvedAt: "2026-09-02T11:00:00Z",
+    createdAt: "2026-09-02T11:00:00Z",
+  },
+  {
+    id: "apprv-02",
+    applicationId: "app-int-001",
+    approvalType: "DEAN",
+    approvedBy: "Dr. Ananya Sharma (Dean)",
+    status: "approved",
+    comment: "Formally approved and sanctioned. Student granted attendance punch access.",
+    approvedAt: "2026-09-03T14:30:00Z",
+    createdAt: "2026-09-03T14:30:00Z",
+  },
+];
+
+export const INITIAL_INTERNSHIP_NOTIFICATIONS: InternshipNotification[] = [
+  {
+    id: "notif-int-01",
+    studentId: "u-student-1",
+    applicationId: "app-int-001",
+    type: "active",
+    title: "Internship Approved & Activated!",
+    message: "Your application INT-2026-000001 for GSFC Ltd has been fully approved by Dean Dr. Ananya Sharma. You are now authorized to log GPS attendance.",
+    isRead: false,
+    createdAt: "2026-09-03T14:31:00Z",
+  },
+];
+
+const STORAGE_KEY = "gsfc_campus_connect_state_v6";
 const ACCOUNTS_STORAGE_KEY = "gsfc_campus_accounts_v5";
 
 
@@ -604,6 +871,11 @@ function loadSavedState(): CampusState {
       services: INITIAL_SERVICES,
       digitalId: INITIAL_DIGITAL_ID,
       newRegisteredStudents: INITIAL_NEW_STUDENTS,
+      internships: INITIAL_INTERNSHIPS,
+      internshipApplications: INITIAL_INTERNSHIP_APPLICATIONS,
+      internshipAttendance: INITIAL_INTERNSHIP_ATTENDANCE,
+      internshipApprovals: INITIAL_INTERNSHIP_APPROVALS,
+      internshipNotifications: INITIAL_INTERNSHIP_NOTIFICATIONS,
     };
   }
 
@@ -728,6 +1000,51 @@ function loadSavedState(): CampusState {
         }
       }
 
+      // Merge internships
+      const existingInternships: Internship[] = Array.isArray(parsed.internships) ? parsed.internships : [];
+      const mergedInternships = [...existingInternships];
+      for (const defInt of INITIAL_INTERNSHIPS) {
+        if (!mergedInternships.some((i) => i.id === defInt.id)) {
+          mergedInternships.push(defInt);
+        }
+      }
+
+      // Merge internship applications
+      const existingApps: InternshipApplication[] = Array.isArray(parsed.internshipApplications) ? parsed.internshipApplications : [];
+      const mergedApps = [...existingApps];
+      for (const defApp of INITIAL_INTERNSHIP_APPLICATIONS) {
+        if (!mergedApps.some((a) => a.id === defApp.id)) {
+          mergedApps.push(defApp);
+        }
+      }
+
+      // Merge internship attendance
+      const existingIntAtt: InternshipAttendanceRecord[] = Array.isArray(parsed.internshipAttendance) ? parsed.internshipAttendance : [];
+      const mergedIntAtt = [...existingIntAtt];
+      for (const defAtt of INITIAL_INTERNSHIP_ATTENDANCE) {
+        if (!mergedIntAtt.some((a) => a.id === defAtt.id)) {
+          mergedIntAtt.push(defAtt);
+        }
+      }
+
+      // Merge internship approvals
+      const existingApprv: InternshipApprovalRecord[] = Array.isArray(parsed.internshipApprovals) ? parsed.internshipApprovals : [];
+      const mergedApprv = [...existingApprv];
+      for (const defAp of INITIAL_INTERNSHIP_APPROVALS) {
+        if (!mergedApprv.some((a) => a.id === defAp.id)) {
+          mergedApprv.push(defAp);
+        }
+      }
+
+      // Merge internship notifications
+      const existingIntNotif: InternshipNotification[] = Array.isArray(parsed.internshipNotifications) ? parsed.internshipNotifications : [];
+      const mergedIntNotif = [...existingIntNotif];
+      for (const defNot of INITIAL_INTERNSHIP_NOTIFICATIONS) {
+        if (!mergedIntNotif.some((n) => n.id === defNot.id)) {
+          mergedIntNotif.push(defNot);
+        }
+      }
+
       const cleanCurrentUser = parsed.currentUser || INITIAL_USER;
 
       return {
@@ -754,6 +1071,11 @@ function loadSavedState(): CampusState {
         services: mergedServices,
         digitalId: parsed.digitalId || INITIAL_DIGITAL_ID,
         newRegisteredStudents: mergedStudents,
+        internships: mergedInternships,
+        internshipApplications: mergedApps,
+        internshipAttendance: mergedIntAtt,
+        internshipApprovals: mergedApprv,
+        internshipNotifications: mergedIntNotif,
       };
     }
   } catch (e) {
@@ -786,6 +1108,11 @@ function loadSavedState(): CampusState {
     services: INITIAL_SERVICES,
     digitalId: INITIAL_DIGITAL_ID,
     newRegisteredStudents: INITIAL_NEW_STUDENTS,
+    internships: INITIAL_INTERNSHIPS,
+    internshipApplications: INITIAL_INTERNSHIP_APPLICATIONS,
+    internshipAttendance: INITIAL_INTERNSHIP_ATTENDANCE,
+    internshipApprovals: INITIAL_INTERNSHIP_APPROVALS,
+    internshipNotifications: INITIAL_INTERNSHIP_NOTIFICATIONS,
   };
 }let realtimeChannelInitialized = false;
 
@@ -1009,6 +1336,14 @@ export const campusStore = {
           ]),
           // 5. Announcements
           supabase.from("announcements").select("*").order("created_at", { ascending: false }),
+          // 6. Internships
+          supabase.from("internships").select("*").order("created_at", { ascending: false }),
+          // 7. Internship Applications
+          supabase.from("internship_applications").select("*").order("created_at", { ascending: false }),
+          // 8. Internship Attendance
+          supabase.from("internship_attendance").select("*").order("punch_in_time", { ascending: false }),
+          // 9. Internship Notifications
+          supabase.from("internship_notifications").select("*").order("created_at", { ascending: false }),
         ]);
 
         const outcome = await Promise.race([fetchBatch, timeoutPromise]);
@@ -1017,7 +1352,7 @@ export const campusStore = {
           return;
         }
 
-        const [evRes, regRes, attRes, stuGroupRes, annRes] = outcome;
+        const [evRes, regRes, attRes, stuGroupRes, annRes, intRes, appRes, intAttRes, intNotifRes] = outcome;
 
         // 1. Process Events
         if (evRes.status === "fulfilled" && !evRes.value.error && Array.isArray(evRes.value.data)) {
@@ -1205,6 +1540,55 @@ export const campusStore = {
               });
             });
             return { announcements: Array.from(map.values()) };
+          });
+        }
+
+        // 6. Process Internships
+        if (intRes.status === "fulfilled" && !intRes.value.error && Array.isArray(intRes.value.data) && intRes.value.data.length > 0) {
+          const remoteInternships = (intRes.value.data as any[]).map(deserializeInternshipFromDb);
+          campusStore.setState((prev) => {
+            const remoteIds = new Set(remoteInternships.map((i: any) => i.id));
+            const localOnly = (prev.internships || []).filter((i) => !remoteIds.has(i.id));
+            return { internships: [...remoteInternships, ...localOnly] };
+          });
+        }
+
+        // 7. Process Internship Applications
+        if (appRes.status === "fulfilled" && !appRes.value.error && Array.isArray(appRes.value.data) && appRes.value.data.length > 0) {
+          const remoteApps = (appRes.value.data as any[]).map(deserializeInternshipApplicationFromDb);
+          campusStore.setState((prev) => {
+            const remoteIds = new Set(remoteApps.map((a: any) => a.id));
+            const localOnly = (prev.internshipApplications || []).filter((a) => !remoteIds.has(a.id));
+            return { internshipApplications: [...remoteApps, ...localOnly] };
+          });
+        }
+
+        // 8. Process Internship Attendance
+        if (intAttRes.status === "fulfilled" && !intAttRes.value.error && Array.isArray(intAttRes.value.data) && intAttRes.value.data.length > 0) {
+          const remoteAtt = (intAttRes.value.data as any[]).map(deserializeInternshipAttendanceFromDb);
+          campusStore.setState((prev) => {
+            const remoteIds = new Set(remoteAtt.map((a: any) => a.id));
+            const localOnly = (prev.internshipAttendance || []).filter((a) => !remoteIds.has(a.id));
+            return { internshipAttendance: [...remoteAtt, ...localOnly] };
+          });
+        }
+
+        // 9. Process Internship Notifications
+        if (intNotifRes.status === "fulfilled" && !intNotifRes.value.error && Array.isArray(intNotifRes.value.data) && intNotifRes.value.data.length > 0) {
+          const remoteNotifs = (intNotifRes.value.data as any[]).map((n: any) => ({
+            id: n.id,
+            studentId: n.student_id,
+            applicationId: n.application_id,
+            type: n.type,
+            title: n.title,
+            message: n.message,
+            isRead: Boolean(n.is_read),
+            createdAt: n.created_at,
+          }));
+          campusStore.setState((prev) => {
+            const remoteIds = new Set(remoteNotifs.map((n: any) => n.id));
+            const localOnly = (prev.internshipNotifications || []).filter((n) => !remoteIds.has(n.id));
+            return { internshipNotifications: [...remoteNotifs, ...localOnly] };
           });
         }
       } catch (e) {
@@ -3586,5 +3970,537 @@ export const campusStore = {
       timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       suggestedActions: suggestions,
     };
+  },
+
+  // ==============================================================================
+  // INTERNSHIP SYSTEM ACTIONS
+  // ==============================================================================
+
+  async applyForInternship(applicationData: {
+    internshipId: string;
+    studentId?: string;
+    fullName: string;
+    enrollmentNumber: string;
+    email: string;
+    phone: string;
+    course: string;
+    branch: string;
+    semester: number;
+    cgpa: number;
+    tenthPercentage?: number;
+    twelfthPercentage?: number;
+    backlogs?: number;
+    academicDetails?: Record<string, any>;
+    address?: { street?: string; city?: string; state?: string; pincode?: string };
+    skills: string[];
+    projects?: string;
+    experience?: string;
+    whyInternship?: string;
+    careerObjective?: string;
+    coverLetter?: string;
+    resumeUrl?: string;
+    collegeIdUrl?: string;
+    documents?: Array<{ name: string; url: string; type: string }>;
+    declarationAccepted: boolean;
+  }): Promise<{ success: boolean; application?: InternshipApplication; message: string }> {
+    const state = campusStore.getState();
+    const studentId = applicationData.studentId || state.currentUser.id || state.currentUser.rollNo || "u-student";
+
+    const existing = (state.internshipApplications || []).find(
+      (a) =>
+        a.internshipId === applicationData.internshipId &&
+        (a.studentId === studentId || a.enrollmentNumber.toUpperCase() === applicationData.enrollmentNumber.toUpperCase())
+    );
+    if (existing) {
+      return {
+        success: false,
+        message: `You have already submitted an application (${existing.applicationNumber}) for this internship. Current Status: ${existing.status.replace("_", " ")}.`,
+      };
+    }
+
+    if (!applicationData.declarationAccepted) {
+      return {
+        success: false,
+        message: "You must accept the declaration and attendance agreement before submitting your application.",
+      };
+    }
+
+    const year = new Date().getFullYear();
+    const count = (state.internshipApplications || []).length + 1;
+    const applicationNumber = `INT-${year}-${String(count).padStart(6, "0")}`;
+    const newId = `app-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+
+    const newApplication: InternshipApplication = {
+      id: newId,
+      applicationNumber,
+      internshipId: applicationData.internshipId,
+      studentId,
+      fullName: applicationData.fullName,
+      enrollmentNumber: applicationData.enrollmentNumber,
+      email: applicationData.email,
+      phone: applicationData.phone,
+      course: applicationData.course,
+      branch: applicationData.branch,
+      semester: applicationData.semester,
+      cgpa: applicationData.cgpa,
+      tenthPercentage: applicationData.tenthPercentage,
+      twelfthPercentage: applicationData.twelfthPercentage,
+      backlogs: applicationData.backlogs ?? 0,
+      academicDetails: applicationData.academicDetails || {},
+      address: applicationData.address || {},
+      skills: applicationData.skills || [],
+      projects: applicationData.projects,
+      experience: applicationData.experience,
+      whyInternship: applicationData.whyInternship,
+      careerObjective: applicationData.careerObjective,
+      coverLetter: applicationData.coverLetter,
+      resumeUrl: applicationData.resumeUrl,
+      collegeIdUrl: applicationData.collegeIdUrl,
+      documents: applicationData.documents || [],
+      declarationAccepted: true,
+      status: "ADMIN_REVIEW",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    const studentNotif: InternshipNotification = {
+      id: `notif-${Date.now()}`,
+      studentId,
+      applicationId: newId,
+      type: "submitted",
+      title: "Application Submitted Successfully",
+      message: `Your internship application ${applicationNumber} has been submitted and is currently waiting for Administration review. You cannot start internship attendance until your application is approved.`,
+      isRead: false,
+      createdAt: new Date().toISOString(),
+    };
+
+    campusStore.setState((prev) => ({
+      internshipApplications: [newApplication, ...(prev.internshipApplications || [])],
+      internshipNotifications: [studentNotif, ...(prev.internshipNotifications || [])],
+    }));
+
+    try {
+      if (typeof window !== "undefined" && navigator.onLine) {
+        const dbPayload = serializeInternshipApplicationForDb(newApplication);
+        await supabase.from("internship_applications").insert(dbPayload);
+        await supabase.from("internship_notifications").insert({
+          id: studentNotif.id,
+          student_id: studentNotif.studentId,
+          application_id: studentNotif.applicationId,
+          type: studentNotif.type,
+          title: studentNotif.title,
+          message: studentNotif.message,
+          is_read: false,
+          created_at: studentNotif.createdAt,
+        });
+      }
+    } catch (err) {
+      console.debug("Supabase application insert note:", err);
+    }
+
+    return {
+      success: true,
+      application: newApplication,
+      message: `Application submitted successfully. Your application ${applicationNumber} is currently waiting for Administration/Dean approval. You cannot start internship attendance until your application is approved.`,
+    };
+  },
+
+  async adminReviewApplication(
+    applicationId: string,
+    decision: "approve" | "reject" | "changes_requested",
+    comment: string
+  ): Promise<{ success: boolean; message: string }> {
+    const state = campusStore.getState();
+    const app = (state.internshipApplications || []).find((a) => a.id === applicationId);
+    if (!app) {
+      return { success: false, message: "Application not found." };
+    }
+
+    const reviewerName = state.currentUser.name || "University Administration";
+    const nowIso = new Date().toISOString();
+    let newStatus: InternshipApplicationStatus = "ADMIN_REVIEW";
+    let notifTitle = "";
+    let notifMessage = "";
+
+    if (decision === "approve") {
+      newStatus = "DEAN_REVIEW";
+      notifTitle = "Administration Review Completed";
+      notifMessage = `Your application ${app.applicationNumber} has been approved by Administration (${reviewerName}) and is now awaiting Dean final approval.`;
+    } else if (decision === "reject") {
+      newStatus = "REJECTED";
+      notifTitle = "Application Rejected by Administration";
+      notifMessage = `Your application ${app.applicationNumber} was not approved by Administration. Reason: ${comment || "Requirements not met."}`;
+    } else {
+      newStatus = "CHANGES_REQUESTED";
+      notifTitle = "Changes Requested by Administration";
+      notifMessage = `Administration requested updates for application ${app.applicationNumber}: ${comment || "Please update your details."}`;
+    }
+
+    const updatedApp: InternshipApplication = {
+      ...app,
+      status: newStatus,
+      adminReviewedBy: reviewerName,
+      adminReviewedAt: nowIso,
+      adminComment: comment,
+      rejectedAt: decision === "reject" ? nowIso : app.rejectedAt,
+      rejectionReason: decision === "reject" ? comment : app.rejectionReason,
+      updatedAt: nowIso,
+    };
+
+    const approvalLog: InternshipApprovalRecord = {
+      id: `apprv-${Date.now()}`,
+      applicationId,
+      approvalType: "ADMIN",
+      approvedBy: reviewerName,
+      status: decision === "approve" ? "approved" : decision === "reject" ? "rejected" : "changes_requested",
+      comment,
+      approvedAt: nowIso,
+      createdAt: nowIso,
+    };
+
+    const studentNotif: InternshipNotification = {
+      id: `notif-${Date.now()}`,
+      studentId: app.studentId,
+      applicationId,
+      type: decision === "approve" ? "admin_approved" : decision === "reject" ? "rejected" : "changes_requested",
+      title: notifTitle,
+      message: notifMessage,
+      isRead: false,
+      createdAt: nowIso,
+    };
+
+    campusStore.setState((prev) => ({
+      internshipApplications: (prev.internshipApplications || []).map((a) => (a.id === applicationId ? updatedApp : a)),
+      internshipApprovals: [approvalLog, ...(prev.internshipApprovals || [])],
+      internshipNotifications: [studentNotif, ...(prev.internshipNotifications || [])],
+    }));
+
+    try {
+      if (typeof window !== "undefined" && navigator.onLine) {
+        await supabase
+          .from("internship_applications")
+          .update(serializeInternshipApplicationForDb(updatedApp))
+          .eq("id", applicationId);
+        await supabase.from("internship_approvals").insert({
+          id: approvalLog.id,
+          application_id: approvalLog.applicationId,
+          approval_type: approvalLog.approvalType,
+          approved_by: approvalLog.approvedBy,
+          status: approvalLog.status,
+          comment: approvalLog.comment,
+          approved_at: approvalLog.approvedAt,
+          created_at: approvalLog.createdAt,
+        });
+      }
+    } catch (err) {
+      console.debug("Supabase admin review note:", err);
+    }
+
+    return {
+      success: true,
+      message:
+        decision === "approve"
+          ? `Application ${app.applicationNumber} approved by Administration and forwarded to Dean Review.`
+          : decision === "reject"
+          ? `Application ${app.applicationNumber} rejected.`
+          : `Changes requested for ${app.applicationNumber}.`,
+    };
+  },
+
+  async deanReviewApplication(
+    applicationId: string,
+    decision: "approve" | "reject",
+    comment: string
+  ): Promise<{ success: boolean; message: string }> {
+    const state = campusStore.getState();
+    const app = (state.internshipApplications || []).find((a) => a.id === applicationId);
+    if (!app) {
+      return { success: false, message: "Application not found." };
+    }
+
+    const reviewerName = state.currentUser.name || "Dr. Ananya Sharma (Dean)";
+    const nowIso = new Date().toISOString();
+    const newStatus: InternshipApplicationStatus = decision === "approve" ? "APPROVED" : "REJECTED";
+
+    const updatedApp: InternshipApplication = {
+      ...app,
+      status: newStatus,
+      deanReviewedBy: reviewerName,
+      deanReviewedAt: nowIso,
+      deanComment: comment,
+      approvedAt: decision === "approve" ? nowIso : app.approvedAt,
+      rejectedAt: decision === "reject" ? nowIso : app.rejectedAt,
+      rejectionReason: decision === "reject" ? comment : app.rejectionReason,
+      updatedAt: nowIso,
+    };
+
+    const approvalLog: InternshipApprovalRecord = {
+      id: `apprv-${Date.now()}`,
+      applicationId,
+      approvalType: "DEAN",
+      approvedBy: reviewerName,
+      status: decision === "approve" ? "approved" : "rejected",
+      comment,
+      approvedAt: nowIso,
+      createdAt: nowIso,
+    };
+
+    const targetInternship = (state.internships || []).find((i) => i.id === app.internshipId);
+    const startDateText = targetInternship?.startDate || "scheduled start date";
+
+    const studentNotif: InternshipNotification = {
+      id: `notif-${Date.now()}`,
+      studentId: app.studentId,
+      applicationId,
+      type: decision === "approve" ? "dean_approved" : "rejected",
+      title: decision === "approve" ? "Final Dean Approval Granted!" : "Application Rejected by Dean",
+      message:
+        decision === "approve"
+          ? `Your internship application ${app.applicationNumber} has been officially approved by Dean ${reviewerName}. You can log attendance starting from ${startDateText}.`
+          : `Your application ${app.applicationNumber} was not approved by the Dean. Reason: ${comment || "Not approved."}`,
+      isRead: false,
+      createdAt: nowIso,
+    };
+
+    campusStore.setState((prev) => ({
+      internshipApplications: (prev.internshipApplications || []).map((a) => (a.id === applicationId ? updatedApp : a)),
+      internshipApprovals: [approvalLog, ...(prev.internshipApprovals || [])],
+      internshipNotifications: [studentNotif, ...(prev.internshipNotifications || [])],
+    }));
+
+    try {
+      if (typeof window !== "undefined" && navigator.onLine) {
+        await supabase
+          .from("internship_applications")
+          .update(serializeInternshipApplicationForDb(updatedApp))
+          .eq("id", applicationId);
+        await supabase.from("internship_approvals").insert({
+          id: approvalLog.id,
+          application_id: approvalLog.applicationId,
+          approval_type: approvalLog.approvalType,
+          approved_by: approvalLog.approvedBy,
+          status: approvalLog.status,
+          comment: approvalLog.comment,
+          approved_at: approvalLog.approvedAt,
+          created_at: approvalLog.createdAt,
+        });
+      }
+    } catch (err) {
+      console.debug("Supabase dean review note:", err);
+    }
+
+    return {
+      success: true,
+      message:
+        decision === "approve"
+          ? `Application ${app.applicationNumber} granted Dean Final Approval. Internship is now APPROVED & ACTIVE.`
+          : `Application ${app.applicationNumber} rejected by Dean.`,
+    };
+  },
+
+  async punchInInternship(
+    applicationId: string,
+    coords: { latitude: number; longitude: number; accuracy: number; address: string }
+  ): Promise<{ success: boolean; record?: InternshipAttendanceRecord; message: string }> {
+    const state = campusStore.getState();
+    const app = (state.internshipApplications || []).find((a) => a.id === applicationId);
+    if (!app) {
+      return { success: false, message: "Internship application record not found." };
+    }
+
+    if (app.status !== "APPROVED" && app.status !== "ACTIVE") {
+      return {
+        success: false,
+        message: "Attendance punching is not available yet. Please wait until your internship is officially approved and activated by Administration and Dean.",
+      };
+    }
+
+    const intn = (state.internships || []).find((i) => i.id === app.internshipId);
+    const todayStr = new Date().toISOString().slice(0, 10);
+    if (intn) {
+      if (todayStr < intn.startDate) {
+        return {
+          success: false,
+          message: `Internship has not started yet. Valid attendance period begins on ${intn.startDate}. Today is ${todayStr}.`,
+        };
+      }
+      if (todayStr > intn.endDate) {
+        return {
+          success: false,
+          message: `Internship tenure concluded on ${intn.endDate}. Attendance punching is closed.`,
+        };
+      }
+    }
+
+    const existingPunches = (state.internshipAttendance || []).filter(
+      (a) => a.applicationId === applicationId && a.attendanceDate === todayStr
+    );
+    const openPunch = existingPunches.find((p) => p.punchInTime && !p.punchOutTime);
+    if (openPunch) {
+      return {
+        success: false,
+        message: `You already have an active Punch In session logged today at ${new Date(openPunch.punchInTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}. Please Punch Out before creating a new punch.`,
+      };
+    }
+    const completedPunch = existingPunches.find((p) => p.punchInTime && p.punchOutTime);
+    if (completedPunch) {
+      return {
+        success: false,
+        message: `You have already completed your internship punch for today (${todayStr}) with duration ${completedPunch.workingDuration}.`,
+      };
+    }
+
+    const newRecord: InternshipAttendanceRecord = {
+      id: `att-int-${Date.now()}`,
+      applicationId,
+      studentId: app.studentId,
+      internshipId: app.internshipId,
+      attendanceDate: todayStr,
+      punchInTime: new Date().toISOString(),
+      punchInLatitude: coords.latitude,
+      punchInLongitude: coords.longitude,
+      punchInAccuracy: Math.round(coords.accuracy),
+      punchInAddress: coords.address || "Captured GPS Coordinates",
+      status: "present",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    const notif: InternshipNotification = {
+      id: `notif-${Date.now()}`,
+      studentId: app.studentId,
+      applicationId,
+      type: "punch",
+      title: "Attendance Punched In",
+      message: `Internship attendance recorded at ${coords.address} (GPS Accuracy: ±${Math.round(coords.accuracy)}m).`,
+      isRead: false,
+      createdAt: new Date().toISOString(),
+    };
+
+    campusStore.setState((prev) => ({
+      internshipAttendance: [newRecord, ...(prev.internshipAttendance || [])],
+      internshipNotifications: [notif, ...(prev.internshipNotifications || [])],
+    }));
+
+    try {
+      if (typeof window !== "undefined" && navigator.onLine) {
+        await supabase.from("internship_attendance").insert(serializeInternshipAttendanceForDb(newRecord));
+      }
+    } catch (err) {
+      console.debug("Supabase punch in note:", err);
+    }
+
+    return {
+      success: true,
+      record: newRecord,
+      message: `Attendance punched in successfully at ${coords.address}.`,
+    };
+  },
+
+  async punchOutInternship(
+    attendanceId: string,
+    coords: { latitude: number; longitude: number; accuracy: number; address: string }
+  ): Promise<{ success: boolean; record?: InternshipAttendanceRecord; message: string }> {
+    const state = campusStore.getState();
+    const record = (state.internshipAttendance || []).find((a) => a.id === attendanceId);
+    if (!record) {
+      return { success: false, message: "Attendance session record not found." };
+    }
+    if (!record.punchInTime) {
+      return { success: false, message: "Cannot Punch Out before Punching In." };
+    }
+    if (record.punchOutTime) {
+      return { success: false, message: "This attendance session is already punched out." };
+    }
+
+    const now = new Date();
+    const inTime = new Date(record.punchInTime);
+    const diffMs = Math.max(0, now.getTime() - inTime.getTime());
+    const totalMinutes = Math.floor(diffMs / 60000);
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    const workingDuration = `${hours}h ${String(minutes).padStart(2, "0")}m`;
+
+    const updatedRecord: InternshipAttendanceRecord = {
+      ...record,
+      punchOutTime: now.toISOString(),
+      punchOutLatitude: coords.latitude,
+      punchOutLongitude: coords.longitude,
+      punchOutAccuracy: Math.round(coords.accuracy),
+      punchOutAddress: coords.address || "Captured GPS Coordinates",
+      workingDuration,
+      updatedAt: now.toISOString(),
+    };
+
+    const notif: InternshipNotification = {
+      id: `notif-${Date.now()}`,
+      studentId: record.studentId,
+      applicationId: record.applicationId,
+      type: "punch",
+      title: "Attendance Punched Out",
+      message: `Punched out successfully. Total working duration: ${workingDuration}.`,
+      isRead: false,
+      createdAt: now.toISOString(),
+    };
+
+    campusStore.setState((prev) => ({
+      internshipAttendance: (prev.internshipAttendance || []).map((a) => (a.id === attendanceId ? updatedRecord : a)),
+      internshipNotifications: [notif, ...(prev.internshipNotifications || [])],
+    }));
+
+    try {
+      if (typeof window !== "undefined" && navigator.onLine) {
+        await supabase
+          .from("internship_attendance")
+          .update(serializeInternshipAttendanceForDb(updatedRecord))
+          .eq("id", attendanceId);
+      }
+    } catch (err) {
+      console.debug("Supabase punch out note:", err);
+    }
+
+    return {
+      success: true,
+      record: updatedRecord,
+      message: `Punch Out completed! Total logged duration: ${workingDuration}.`,
+    };
+  },
+
+  createInternship(internshipData: Omit<Internship, "id" | "createdAt" | "updatedAt">): { success: boolean; internship: Internship } {
+    const newId = `int-${Date.now()}`;
+    const newInternship: Internship = {
+      ...internshipData,
+      id: newId,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    campusStore.setState((prev) => ({
+      internships: [newInternship, ...(prev.internships || [])],
+    }));
+
+    try {
+      if (typeof window !== "undefined" && navigator.onLine) {
+        supabase.from("internships").insert(serializeInternshipForDb(newInternship)).then(() => {});
+      }
+    } catch (e) {}
+
+    return { success: true, internship: newInternship };
+  },
+
+  updateInternship(id: string, updates: Partial<Internship>): { success: boolean } {
+    campusStore.setState((prev) => ({
+      internships: (prev.internships || []).map((i) =>
+        i.id === id ? { ...i, ...updates, updatedAt: new Date().toISOString() } : i
+      ),
+    }));
+
+    try {
+      if (typeof window !== "undefined" && navigator.onLine) {
+        supabase.from("internships").update(updates).eq("id", id).then(() => {});
+      }
+    } catch (e) {}
+
+    return { success: true };
   },
 };

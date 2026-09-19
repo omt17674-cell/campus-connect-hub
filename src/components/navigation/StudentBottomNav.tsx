@@ -24,6 +24,7 @@ export type StudentNavView =
   | "clubs"
   | "feed"
   | "services"
+  | "internships"
   | "gamification"
   | "profile";
 

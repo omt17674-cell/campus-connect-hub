@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   Award,
   BarChart3,
+  Briefcase,
   Calendar,
   Check,
   CheckCircle2,
@@ -43,6 +44,7 @@ import { translations } from "@/lib/i18n";
 import { EventAttendanceViewer } from "@/components/organizer/EventAttendanceViewer";
 import { VisitorVehicleSecurityViewer } from "@/components/admin/VisitorVehicleSecurityViewer";
 import { StudentRegistryViewer } from "@/components/admin/StudentRegistryViewer";
+import { InternshipManagementHub } from "@/components/admin/InternshipManagementHub";
 import { CreateEventModal } from "@/components/organizer/CreateEventModal";
 import { LiveAttendanceModal } from "@/components/organizer/LiveAttendanceModal";
 import { CampusEvent, EventCategory, EventStatus } from "@/lib/types";
@@ -59,7 +61,7 @@ interface AdminDashboardProps {
 export function AdminDashboard({ state, onOpenGateModal }: AdminDashboardProps) {
   const t = translations[state.language];
   const [adminTab, setAdminTab] = useState<
-    "overview" | "events" | "students" | "roster" | "security" | "approvals" | "alerts" | "audit"
+    "overview" | "events" | "students" | "roster" | "security" | "approvals" | "alerts" | "audit" | "internships"
   >("overview");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -471,6 +473,24 @@ export function AdminDashboard({ state, onOpenGateModal }: AdminDashboardProps) 
         >
           <History className="mr-1.5 size-3.5" />
           Immutable Audit Log
+        </Button>
+
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            setAdminTab("internships");
+            campusStore.loadFromSupabase();
+          }}
+          className={cn(
+            "rounded-xl text-xs font-bold",
+            adminTab === "internships"
+              ? "bg-[#1A3C6E] text-white"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <Briefcase className="mr-1.5 size-3.5 text-[#F2A93B]" />
+          Internships Governance ({(state.internshipApplications || []).length})
         </Button>
       </div>
 
@@ -1104,6 +1124,11 @@ export function AdminDashboard({ state, onOpenGateModal }: AdminDashboardProps) 
             )}
           </div>
         </div>
+      )}
+
+      {/* Internships & TPC Governance View */}
+      {adminTab === "internships" && (
+        <InternshipManagementHub state={state} />
       )}
 
       {/* Create Event Modal */}

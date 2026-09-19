@@ -389,3 +389,255 @@ CREATE TRIGGER trg_prevent_locked_student_mutation
 BEFORE UPDATE ON public.new_registered_students
 FOR EACH ROW
 EXECUTE FUNCTION public.prevent_locked_student_mutation();
+
+-- ==============================================================================
+-- 14. INTERNSHIPS TABLE
+-- ==============================================================================
+CREATE TABLE IF NOT EXISTS public.internships (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  company_name TEXT NOT NULL,
+  description TEXT NOT NULL,
+  department TEXT NOT NULL,
+  skills_required TEXT[] DEFAULT ARRAY[]::TEXT[],
+  eligibility TEXT NOT NULL,
+  positions INT DEFAULT 1,
+  location TEXT NOT NULL,
+  mode TEXT NOT NULL CHECK (mode IN ('On-site', 'Remote', 'Hybrid')),
+  start_date DATE NOT NULL,
+  end_date DATE NOT NULL,
+  duration TEXT NOT NULL,
+  stipend TEXT NOT NULL,
+  working_hours TEXT NOT NULL,
+  contact_person TEXT NOT NULL,
+  contact_email TEXT NOT NULL,
+  application_deadline DATE NOT NULL,
+  required_documents TEXT[] DEFAULT ARRAY[]::TEXT[],
+  status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'closed', 'draft')),
+  created_by TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ==============================================================================
+-- 15. INTERNSHIP APPLICATIONS TABLE
+-- ==============================================================================
+CREATE TABLE IF NOT EXISTS public.internship_applications (
+  id TEXT PRIMARY KEY,
+  application_number TEXT UNIQUE NOT NULL,
+  internship_id TEXT REFERENCES public.internships(id) ON DELETE CASCADE,
+  student_id TEXT NOT NULL,
+  full_name TEXT NOT NULL,
+  enrollment_number TEXT NOT NULL,
+  email TEXT NOT NULL,
+  phone TEXT NOT NULL,
+  course TEXT NOT NULL,
+  branch TEXT NOT NULL,
+  semester INT NOT NULL,
+  cgpa NUMERIC(4,2) NOT NULL,
+  tenth_percentage NUMERIC(5,2),
+  twelfth_percentage NUMERIC(5,2),
+  backlogs INT DEFAULT 0,
+  academic_details JSONB DEFAULT '{}'::jsonb,
+  address JSONB DEFAULT '{}'::jsonb,
+  skills TEXT[] DEFAULT ARRAY[]::TEXT[],
+  projects TEXT,
+  experience TEXT,
+  why_internship TEXT,
+  career_objective TEXT,
+  cover_letter TEXT,
+  resume_url TEXT,
+  college_id_url TEXT,
+  documents JSONB DEFAULT '[]'::jsonb,
+  declaration_accepted BOOLEAN NOT NULL DEFAULT FALSE,
+  status TEXT NOT NULL DEFAULT 'ADMIN_REVIEW' CHECK (
+    status IN (
+      'DRAFT',
+      'SUBMITTED',
+      'ADMIN_REVIEW',
+      'ADMIN_APPROVED',
+      'DEAN_REVIEW',
+      'APPROVED',
+      'REJECTED',
+      'CHANGES_REQUESTED',
+      'ACTIVE',
+      'COMPLETED',
+      'CANCELLED'
+    )
+  ),
+  admin_reviewed_by TEXT,
+  admin_reviewed_at TIMESTAMPTZ,
+  admin_comment TEXT,
+  dean_reviewed_by TEXT,
+  dean_reviewed_at TIMESTAMPTZ,
+  dean_comment TEXT,
+  approved_at TIMESTAMPTZ,
+  rejected_at TIMESTAMPTZ,
+  rejection_reason TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  CONSTRAINT unq_student_internship UNIQUE (student_id, internship_id)
+);
+
+-- ==============================================================================
+-- 16. INTERNSHIP ATTENDANCE (GPS PUNCH-IN & PUNCH-OUT)
+-- ==============================================================================
+CREATE TABLE IF NOT EXISTS public.internship_attendance (
+  id TEXT PRIMARY KEY,
+  application_id TEXT REFERENCES public.internship_applications(id) ON DELETE CASCADE,
+  student_id TEXT NOT NULL,
+  internship_id TEXT REFERENCES public.internships(id) ON DELETE CASCADE,
+  attendance_date DATE NOT NULL,
+  punch_in_time TIMESTAMPTZ NOT NULL,
+  punch_in_latitude NUMERIC NOT NULL,
+  punch_in_longitude NUMERIC NOT NULL,
+  punch_in_accuracy NUMERIC NOT NULL,
+  punch_in_address TEXT NOT NULL,
+  punch_out_time TIMESTAMPTZ,
+  punch_out_latitude NUMERIC,
+  punch_out_longitude NUMERIC,
+  punch_out_accuracy NUMERIC,
+  punch_out_address TEXT,
+  working_duration TEXT,
+  status TEXT NOT NULL DEFAULT 'present' CHECK (status IN ('present', 'half_day', 'auto_closed')),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  CONSTRAINT unq_attendance_day UNIQUE (student_id, internship_id, attendance_date)
+);
+
+-- ==============================================================================
+-- 17. INTERNSHIP APPROVALS LOG TABLE
+-- ==============================================================================
+CREATE TABLE IF NOT EXISTS public.internship_approvals (
+  id TEXT PRIMARY KEY,
+  application_id TEXT REFERENCES public.internship_applications(id) ON DELETE CASCADE,
+  approval_type TEXT NOT NULL CHECK (approval_type IN ('ADMIN', 'DEAN')),
+  approved_by TEXT NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('approved', 'rejected', 'changes_requested')),
+  comment TEXT,
+  approved_at TIMESTAMPTZ DEFAULT NOW(),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ==============================================================================
+-- 18. INTERNSHIP NOTIFICATIONS TABLE
+-- ==============================================================================
+CREATE TABLE IF NOT EXISTS public.internship_notifications (
+  id TEXT PRIMARY KEY,
+  student_id TEXT NOT NULL,
+  application_id TEXT REFERENCES public.internship_applications(id) ON DELETE CASCADE,
+  type TEXT NOT NULL,
+  title TEXT NOT NULL,
+  message TEXT NOT NULL,
+  is_read BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Indexes for fast lookups
+CREATE INDEX IF NOT EXISTS idx_internship_apps_student ON public.internship_applications(student_id);
+CREATE INDEX IF NOT EXISTS idx_internship_apps_status ON public.internship_applications(status);
+CREATE INDEX IF NOT EXISTS idx_internship_att_student ON public.internship_attendance(student_id);
+CREATE INDEX IF NOT EXISTS idx_internship_att_date ON public.internship_attendance(attendance_date);
+CREATE INDEX IF NOT EXISTS idx_internship_notif_student ON public.internship_notifications(student_id);
+
+-- Enable RLS
+ALTER TABLE public.internships ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.internship_applications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.internship_attendance ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.internship_approvals ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.internship_notifications ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies
+DO $$
+BEGIN
+  -- Internships: Public viewable, admin writable
+  CREATE POLICY "Allow public read internships" ON public.internships FOR SELECT USING (true);
+  CREATE POLICY "Allow admin write internships" ON public.internships FOR ALL USING (true);
+
+  -- Applications: Students can see their own, admins can see all
+  CREATE POLICY "Allow read internship_applications" ON public.internship_applications FOR SELECT USING (true);
+  CREATE POLICY "Allow insert internship_applications" ON public.internship_applications FOR INSERT WITH CHECK (true);
+  CREATE POLICY "Allow update internship_applications" ON public.internship_applications FOR UPDATE USING (true);
+
+  -- Attendance: Students can see own, admin see all
+  CREATE POLICY "Allow read internship_attendance" ON public.internship_attendance FOR SELECT USING (true);
+  CREATE POLICY "Allow insert internship_attendance" ON public.internship_attendance FOR INSERT WITH CHECK (true);
+  CREATE POLICY "Allow update internship_attendance" ON public.internship_attendance FOR UPDATE USING (true);
+
+  -- Approvals & Notifications
+  CREATE POLICY "Allow read internship_approvals" ON public.internship_approvals FOR SELECT USING (true);
+  CREATE POLICY "Allow write internship_approvals" ON public.internship_approvals FOR ALL USING (true);
+
+  CREATE POLICY "Allow read internship_notifications" ON public.internship_notifications FOR SELECT USING (true);
+  CREATE POLICY "Allow write internship_notifications" ON public.internship_notifications FOR ALL USING (true);
+EXCEPTION WHEN OTHERS THEN
+  NULL;
+END $$;
+
+-- Database Triggers for Integrity
+CREATE OR REPLACE FUNCTION public.check_internship_punch_eligibility()
+RETURNS TRIGGER AS $$
+DECLARE
+  v_app_status TEXT;
+  v_start_date DATE;
+  v_end_date DATE;
+BEGIN
+  SELECT a.status, i.start_date, i.end_date
+  INTO v_app_status, v_start_date, v_end_date
+  FROM public.internship_applications a
+  JOIN public.internships i ON i.id = a.internship_id
+  WHERE a.id = NEW.application_id;
+
+  IF v_app_status NOT IN ('APPROVED', 'ACTIVE') THEN
+    RAISE EXCEPTION 'SECURITY VIOLATION: Cannot punch attendance. Application status is %; must be APPROVED or ACTIVE.', v_app_status;
+  END IF;
+
+  IF NEW.attendance_date < v_start_date OR NEW.attendance_date > v_end_date THEN
+    RAISE EXCEPTION 'SECURITY VIOLATION: Cannot punch attendance outside internship dates (% to %).', v_start_date, v_end_date;
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_check_internship_punch_eligibility ON public.internship_attendance;
+CREATE TRIGGER trg_check_internship_punch_eligibility
+BEFORE INSERT ON public.internship_attendance
+FOR EACH ROW
+EXECUTE FUNCTION public.check_internship_punch_eligibility();
+
+CREATE OR REPLACE FUNCTION public.lock_internship_punch_history()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF OLD.punch_in_latitude IS DISTINCT FROM NEW.punch_in_latitude OR
+     OLD.punch_in_longitude IS DISTINCT FROM NEW.punch_in_longitude OR
+     OLD.punch_in_time IS DISTINCT FROM NEW.punch_in_time THEN
+    RAISE EXCEPTION 'SECURITY POLICY: Punch-in GPS coordinates and timestamp cannot be altered.';
+  END IF;
+
+  IF NEW.punch_out_time IS NOT NULL AND NEW.punch_out_time < OLD.punch_in_time THEN
+    RAISE EXCEPTION 'VALIDATION ERROR: Punch-out time cannot precede Punch-in time.';
+  END IF;
+
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_lock_internship_punch_history ON public.internship_attendance;
+CREATE TRIGGER trg_lock_internship_punch_history
+BEFORE UPDATE ON public.internship_attendance
+FOR EACH ROW
+EXECUTE FUNCTION public.lock_internship_punch_history();
+
+-- Enable Realtime for Internship Tables
+DO $$
+BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.internships;
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.internship_applications;
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.internship_attendance;
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.internship_notifications;
+EXCEPTION WHEN OTHERS THEN
+  NULL;
+END $$;
+
