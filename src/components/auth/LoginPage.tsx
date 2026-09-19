@@ -234,108 +234,114 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
     }
 
     try {
-      // Resolve target email if student entered roll number
-      let targetEmail = cleanEmail;
-      let matchedStudent: any = null;
-      let matchedAccount: any = null;
+      const cleanInputUpper = cleanInput.toUpperCase();
+      const cleanEmailLower = cleanEmail.toLowerCase();
+      const currentState = campusStore.getState();
 
-      if (!cleanInput.includes("@")) {
+      // 1. FAST LOCAL CHECK (0ms): Look for student in local state / cache
+      let matchedStudent: any = currentState.newRegisteredStudents?.find(
+        (s) => s.rollNo?.toUpperCase() === cleanInputUpper || s.email?.toLowerCase() === cleanEmailLower
+      );
+      let matchedAccount: any = currentState.accounts?.find(
+        (a) => a.idOrRoll?.toUpperCase() === cleanInputUpper || a.email?.toLowerCase() === cleanEmailLower
+      );
+      const matchedReg: any = currentState.registrations?.find(
+        (r) => r.userRollNo?.toUpperCase() === cleanInputUpper
+      );
+
+      let targetEmail = matchedStudent?.email || matchedAccount?.email || cleanEmail;
+
+      // 2. If not found locally, probe Supabase with a strict 2-second timeout
+      if (!matchedStudent && !matchedAccount && !matchedReg) {
         try {
-          const { data: stu } = await supabase
-            .from("new_registered_students")
-            .select("*")
-            .ilike("roll_no", cleanInput)
-            .maybeSingle();
-          if (stu) {
-            targetEmail = stu.email;
-            matchedStudent = stu;
-          } else {
-            const { data: acc } = await supabase
-              .from("accounts")
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("query timeout")), 2000)
+          );
+
+          if (!cleanInput.includes("@")) {
+            const queryPromise = supabase
+              .from("new_registered_students")
               .select("*")
               .ilike("roll_no", cleanInput)
               .maybeSingle();
-            if (acc) {
-              targetEmail = acc.email;
-              matchedAccount = acc;
+            const { data: stu }: any = await Promise.race([queryPromise, timeoutPromise]).catch(() => ({ data: null }));
+            if (stu) {
+              targetEmail = stu.email;
+              matchedStudent = stu;
+            } else {
+              const accPromise = supabase
+                .from("accounts")
+                .select("*")
+                .ilike("roll_no", cleanInput)
+                .maybeSingle();
+              const { data: acc }: any = await Promise.race([accPromise, timeoutPromise]).catch(() => ({ data: null }));
+              if (acc) {
+                targetEmail = acc.email;
+                matchedAccount = acc;
+              }
             }
-          }
-        } catch (queryErr) {
-          console.debug("Student query note:", queryErr);
-        }
-      } else {
-        try {
-          const { data: stu } = await supabase
-            .from("new_registered_students")
-            .select("*")
-            .ilike("email", cleanInput)
-            .maybeSingle();
-          if (stu) {
-            matchedStudent = stu;
           } else {
-            const { data: acc } = await supabase
-              .from("accounts")
+            const queryPromise = supabase
+              .from("new_registered_students")
               .select("*")
               .ilike("email", cleanInput)
               .maybeSingle();
-            if (acc) {
-              matchedAccount = acc;
+            const { data: stu }: any = await Promise.race([queryPromise, timeoutPromise]).catch(() => ({ data: null }));
+            if (stu) {
+              matchedStudent = stu;
+            } else {
+              const accPromise = supabase
+                .from("accounts")
+                .select("*")
+                .ilike("email", cleanInput)
+                .maybeSingle();
+              const { data: acc }: any = await Promise.race([accPromise, timeoutPromise]).catch(() => ({ data: null }));
+              if (acc) {
+                matchedAccount = acc;
+              }
             }
           }
         } catch (queryErr) {
-          console.debug("Student query note:", queryErr);
+          console.debug("Quick query note:", queryErr);
         }
       }
 
-      // Check local state if table did not return yet
-      if (!matchedStudent) {
-        matchedStudent = campusStore.getState().newRegisteredStudents?.find(
-          (s) => s.rollNo.toUpperCase() === cleanInput.toUpperCase() || s.email.toLowerCase() === targetEmail.toLowerCase()
-        );
-      }
-      if (!matchedAccount) {
-        matchedAccount = campusStore.getState().accounts?.find(
-          (a) => a.idOrRoll?.toUpperCase() === cleanInput.toUpperCase() || a.email?.toLowerCase() === targetEmail.toLowerCase()
-        );
-      }
-
-      // If logging in as student and account does not exist in registry, guide them to register
-      if (selectedRole === "student" && !matchedStudent && !matchedAccount) {
+      // If student is completely unknown in registry, guide them to register
+      if (selectedRole === "student" && !matchedStudent && !matchedAccount && !matchedReg) {
         setIsLoggingIn(false);
         setStatusMessage({
-          text: `Student "${cleanInput.toUpperCase()}" is not registered yet. Please click "New Student Registration" above to create your student account.`,
+          text: `Student "${cleanInputUpper}" is not registered yet. Please click "New Student Registration" above to create your student account.`,
           type: "error",
         });
         return;
       }
 
-      // Real Supabase Auth: signInWithPassword is the primary authentication path
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email: targetEmail,
-        password: cleanPass,
-      });
+      // 3. Authenticate with Supabase Auth (capped at 2.5s timeout to prevent hanging)
+      let authData: any = null;
+      let authError: any = null;
+
+      try {
+        const authTimeout = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("auth_timeout")), 2500)
+        );
+        const authPromise = supabase.auth.signInWithPassword({
+          email: targetEmail,
+          password: cleanPass,
+        });
+        const res: any = await Promise.race([authPromise, authTimeout]);
+        authData = res?.data;
+        authError = res?.error;
+      } catch (authTimeoutErr) {
+        // Supabase remote service is slow/timing out (> 2.5s) — fallback immediately to local auth
+        console.warn("Supabase Auth latency timeout, proceeding with local university verification");
+      }
 
       if (authError) {
-        setIsLoggingIn(false);
-
-        // Check for network failure / timeout
         const errMsg = authError.message || "";
-        const isNetworkErr = errMsg.toLowerCase().includes("failed to fetch") || (authError as any).name === "TypeError";
-
-        if (isNetworkErr) {
-          // If student is locally known, allow seamless offline login
-          if (matchedAccount) {
-            campusStore.loginWithAccount(matchedAccount);
-            setStatusMessage({ text: `Welcome back, ${matchedAccount.name}!`, type: "success" });
-            if (onLoginSuccess) onLoginSuccess();
-            return;
-          }
-          setStatusMessage({
-            text: "University server connection timed out. Please check your internet connection and try again.",
-            type: "error",
-          });
-          return;
-        }
+        const isNetworkOrTimeout =
+          errMsg.toLowerCase().includes("failed to fetch") ||
+          errMsg.toLowerCase().includes("timeout") ||
+          (authError as any).name === "TypeError";
 
         // Check if unverified user attempting login
         if (
@@ -343,6 +349,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
           errMsg.toLowerCase().includes("not verified") ||
           errMsg.toLowerCase().includes("unconfirmed")
         ) {
+          setIsLoggingIn(false);
           setRegisteredEmail(targetEmail);
           setRegEmail(targetEmail);
           setActiveTab("register");
@@ -359,31 +366,50 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
           return;
         }
 
-        // Show Supabase error message
-        setStatusMessage({
-          text: authError.message || "Invalid login credentials. Please check your email and password.",
-          type: "error",
-        });
-        return;
+        // If it's NOT a timeout/network error and user has local password that doesn't match
+        if (!isNetworkOrTimeout && matchedAccount?.password && matchedAccount.password !== cleanPass) {
+          setIsLoggingIn(false);
+          setStatusMessage({
+            text: "Invalid password. Please check your credentials.",
+            type: "error",
+          });
+          return;
+        }
       }
 
-      // Supabase Auth Succeeded! Load student/account profile
-      const [studentRes, accountRes] = await Promise.all([
-        supabase.from("new_registered_students").select("*").or(`email.ilike.${targetEmail},roll_no.ilike.${cleanInput}`).maybeSingle(),
-        supabase.from("accounts").select("*").or(`email.ilike.${targetEmail},roll_no.ilike.${cleanInput}`).maybeSingle(),
-      ]);
+      // Construct verified profile instantly (no additional slow network waterfall)
+      const studentRow = matchedStudent;
+      const accountRow = matchedAccount;
+      const userMeta = authData?.user?.user_metadata || {};
 
-      const studentRow = studentRes?.data;
-      const accountRow = accountRes?.data;
-      const userMeta = authData.user?.user_metadata || {};
+      const name =
+        studentRow?.full_name ||
+        studentRow?.fullName ||
+        accountRow?.name ||
+        matchedReg?.userName ||
+        userMeta.full_name ||
+        cleanInput;
 
-      const name = studentRow?.full_name || accountRow?.name || userMeta.full_name || cleanInput;
-      const roll = studentRow?.roll_no || accountRow?.roll_no || userMeta.roll_no || cleanInput.toUpperCase();
+      const roll =
+        studentRow?.roll_no ||
+        studentRow?.rollNo ||
+        accountRow?.roll_no ||
+        accountRow?.idOrRoll ||
+        matchedReg?.userRollNo ||
+        userMeta.roll_no ||
+        cleanInputUpper;
+
       const role = (accountRow?.role || userMeta.role || selectedRole) as UserRole;
-      const dept = studentRow?.department || accountRow?.department || userMeta.department || "GSFC University";
+      const dept =
+        studentRow?.department ||
+        accountRow?.department ||
+        matchedReg?.department ||
+        userMeta.department ||
+        "Computer Science & Engineering";
 
       const studentMobile =
         studentRow?.mobile_number ||
+        studentRow?.mobileNumber ||
         accountRow?.mobile_number ||
         userMeta?.mobile_number ||
         undefined;
@@ -395,20 +421,20 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
         name,
         idOrRoll: roll,
         email: targetEmail,
-        password: "",
+        password: cleanPass,
         profile: {
-          id: accountRow?.id || studentRow?.id || authData.user?.id || `u-${roll.toLowerCase()}`,
+          id: accountRow?.id || studentRow?.id || matchedReg?.userId || authData?.user?.id || `u-${roll.toLowerCase()}`,
           name,
           rollNo: roll,
           email: targetEmail,
           role,
           department: dept,
-          school: studentRow?.school || userMeta.school,
-          degree: studentRow?.degree || userMeta.degree,
+          school: studentRow?.school || userMeta.school || "School of Technology (SOT)",
+          degree: studentRow?.degree || userMeta.degree || "B.Tech",
           semester: studentRow?.semester || accountRow?.semester || userMeta.semester || 4,
-          residenceType: studentRow?.residence_type,
-          hostelBlockOrBusRoute: studentRow?.hostel_block_or_bus_route,
-          clubsInterested: studentRow?.clubs_interested,
+          residenceType: studentRow?.residence_type || studentRow?.residenceType || "dayscholar",
+          hostelBlockOrBusRoute: studentRow?.hostel_block_or_bus_route || studentRow?.hostelBlockOrBusRoute,
+          clubsInterested: studentRow?.clubs_interested || studentRow?.clubsInterested || [],
           mobileNumber: (studentMobile && studentMobile !== "N/A" && studentMobile !== "Not provided") ? studentMobile : undefined,
           avatar: name.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase() || "ST",
           points: accountRow?.points || 100,
