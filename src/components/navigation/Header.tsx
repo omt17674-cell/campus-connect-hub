@@ -67,31 +67,40 @@ export function Header({
   };
 
   return (
-    <header className="flex flex-col gap-4 border-b border-border/70 bg-card/40 pb-4 pt-1 backdrop-blur-xl">
-      <div className="flex items-center justify-between gap-3">
-        {/* GSFC Brand Logo & Title */}
+    <header className="rounded-3xl border border-border/80 bg-card/75 p-3.5 sm:p-4 shadow-xl shadow-brand/5 backdrop-blur-2xl flex flex-col gap-3.5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        {/* Official GSFC University Logo & App Brand */}
         <div className="flex items-center gap-3">
-          <div className="relative flex size-11 items-center justify-center rounded-2xl bg-gradient-to-br from-[#1A3C6E] to-[#0E2342] text-white shadow-lg shadow-[#1A3C6E]/25">
-            <span className="font-display text-lg font-black tracking-wider text-[#F2A93B]">GC</span>
-            <span className="absolute -bottom-0.5 -right-0.5 size-3 rounded-full border-2 border-background bg-emerald-500" title="System Operational" />
+          <div className="relative flex items-center justify-center rounded-2xl bg-white px-2 py-1 shadow-xs border border-border/60 shrink-0">
+            <img
+              src="/gsfc-logo.jpg"
+              alt="GSFC University"
+              className="h-8 sm:h-9 w-auto object-contain"
+            />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand/70">
+
+          <div className="flex flex-col justify-center">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#1A3C6E] dark:text-[#F2A93B]">
                 {t.universityName}
               </span>
-              <span className="rounded-full bg-accent/20 px-1.5 py-0.2 text-[9px] font-extrabold text-[#F2A93B]">
-                VADODARA
+              <span className="rounded-full bg-[#F2A93B]/20 px-1.5 py-0.2 text-[8px] font-black uppercase text-[#1A3C6E] dark:text-[#F2A93B]">
+                Vadodara
               </span>
             </div>
-            <h1 className="font-display text-xl font-black tracking-tight text-foreground sm:text-2xl">
-              {t.appName}
-            </h1>
+            <div className="flex items-center gap-2">
+              <h1 className="font-display text-base sm:text-lg font-black tracking-tight text-foreground leading-none">
+                {t.appName}
+              </h1>
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[9px] font-bold text-emerald-600 dark:text-emerald-400">
+                <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* Action Controls */}
-        <div className="flex items-center gap-2 sm:gap-3">
+        {/* Action Controls - Perfectly aligned h-9 row */}
+        <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
           {/* Unified Gate Pass & Visitor Check-In Button */}
           {onOpenUnifiedCheckIn && (
             <Button
@@ -100,7 +109,7 @@ export function Header({
               className="h-9 gap-1.5 rounded-full bg-gradient-to-r from-emerald-600 via-[#1A3C6E] to-[#0E2342] px-3.5 text-xs font-black text-white shadow-md hover:opacity-95 hidden xs:flex"
             >
               <ScanBarcode className="size-3.5 text-[#F2A93B]" />
-              <span>Gate & Attendance Check-In</span>
+              <span>Gate Check-In</span>
             </Button>
           )}
 
@@ -134,7 +143,7 @@ export function Header({
             </Button>
           )}
 
-          {/* Mobile App (Android & Apple) Install Button */}
+          {/* Mobile App Install Button */}
           {onOpenMobileInstall && (
             <Button
               variant="outline"
@@ -212,10 +221,10 @@ export function Header({
             {isDark ? <Sun className="size-4 text-[#F2A93B]" /> : <Moon className="size-4 text-brand" />}
           </Button>
 
-          {/* User Profile Pill & Logout / Switch Role */}
-          <div className="flex items-center gap-2">
-            <div className="hidden items-center gap-2 rounded-full border border-border/70 bg-card/60 px-3 py-1 text-xs backdrop-blur-xl md:flex">
-              <div className="flex size-7 items-center justify-center overflow-hidden rounded-full bg-brand/10 font-display text-xs font-extrabold text-brand">
+          {/* User Profile Pill & Logout / Switch Role - aligned h-9 */}
+          <div className="flex items-center gap-1.5">
+            <div className="hidden items-center gap-2 rounded-full border border-border/70 bg-card/60 px-3 h-9 text-xs backdrop-blur-xl md:flex">
+              <div className="flex size-6 items-center justify-center overflow-hidden rounded-full bg-brand/10 font-display text-[10px] font-extrabold text-brand">
                 {state.currentUser.avatar && (state.currentUser.avatar.startsWith("http") || state.currentUser.avatar.startsWith("data:") || state.currentUser.avatar.startsWith("/")) ? (
                   <img src={state.currentUser.avatar} alt={state.currentUser.name} className="h-full w-full object-cover" />
                 ) : (
@@ -232,7 +241,7 @@ export function Header({
               variant="outline"
               size="sm"
               onClick={() => campusStore.logout()}
-              className="h-8 gap-1 rounded-full border-border/70 bg-card/50 px-2.5 text-xs font-bold text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+              className="h-9 gap-1.5 rounded-full border-border/70 bg-card/50 px-3 text-xs font-bold text-muted-foreground hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30"
               title="Sign Out / Switch Login Portal"
             >
               <LogOut className="size-3.5" />
@@ -242,24 +251,27 @@ export function Header({
         </div>
       </div>
 
+      {/* Clean Divider between Header Row and Status Bar */}
+      <div className="h-px w-full bg-border/60" />
+
       {/* Active Portal Scope Banner & Offline Status Bar */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         {/* Logged-In Portal Scope Badge */}
-        <div className="flex items-center gap-2 rounded-full border border-border/70 bg-card/60 px-3.5 py-1.5 backdrop-blur-xl shadow-sm">
+        <div className="flex items-center gap-2">
           {state.currentRole === "student" && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 rounded-xl bg-muted/60 px-3 py-1.5 text-xs">
               <div className="flex size-5 items-center justify-center rounded-full bg-[#1A3C6E] text-white">
                 <Users className="size-3" />
               </div>
               <span className="text-xs font-black text-foreground">Student Portal</span>
               <span className="rounded-md bg-brand/10 px-2 py-0.5 text-[10px] font-bold text-brand">
-                {state.currentUser.department || "B.Tech CSE"}
+                {state.currentUser.department || "Computer Science & Engineering"}
               </span>
             </div>
           )}
 
           {state.currentRole === "organizer" && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 rounded-xl bg-muted/60 px-3 py-1.5 text-xs">
               <div className="flex size-5 items-center justify-center rounded-full bg-emerald-600 text-white">
                 <UserCheck className="size-3" />
               </div>
@@ -271,7 +283,7 @@ export function Header({
           )}
 
           {state.currentRole === "admin" && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 rounded-xl bg-muted/60 px-3 py-1.5 text-xs">
               <div className="flex size-5 items-center justify-center rounded-full bg-amber-500 text-white">
                 <ShieldCheck className="size-3" />
               </div>
