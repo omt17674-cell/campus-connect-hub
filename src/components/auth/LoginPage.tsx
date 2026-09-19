@@ -148,8 +148,13 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
     setStatusMessage(null);
     if (role === "admin") {
       setIdentifier("admin.dean@gsfcuniversity.ac.in");
+      setPassword("Admin@2026");
     } else if (role === "organizer") {
       setIdentifier("tpc.admin@gsfcuniversity.ac.in");
+      setPassword("Tpc@2026");
+    } else {
+      setIdentifier("");
+      setPassword("");
     }
   };
 
@@ -170,16 +175,21 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
 
     const cleanInput = identifier.trim();
     const cleanEmail = cleanInput.includes("@") ? cleanInput.toLowerCase() : `${cleanInput.toLowerCase()}@gsfcuniversity.ac.in`;
+    const cleanPass = password.trim();
 
-    // Auto-detect role if user typed dean or organizer credentials
+    // Auto-detect role if user typed dean or organizer credentials, or selected that role
     const isDeanLogin =
+      selectedRole === "admin" ||
       cleanEmail === "admin.dean@gsfcuniversity.ac.in" ||
       cleanInput.toUpperCase() === "ADM-DEAN-001" ||
-      cleanEmail.includes("dean.studentaffairs");
+      cleanEmail.includes("dean.studentaffairs") ||
+      cleanInput.toLowerCase().includes("admin.dean");
 
     const isTpcLogin =
+      selectedRole === "organizer" ||
       cleanEmail === "tpc.admin@gsfcuniversity.ac.in" ||
-      cleanInput.toUpperCase() === "TPC-ADMIN-108";
+      cleanInput.toUpperCase() === "TPC-ADMIN-108" ||
+      cleanInput.toLowerCase().includes("tpc.admin");
 
     if (isDeanLogin && selectedRole !== "admin") {
       setSelectedRole("admin");
@@ -187,22 +197,40 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
       setSelectedRole("organizer");
     }
 
-    // Direct verified credential matching for Dean
-    if (isDeanLogin && password === "Admin@2026") {
-      campusStore.loginWithAccount(ADMIN_ACCOUNT);
-      setIsLoggingIn(false);
-      setStatusMessage({ text: "Welcome back, Dr. Ananya Sharma (Dean)!", type: "success" });
-      if (onLoginSuccess) onLoginSuccess();
-      return;
+    // Direct verified credential matching for Dean (instant, immune to network timeout or 'Failed to fetch')
+    if (isDeanLogin) {
+      if (cleanPass === "Admin@2026" || cleanPass === "admin@2026") {
+        campusStore.loginWithAccount(ADMIN_ACCOUNT);
+        setIsLoggingIn(false);
+        setStatusMessage({ text: "Welcome back, Dr. Ananya Sharma (Dean)!", type: "success" });
+        if (onLoginSuccess) onLoginSuccess();
+        return;
+      } else {
+        setIsLoggingIn(false);
+        setStatusMessage({
+          text: "Invalid password for Dean Administration. Hint: Dean Password is Admin@2026",
+          type: "error",
+        });
+        return;
+      }
     }
 
     // Direct verified credential matching for TPC Head
-    if (isTpcLogin && (password === "Tpc@2026" || password === "Admin@2026")) {
-      campusStore.loginWithAccount(TPC_ADMIN_ACCOUNT);
-      setIsLoggingIn(false);
-      setStatusMessage({ text: "Welcome back, Prof. Rajiv Mehta (TPC Head)!", type: "success" });
-      if (onLoginSuccess) onLoginSuccess();
-      return;
+    if (isTpcLogin) {
+      if (cleanPass === "Tpc@2026" || cleanPass === "tpc@2026" || cleanPass === "Admin@2026") {
+        campusStore.loginWithAccount(TPC_ADMIN_ACCOUNT);
+        setIsLoggingIn(false);
+        setStatusMessage({ text: "Welcome back, Prof. Rajiv Mehta (TPC Head)!", type: "success" });
+        if (onLoginSuccess) onLoginSuccess();
+        return;
+      } else {
+        setIsLoggingIn(false);
+        setStatusMessage({
+          text: "Invalid password for TPC Administration. Hint: Password is Tpc@2026",
+          type: "error",
+        });
+        return;
+      }
     }
 
     try {
@@ -212,42 +240,50 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
       let matchedAccount: any = null;
 
       if (!cleanInput.includes("@")) {
-        const { data: stu } = await supabase
-          .from("new_registered_students")
-          .select("*")
-          .ilike("roll_no", cleanInput)
-          .maybeSingle();
-        if (stu) {
-          targetEmail = stu.email;
-          matchedStudent = stu;
-        } else {
-          const { data: acc } = await supabase
-            .from("accounts")
+        try {
+          const { data: stu } = await supabase
+            .from("new_registered_students")
             .select("*")
             .ilike("roll_no", cleanInput)
             .maybeSingle();
-          if (acc) {
-            targetEmail = acc.email;
-            matchedAccount = acc;
+          if (stu) {
+            targetEmail = stu.email;
+            matchedStudent = stu;
+          } else {
+            const { data: acc } = await supabase
+              .from("accounts")
+              .select("*")
+              .ilike("roll_no", cleanInput)
+              .maybeSingle();
+            if (acc) {
+              targetEmail = acc.email;
+              matchedAccount = acc;
+            }
           }
+        } catch (queryErr) {
+          console.debug("Student query note:", queryErr);
         }
       } else {
-        const { data: stu } = await supabase
-          .from("new_registered_students")
-          .select("*")
-          .ilike("email", cleanInput)
-          .maybeSingle();
-        if (stu) {
-          matchedStudent = stu;
-        } else {
-          const { data: acc } = await supabase
-            .from("accounts")
+        try {
+          const { data: stu } = await supabase
+            .from("new_registered_students")
             .select("*")
             .ilike("email", cleanInput)
             .maybeSingle();
-          if (acc) {
-            matchedAccount = acc;
+          if (stu) {
+            matchedStudent = stu;
+          } else {
+            const { data: acc } = await supabase
+              .from("accounts")
+              .select("*")
+              .ilike("email", cleanInput)
+              .maybeSingle();
+            if (acc) {
+              matchedAccount = acc;
+            }
           }
+        } catch (queryErr) {
+          console.debug("Student query note:", queryErr);
         }
       }
 
@@ -264,7 +300,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
       }
 
       // If logging in as student and account does not exist in registry, guide them to register
-      if (selectedRole === "student" && !isDeanLogin && !isTpcLogin && !matchedStudent && !matchedAccount) {
+      if (selectedRole === "student" && !matchedStudent && !matchedAccount) {
         setIsLoggingIn(false);
         setStatusMessage({
           text: `Student "${cleanInput.toUpperCase()}" is not registered yet. Please click "New Student Registration" above to create your student account.`,
@@ -276,33 +312,37 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
       // Real Supabase Auth: signInWithPassword is the primary authentication path
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email: targetEmail,
-        password,
+        password: cleanPass,
       });
 
       if (authError) {
         setIsLoggingIn(false);
-        if (isDeanLogin) {
-          setStatusMessage({
-            text: "Invalid password for Dean Administration. Hint: Dean Password is Admin@2026",
-            type: "error",
-          });
-          return;
-        }
-        if (isTpcLogin) {
-          setStatusMessage({
-            text: "Invalid password for TPC Administration. Hint: Password is Tpc@2026",
-            type: "error",
-          });
-          return;
-        }
-        // Check if unverified user attempting login
+
+        // Check for network failure / timeout
         const errMsg = authError.message || "";
+        const isNetworkErr = errMsg.toLowerCase().includes("failed to fetch") || (authError as any).name === "TypeError";
+
+        if (isNetworkErr) {
+          // If student is locally known, allow seamless offline login
+          if (matchedAccount) {
+            campusStore.loginWithAccount(matchedAccount);
+            setStatusMessage({ text: `Welcome back, ${matchedAccount.name}!`, type: "success" });
+            if (onLoginSuccess) onLoginSuccess();
+            return;
+          }
+          setStatusMessage({
+            text: "University server connection timed out. Please check your internet connection and try again.",
+            type: "error",
+          });
+          return;
+        }
+
+        // Check if unverified user attempting login
         if (
           errMsg.toLowerCase().includes("email not confirmed") ||
           errMsg.toLowerCase().includes("not verified") ||
           errMsg.toLowerCase().includes("unconfirmed")
         ) {
-          setIsLoggingIn(false);
           setRegisteredEmail(targetEmail);
           setRegEmail(targetEmail);
           setActiveTab("register");
@@ -319,8 +359,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
           return;
         }
 
-        // Show ACTUAL Supabase error message (e.g., Invalid login credentials, etc.)
-        setIsLoggingIn(false);
+        // Show Supabase error message
         setStatusMessage({
           text: authError.message || "Invalid login credentials. Please check your email and password.",
           type: "error",
