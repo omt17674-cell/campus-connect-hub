@@ -21,6 +21,7 @@ import { InternshipListingView } from "./InternshipListingView";
 import { InternshipApplicationModal } from "./InternshipApplicationModal";
 import { MyInternshipApplicationsView } from "./MyInternshipApplicationsView";
 import { InternshipGpsPunchView } from "./InternshipGpsPunchView";
+import { DeanNocRequestModal } from "./DeanNocRequestModal";
 import { cn } from "@/lib/utils";
 
 interface StudentInternshipsHubProps {
@@ -38,6 +39,7 @@ export function StudentInternshipsHub({ state }: StudentInternshipsHubProps) {
   const [activeTab, setActiveTab] = useState<InternshipHubTab>("available");
   const [selectedInternshipForApply, setSelectedInternshipForApply] = useState<Internship | null>(null);
   const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
+  const [isNocModalOpen, setIsNocModalOpen] = useState(false);
   const [targetAppIdForPunch, setTargetAppIdForPunch] = useState<string | undefined>(undefined);
 
   const currentUser = state.currentUser;
@@ -219,18 +221,22 @@ export function StudentInternshipsHub({ state }: StudentInternshipsHubProps) {
               </div>
             </div>
 
-            <div className="mt-6 flex items-center justify-between border-t border-border/60 pt-4">
-              <span className="text-xs font-semibold text-muted-foreground">
-                Need official NOC or letter of recommendation?
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => toast.info("NOC generation request sent to TPC Convener.")}
-                className="rounded-xl text-xs font-bold"
+            <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-border/60 pt-4">
+              <div>
+                <span className="text-xs font-bold text-foreground">
+                  Need official Dean NOC or recommendation letter?
+                </span>
+                <p className="text-[11px] text-muted-foreground">
+                  Request an authorized No Objection Certificate from Dr. Ananya Sharma (Dean, School of Technology).
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsNocModalOpen(true)}
+                className="rounded-full bg-[#F2A93B] hover:bg-[#F2A93B]/90 active:scale-95 text-[#0E2342] font-black text-xs px-5 py-2 transition-all shadow-sm cursor-pointer inline-flex items-center gap-1.5"
               >
-                Request Dean NOC Letter
-              </Button>
+                <span>Request Dean NOC Letter</span>
+              </button>
             </div>
           </div>
 
@@ -258,6 +264,18 @@ export function StudentInternshipsHub({ state }: StudentInternshipsHubProps) {
             setIsApplyModalOpen(false);
             setActiveTab("applications");
           }}
+        />
+      )}
+
+      {/* Dean NOC Request Modal */}
+      {isNocModalOpen && (
+        <DeanNocRequestModal
+          isOpen={isNocModalOpen}
+          onClose={() => setIsNocModalOpen(false)}
+          currentUser={currentUser}
+          matchingStudent={matchingStudent}
+          applications={myApplications}
+          internships={allInternships}
         />
       )}
     </div>
