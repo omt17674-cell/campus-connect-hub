@@ -326,6 +326,7 @@ function CampusConnectApp() {
                     onOpenScanner={() => setShowScanner(true)}
                     onSelectEvent={setSelectedEvent}
                     onOpenUnifiedCheckIn={() => setShowGateModal(true)}
+                    onViewAllUpcoming={() => setStudentView("upcoming")}
                   />
                 </div>
               )}

@@ -1,8 +1,13 @@
+import { useState } from "react";
 import {
   AlertTriangle,
   Award,
   Calendar,
+  CheckCircle2,
+  ChevronRight,
+  Clock,
   Flame,
+  MapPin,
   QrCode,
   ScanBarcode,
   ScanLine,
@@ -10,8 +15,10 @@ import {
   Sparkles,
   TrendingUp,
   WifiOff,
+  Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { CampusEvent } from "@/lib/types";
 import { CampusState } from "@/lib/campus-store";
 import { translations } from "@/lib/i18n";
@@ -22,6 +29,7 @@ interface AttendanceHubProps {
   onOpenScanner: () => void;
   onSelectEvent: (event: CampusEvent) => void;
   onOpenUnifiedCheckIn?: () => void;
+  onViewAllUpcoming?: () => void;
 }
 
 export function AttendanceHub({
@@ -29,16 +37,33 @@ export function AttendanceHub({
   onOpenScanner,
   onSelectEvent,
   onOpenUnifiedCheckIn,
+  onViewAllUpcoming,
 }: AttendanceHubProps) {
   const t = translations[state.language];
   const user = state.currentUser;
   const isLowAttendance = user.attendanceRate < 75;
 
-  // Smart Recommendations based on user's department and interests
-  const recommendedEvents = state.events.filter(
-    (e) =>
-      e.status === "upcoming" || e.status === "live"
-  ).slice(0, 3);
+  const [activeTab, setActiveTab] = useState<"both" | "upcoming" | "new">("both");
+
+  const todayStr = new Date().toISOString().split("T")[0];
+
+  // Active events: upcoming or live (excluding completed, rejected, cancelled)
+  const activeEvents = (state.events || []).filter(
+    (e) => e && (e.status === "upcoming" || e.status === "live")
+  );
+
+  // 1. Upcoming events (chronologically closest first)
+  const upcomingEvents = [...activeEvents]
+    .filter((e) => e.date >= todayStr || e.status === "live")
+    .sort((a, b) => (a.date > b.date ? 1 : a.date < b.date ? -1 : 0));
+
+  // 2. New events (newest created in store / latest IDs)
+  const newEvents = [...activeEvents].sort((a, b) => {
+    const timeA = parseInt((a.id || "").replace(/\D/g, "")) || 0;
+    const timeB = parseInt((b.id || "").replace(/\D/g, "")) || 0;
+    if (timeA && timeB && timeA !== timeB) return timeB - timeA;
+    return 0;
+  });
 
   return (
     <div className="flex flex-col gap-5">
@@ -183,54 +208,205 @@ export function AttendanceHub({
         )}
       </div>
 
-      {/* Smart Recommendations Section */}
+      {/* Campus Events Section: Upcoming & New Events */}
       <div className="rounded-3xl border border-border/80 bg-card/60 p-5 shadow-xl shadow-brand/5 backdrop-blur-2xl">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="flex size-7 items-center justify-center rounded-lg bg-[#F2A93B]/20 text-[#F2A93B]">
-              <Sparkles className="size-4" />
-            </div>
-            <div>
-              <h4 className="font-display text-sm font-black text-foreground">
-                Recommended For You
-              </h4>
-              <p className="text-[10px] text-muted-foreground">
-                Tailored for {user.department} students
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-4 space-y-2.5">
-          {recommendedEvents.map((evt) => (
-            <div
-              key={evt.id}
-              onClick={() => onSelectEvent(evt)}
-              className="group flex cursor-pointer items-center justify-between rounded-2xl border border-border/60 bg-card/40 p-3 transition-all hover:border-brand/40 hover:bg-card/80"
-            >
-              <div className="min-w-0 pr-2">
-                <div className="flex items-center gap-1.5">
-                  <span className="rounded-md bg-brand/10 px-1.5 py-0.2 text-[9px] font-bold uppercase text-brand">
-                    {evt.category}
-                  </span>
-                  <span className="text-[10px] text-muted-foreground">
-                    {evt.date}
-                  </span>
-                </div>
-                <h5 className="mt-1 truncate text-xs font-bold text-foreground group-hover:text-brand">
-                  {evt.title}
-                </h5>
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="flex size-7 items-center justify-center rounded-lg bg-[#F2A93B]/20 text-[#F2A93B]">
+                <Calendar className="size-4" />
               </div>
+              <div>
+                <h4 className="font-display text-sm font-black text-foreground">
+                  Campus Events
+                </h4>
+                <p className="text-[10px] text-muted-foreground">
+                  Upcoming & newly published sessions
+                </p>
+              </div>
+            </div>
 
+            {onViewAllUpcoming && (
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 shrink-0 rounded-lg text-xs font-bold text-brand hover:bg-brand/10"
+                onClick={onViewAllUpcoming}
+                className="h-7 text-[11px] font-bold text-brand hover:text-brand hover:bg-brand/10 px-2"
               >
-                View
+                View all <ChevronRight className="size-3 ml-0.5" />
               </Button>
-            </div>
-          ))}
+            )}
+          </div>
+
+          {/* Segmented Filter Buttons */}
+          <div className="flex items-center gap-1 rounded-2xl bg-muted/60 p-1 text-xs">
+            <button
+              onClick={() => setActiveTab("both")}
+              className={cn(
+                "flex-1 rounded-xl py-1 text-center font-display text-[11px] font-bold transition-all",
+                activeTab === "both"
+                  ? "bg-card text-foreground shadow-xs"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              Both
+            </button>
+            <button
+              onClick={() => setActiveTab("upcoming")}
+              className={cn(
+                "flex-1 rounded-xl py-1 text-center font-display text-[11px] font-bold transition-all flex items-center justify-center gap-1",
+                activeTab === "upcoming"
+                  ? "bg-card text-foreground shadow-xs"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <Calendar className="size-3 text-[#1A3C6E] dark:text-[#F2A93B]" />
+              Upcoming ({upcomingEvents.length})
+            </button>
+            <button
+              onClick={() => setActiveTab("new")}
+              className={cn(
+                "flex-1 rounded-xl py-1 text-center font-display text-[11px] font-bold transition-all flex items-center justify-center gap-1",
+                activeTab === "new"
+                  ? "bg-card text-foreground shadow-xs"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <Zap className="size-3 text-emerald-500 fill-current" />
+              New ({newEvents.length})
+            </button>
+          </div>
+        </div>
+
+        {/* Content Views */}
+        <div className="mt-4 space-y-4">
+          {/* Helper render function */}
+          {(() => {
+            const renderEventCard = (evt: CampusEvent, isNewBadge: boolean = false) => {
+              const isRegistered = (state.registrations || []).some(
+                (r) =>
+                  r.eventId === evt.id &&
+                  ((user.id && r.userId === user.id) ||
+                    (user.rollNo && r.userRollNo?.toLowerCase() === user.rollNo.toLowerCase()))
+              );
+
+              return (
+                <div
+                  key={evt.id}
+                  onClick={() => onSelectEvent(evt)}
+                  className="group relative flex cursor-pointer flex-col gap-2 rounded-2xl border border-border/70 bg-card/60 p-3 shadow-xs transition-all hover:border-[#1A3C6E]/40 hover:bg-card hover:shadow-md dark:hover:border-[#F2A93B]/40"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <Badge
+                        variant="outline"
+                        className="border-border/70 bg-brand/5 px-2 py-0 text-[9px] font-extrabold uppercase tracking-wider text-brand"
+                      >
+                        {evt.category}
+                      </Badge>
+
+                      {isNewBadge && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[9px] font-black uppercase text-emerald-600 dark:text-emerald-400">
+                          <Zap className="size-2.5 fill-current" /> New
+                        </span>
+                      )}
+
+                      {isRegistered && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-blue-500/15 px-2 py-0.5 text-[9px] font-bold text-blue-600 dark:text-blue-400">
+                          <CheckCircle2 className="size-2.5" /> Enrolled
+                        </span>
+                      )}
+                    </div>
+
+                    <span className="flex items-center gap-1 font-mono text-[10px] font-semibold text-muted-foreground">
+                      <Calendar className="size-3 text-muted-foreground/70" />
+                      {evt.date}
+                    </span>
+                  </div>
+
+                  <h5 className="font-display text-xs font-black text-foreground line-clamp-1 transition-colors group-hover:text-[#1A3C6E] dark:group-hover:text-[#F2A93B]">
+                    {evt.title}
+                  </h5>
+
+                  <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                    <div className="flex items-center gap-1.5 truncate pr-2">
+                      <MapPin className="size-3 shrink-0 text-muted-foreground/80" />
+                      <span className="truncate">{evt.venue}</span>
+                      {evt.time && (
+                        <span className="hidden sm:inline-flex items-center gap-1 text-[10px] text-muted-foreground/70">
+                          • {evt.time.split("-")[0].trim()}
+                        </span>
+                      )}
+                    </div>
+
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2 rounded-lg text-[11px] font-bold text-brand hover:bg-brand/10 shrink-0"
+                    >
+                      View <ChevronRight className="ml-0.5 size-3" />
+                    </Button>
+                  </div>
+                </div>
+              );
+            };
+
+            return (
+              <>
+                {/* 1. UPCOMING EVENTS BLOCK */}
+                {(activeTab === "both" || activeTab === "upcoming") && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between px-1">
+                      <span className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider text-[#1A3C6E] dark:text-[#F2A93B]">
+                        <Calendar className="size-3.5" /> Upcoming Events
+                      </span>
+                      <span className="rounded-full bg-slate-200 dark:bg-slate-800 px-2 py-0.5 text-[10px] font-bold text-muted-foreground">
+                        {upcomingEvents.length} scheduled
+                      </span>
+                    </div>
+
+                    {upcomingEvents.length === 0 ? (
+                      <div className="rounded-2xl border border-dashed border-border/80 p-4 text-center text-xs text-muted-foreground">
+                        No upcoming events scheduled right now.
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {(activeTab === "both" ? upcomingEvents.slice(0, 3) : upcomingEvents).map((evt) =>
+                          renderEventCard(evt, false)
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* 2. NEW EVENTS BLOCK */}
+                {(activeTab === "both" || activeTab === "new") && (
+                  <div className="space-y-2 pt-2">
+                    <div className="flex items-center justify-between px-1">
+                      <span className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                        <Zap className="size-3.5 fill-current" /> Newly Added Events
+                      </span>
+                      <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                        {newEvents.length} new
+                      </span>
+                    </div>
+
+                    {newEvents.length === 0 ? (
+                      <div className="rounded-2xl border border-dashed border-border/80 p-4 text-center text-xs text-muted-foreground">
+                        No newly published events yet.
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {(activeTab === "both" ? newEvents.slice(0, 3) : newEvents).map((evt) =>
+                          renderEventCard(evt, true)
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
+            );
+          })()}
         </div>
       </div>
     </div>
