@@ -49,6 +49,11 @@ import {
   GSFC_CAMPUS_CENTER,
   DEFAULT_ALLOWED_RADIUS_METERS,
 } from "@/lib/geofence-engine";
+import {
+  reverseGeocodeWithGeoapify,
+  GeoapifyLocationDetails,
+} from "@/lib/geoapify";
+import { GeoapifyLiveMapCard } from "@/components/common/GeoapifyLiveMapCard";
 
 interface UnifiedAttendanceGateModalProps {
   state: CampusState;
@@ -138,6 +143,7 @@ export function UnifiedAttendanceGateModal({
   const [locationError, setLocationError] = useState<string | null>(null);
   const [hasAttemptedGeo, setHasAttemptedGeo] = useState(false);
   const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [locationDetails, setLocationDetails] = useState<GeoapifyLocationDetails | null>(null);
 
   // --- Vehicle State ---
   const [hasVehicle, setHasVehicle] = useState(false);
@@ -242,6 +248,10 @@ export function UnifiedAttendanceGateModal({
       const coords = locResult.coords;
       setUserCoords({ lat: coords.latitude, lng: coords.longitude });
 
+      // Geoapify reverse geocoding for exact street/campus address
+      const details = await reverseGeocodeWithGeoapify(coords.latitude, coords.longitude);
+      setLocationDetails(details);
+
       const venueCoords = getVenueCoordinates(activeEvent?.venue);
       const dist = calculateDistanceMeters(coords, venueCoords);
       setDistanceMeters(dist);
@@ -250,7 +260,7 @@ export function UnifiedAttendanceGateModal({
       setGeoVerified(isWithin);
 
       if (isWithin) {
-        toast.success(`Inside ${activeEvent?.venue || "GSFC Campus"} (${dist}m away). Geofence verified!`);
+        toast.success(`Location locked: ${details.formattedAddress} (${dist}m away). Geofence verified!`);
       } else {
         const msg = `Outside geofence: You are ${dist}m away from ${activeEvent?.venue || "GSFC Campus"}. Allowed radius is ${DEFAULT_ALLOWED_RADIUS_METERS}m.`;
         setLocationError(msg);
@@ -294,6 +304,7 @@ export function UnifiedAttendanceGateModal({
           longitude: userCoords?.lng || GSFC_CAMPUS_CENTER.longitude,
           distanceMeters: distanceMeters ?? 0,
           verified: geoVerified,
+          address: locationDetails?.formattedAddress,
         },
         hasVehicle,
         vehicleNumber: hasVehicle ? vehicleNumber : undefined,
@@ -861,6 +872,20 @@ export function UnifiedAttendanceGateModal({
                     <AlertCircle className="size-4 shrink-0 mt-0.5 text-rose-600" />
                     <span>{locationError}</span>
                   </div>
+                )}
+
+                {/* Geoapify Live Map Preview */}
+                {userCoords && (
+                  <GeoapifyLiveMapCard
+                    userLocation={{ latitude: userCoords.lat, longitude: userCoords.lng }}
+                    venueLocation={getVenueCoordinates(activeEvent?.venue)}
+                    venueName={activeEvent?.venue}
+                    locationDetails={locationDetails}
+                    distanceMeters={distanceMeters ?? undefined}
+                    isInsideGeofence={geoVerified}
+                    isLoading={isLocating}
+                    onRefresh={handleVerifyLocation}
+                  />
                 )}
               </div>
 

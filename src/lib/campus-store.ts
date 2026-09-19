@@ -1629,7 +1629,7 @@ export const campusStore = {
 
   punchIn(
     eventId: string,
-    locationData?: { latitude: number; longitude: number; distanceMeters: number; verified: boolean }
+    locationData?: { latitude: number; longitude: number; distanceMeters: number; verified: boolean; address?: string }
   ): { success: boolean; message: string; record?: AttendanceRecord } {
     const state = campusStore.getState();
     const event = state.events.find((e) => e.id === eventId);
@@ -1664,11 +1664,22 @@ export const campusStore = {
         userLongitude: locationData?.longitude,
         distanceFromVenueMeters: locationData?.distanceMeters,
         locationVerified: locationData?.verified ?? true,
+        locationAddress: locationData?.address,
       };
       updatedAttendance = [existingRecord, ...updatedAttendance];
     } else {
       updatedAttendance = updatedAttendance.map((a) =>
-        a.id === existingRecord!.id ? { ...a, punchInTime: now, locationVerified: locationData?.verified ?? a.locationVerified } : a
+        a.id === existingRecord!.id
+          ? {
+              ...a,
+              punchInTime: now,
+              locationVerified: locationData?.verified ?? a.locationVerified,
+              userLatitude: locationData?.latitude ?? a.userLatitude,
+              userLongitude: locationData?.longitude ?? a.userLongitude,
+              distanceFromVenueMeters: locationData?.distanceMeters ?? a.distanceFromVenueMeters,
+              locationAddress: locationData?.address ?? a.locationAddress,
+            }
+          : a
       );
     }
 
@@ -1690,7 +1701,7 @@ export const campusStore = {
       performedBy: `${state.currentUser.name} (${state.currentUser.rollNo})`,
       target: event.title,
       timestamp: now.replace("T", " ").slice(0, 19),
-      details: `Punch-In at ${now.slice(11, 16)} · GPS: ${locationData?.distanceMeters || 18}m from ${event.venue} (Verified)`,
+      details: `Punch-In at ${now.slice(11, 16)} · GPS: ${locationData?.distanceMeters || 18}m from ${event.venue} (${locationData?.address || "Geoapify Verified"})`,
     };
 
     const notif: NotificationItem = {
@@ -1718,14 +1729,14 @@ export const campusStore = {
 
     return {
       success: true,
-      message: `Punched In successfully for ${event.title} at ${event.venue}!`,
+      message: `Punched In successfully for ${event.title} at ${event.venue}! Location: ${locationData?.address || "Campus Verified"}`,
       record: existingRecord,
     };
   },
 
   punchOut(
     eventId: string,
-    locationData?: { latitude: number; longitude: number; distanceMeters: number; verified: boolean }
+    locationData?: { latitude: number; longitude: number; distanceMeters: number; verified: boolean; address?: string }
   ): { success: boolean; message: string; record?: AttendanceRecord } {
     const state = campusStore.getState();
     const event = state.events.find((e) => e.id === eventId);
@@ -1746,6 +1757,7 @@ export const campusStore = {
             ...a,
             punchOutTime: now,
             locationVerified: locationData?.verified ?? a.locationVerified,
+            locationAddress: locationData?.address ?? a.locationAddress,
           }
         : a
     );
@@ -2645,6 +2657,7 @@ export const campusStore = {
       userLatitude: data.location.latitude,
       userLongitude: data.location.longitude,
       distanceFromVenueMeters: data.location.distanceMeters,
+      locationAddress: data.location.address,
       mobileNumber: data.mobileNumber,
       otpVerified: true,
       barcodeScanned: true,

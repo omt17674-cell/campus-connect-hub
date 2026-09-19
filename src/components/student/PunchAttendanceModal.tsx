@@ -26,6 +26,11 @@ import {
   GSFC_CAMPUS_VENUES,
 } from "@/lib/geofence-engine";
 import { generateCertificatePdf } from "@/lib/certificate-generator";
+import {
+  reverseGeocodeWithGeoapify,
+  GeoapifyLocationDetails,
+} from "@/lib/geoapify";
+import { GeoapifyLiveMapCard } from "@/components/common/GeoapifyLiveMapCard";
 import { cn } from "@/lib/utils";
 
 interface PunchAttendanceModalProps {
@@ -54,6 +59,7 @@ export function PunchAttendanceModal({
     latitude: 22.3688,
     longitude: 73.1893,
   });
+  const [locationDetails, setLocationDetails] = useState<GeoapifyLocationDetails | null>(null);
   const [locationAccuracy, setLocationAccuracy] = useState<number | null>(null);
   const [locationStatus, setLocationStatus] = useState<"loading" | "acquired" | "simulated">("loading");
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
@@ -72,20 +78,26 @@ export function PunchAttendanceModal({
 
   const refreshGps = async () => {
     setLocationStatus("loading");
-    setStatusMessage("Re-acquiring live device GPS fix...");
+    setStatusMessage("Locking live Geoapify GPS coordinates...");
     try {
       const { coords, accuracy } = await getLiveStudentLocation();
       setUserLocation(coords);
       setLocationAccuracy(Math.round(accuracy));
       setLocationStatus("acquired");
-      setStatusMessage(`📍 Live GPS Locked: ${coords.latitude.toFixed(4)}°N, ${coords.longitude.toFixed(4)}°E (±${Math.round(accuracy)}m precision)`);
+
+      // Reverse geocode via Geoapify API
+      const details = await reverseGeocodeWithGeoapify(coords.latitude, coords.longitude);
+      setLocationDetails(details);
+      setStatusMessage(`📍 Live GPS Locked: ${details.formattedAddress}`);
     } catch (err: any) {
       setLocationStatus("simulated");
-      setStatusMessage(err?.message || "Using active device coordinates.");
+      const fallbackDetails = await reverseGeocodeWithGeoapify(userLocation.latitude, userLocation.longitude);
+      setLocationDetails(fallbackDetails);
+      setStatusMessage(err?.message || "Using active campus coordinates.");
     }
   };
 
-  // Acquire live GPS on mount
+  // Acquire live GPS and exact address on mount
   useEffect(() => {
     let mounted = true;
     async function initGps() {
@@ -95,11 +107,22 @@ export function PunchAttendanceModal({
           setUserLocation(coords);
           setLocationAccuracy(Math.round(accuracy));
           setLocationStatus("acquired");
+
+          // Exact location via Geoapify
+          const details = await reverseGeocodeWithGeoapify(coords.latitude, coords.longitude);
+          if (mounted) {
+            setLocationDetails(details);
+          }
         }
       } catch {
         if (mounted) {
-          setUserLocation({ latitude: 22.3689, longitude: 73.1892 });
+          const fallbackCoords = { latitude: 22.3689, longitude: 73.1892 };
+          setUserLocation(fallbackCoords);
           setLocationStatus("simulated");
+          const details = await reverseGeocodeWithGeoapify(fallbackCoords.latitude, fallbackCoords.longitude);
+          if (mounted) {
+            setLocationDetails(details);
+          }
         }
       }
     }
@@ -118,6 +141,7 @@ export function PunchAttendanceModal({
         longitude: userLocation.longitude,
         distanceMeters: currentDistanceMeters,
         verified: true,
+        address: locationDetails?.formattedAddress,
       });
 
       setIsPunching(false);
@@ -130,7 +154,7 @@ export function PunchAttendanceModal({
             colors: ["#10B981", "#1A3C6E", "#F2A93B"],
           });
         } catch {}
-        setStatusMessage(`Punch-In confirmed at your location (${userLocation.latitude.toFixed(4)}°N, ${userLocation.longitude.toFixed(4)}°E · ${currentDistanceMeters}m from venue).`);
+        setStatusMessage(`✅ Punch-In confirmed at your exact location: ${locationDetails?.formattedAddress || "GSFC Campus"} (${currentDistanceMeters}m from venue).`);
         if (onSuccess) onSuccess();
       } else {
         setStatusMessage(res.message);
@@ -147,6 +171,7 @@ export function PunchAttendanceModal({
         longitude: userLocation.longitude,
         distanceMeters: currentDistanceMeters,
         verified: true,
+        address: locationDetails?.formattedAddress,
       });
 
       setIsPunching(false);
@@ -159,7 +184,7 @@ export function PunchAttendanceModal({
             colors: ["#10B981", "#F2A93B", "#3B82F6", "#8B5CF6"],
           });
         } catch {}
-        setStatusMessage(res.message);
+        setStatusMessage(`✅ Punch-Out confirmed at your exact location: ${locationDetails?.formattedAddress || "GSFC Campus"}.`);
         if (onSuccess) onSuccess();
       }
     }, 400);
@@ -228,55 +253,18 @@ export function PunchAttendanceModal({
           </div>
         </div>
 
-        {/* Live GPS Geolocation Status */}
-        <div className="mt-3.5 rounded-2xl border border-border/70 bg-card/60 p-3 text-xs">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5 font-bold">
-              <MapPin className="size-3.5 text-brand" />
-              <span>Live Location Verification</span>
-            </div>
-            <span
-              className={cn(
-                "rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-wider",
-                isInsideGeofence
-                  ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
-                  : "bg-blue-500/15 text-blue-600 dark:text-blue-400"
-              )}
-            >
-              {isInsideGeofence ? "📍 In Venue Geofence" : "📍 Live Device GPS"}
-            </span>
-          </div>
-
-          <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground">
-            <span>
-              Distance: <strong className="text-foreground">{currentDistanceMeters}m</strong> from venue
-              {locationAccuracy ? ` (±${locationAccuracy}m precision)` : ""}
-            </span>
-            <span className="font-mono text-[10px]">
-              {userLocation.latitude.toFixed(4)}° N, {userLocation.longitude.toFixed(4)}° E
-            </span>
-          </div>
-
-          {/* Real GPS Refresh & Accuracy details */}
-          <div className="mt-2.5 flex items-center justify-between border-t border-border/60 pt-2 text-[11px]">
-            <div className="flex items-center gap-1 text-muted-foreground">
-              <span className="size-2 rounded-full bg-emerald-500 animate-pulse inline-block" />
-              <span>
-                {locationStatus === "loading"
-                  ? "Acquiring satellite GPS..."
-                  : locationStatus === "acquired"
-                  ? "Live GPS Locked (Device Hardware)"
-                  : "Device Location Active"}
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={refreshGps}
-              className="font-bold text-brand hover:underline flex items-center gap-1 text-[11px]"
-            >
-              🔄 Refresh GPS
-            </button>
-          </div>
+        {/* Live Geoapify Map Card & Exact Address */}
+        <div className="mt-3.5">
+          <GeoapifyLiveMapCard
+            userLocation={userLocation}
+            venueLocation={venueCoords}
+            venueName={event.venue}
+            locationDetails={locationDetails}
+            distanceMeters={currentDistanceMeters}
+            isInsideGeofence={isInsideGeofence}
+            isLoading={locationStatus === "loading"}
+            onRefresh={refreshGps}
+          />
         </div>
 
         {/* Status Alert Message */}

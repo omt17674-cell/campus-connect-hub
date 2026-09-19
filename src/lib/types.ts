@@ -115,6 +115,7 @@ export interface AttendanceRecord {
   userLongitude?: number;
   distanceFromVenueMeters?: number;
   locationVerified?: boolean;
+  locationAddress?: string;
   mobileNumber?: string;
   otpVerified?: boolean;
   barcodeScanned?: boolean;

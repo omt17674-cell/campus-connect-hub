@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   Clock,
   Download,
+  ExternalLink,
   FileSpreadsheet,
   FileText,
   Filter,
@@ -700,6 +701,18 @@ export function EventAttendanceViewer({
                             <MapPin className="size-2.5 text-brand" />
                             {att?.distanceFromVenueMeters ? `${att.distanceFromVenueMeters}m from venue` : "18m (On-Site)"}
                           </span>
+                          {(att?.userLatitude && att?.userLongitude) ? (
+                            <a
+                              href={`https://www.google.com/maps?q=${att.userLatitude},${att.userLongitude}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-[9px] text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-0.5 mt-0.5 font-mono"
+                              title={att.locationAddress ? `Exact Location: ${att.locationAddress}` : "View exact GPS location on map"}
+                            >
+                              <span>📍 {att.userLatitude.toFixed(4)}°, {att.userLongitude.toFixed(4)}°</span>
+                              <ExternalLink className="size-2.5" />
+                            </a>
+                          ) : null}
                         </div>
                       ) : (
                         <div className="flex flex-col items-start gap-1">
