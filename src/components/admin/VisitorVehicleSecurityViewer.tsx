@@ -25,6 +25,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { CampusState, campusStore } from "@/lib/campus-store";
 import { VisitorRecord, VehicleRecord } from "@/lib/types";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 interface VisitorVehicleSecurityViewerProps {
@@ -382,7 +383,7 @@ export function VisitorVehicleSecurityViewer({
                             size="sm"
                             onClick={() => {
                               campusStore.markVisitorExit(vis.id);
-                              alert(`👋 Visitor ${vis.fullName} marked as exited.`);
+                              toast.success(`Visitor ${vis.fullName} marked as exited.`);
                             }}
                             className="h-7 rounded-lg bg-rose-600 text-white text-[10px] font-bold hover:bg-rose-700"
                           >
@@ -495,7 +496,7 @@ export function VisitorVehicleSecurityViewer({
                           size="sm"
                           onClick={() => {
                             campusStore.markVehicleExit(veh.id);
-                            alert(`🚗 Vehicle ${veh.vehicleNumber} marked as exited.`);
+                            toast.success(`Vehicle ${veh.vehicleNumber} marked as exited.`);
                           }}
                           className="h-7 rounded-lg bg-rose-600 text-white text-[10px] font-bold hover:bg-rose-700"
                         >

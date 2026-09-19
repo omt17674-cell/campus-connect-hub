@@ -25,6 +25,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { CampusState, campusStore } from "@/lib/campus-store";
 import { ChangeProfilePictureModal } from "@/components/profile/ChangeProfilePictureModal";
+import { ConfirmationModal, ConfirmationModalProps } from "@/components/ui/ConfirmationModal";
 import { toast } from "sonner";
 
 interface ProfileViewProps {
@@ -37,6 +38,7 @@ export function ProfileView({ state }: ProfileViewProps) {
   const [newPhoneInput, setNewPhoneInput] = useState("");
   const [isSavingPhone, setIsSavingPhone] = useState(false);
   const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [confirmResetOpen, setConfirmResetOpen] = useState(false);
 
   const user = state?.currentUser || {
     id: "",
@@ -154,10 +156,13 @@ export function ProfileView({ state }: ProfileViewProps) {
   };
 
   const handleResetDemo = () => {
-    if (confirm("Reset local demo data to initial seed?")) {
-      localStorage.removeItem("gsfc_campus_connect_state_v5");
-      window.location.reload();
-    }
+    setConfirmResetOpen(true);
+  };
+
+  const handleConfirmReset = () => {
+    localStorage.removeItem("gsfc_campus_connect_state_v5");
+    toast.success("Demo data reset to initial state.");
+    setTimeout(() => window.location.reload(), 300);
   };
 
   return (
@@ -593,6 +598,24 @@ export function ProfileView({ state }: ProfileViewProps) {
           Reset Demo Data to Initial Seed
         </Button>
       </div>
+
+      <ConfirmationModal
+        isOpen={confirmResetOpen}
+        onClose={() => setConfirmResetOpen(false)}
+        onConfirm={handleConfirmReset}
+        title="Reset Local Demo Data?"
+        subtitle="Developer & Demo Reset"
+        badgeText="Reset State"
+        variant="danger"
+        description="Are you sure you want to reset your local demo data? This will clear locally cached events and restore initial seed values."
+        bullets={[
+          "Local storage cache will be cleared",
+          "Initial university accounts and events will be restored",
+          "The application will reload automatically"
+        ]}
+        confirmText="Reset Demo Data"
+        cancelText="Cancel"
+      />
     </div>
   );
 }

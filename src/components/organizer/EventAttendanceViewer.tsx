@@ -31,6 +31,8 @@ import { LiveHeadcountTicker } from "@/components/faculty/LiveHeadcountTicker";
 import { EventBroadcastModal } from "@/components/faculty/EventBroadcastModal";
 import { supabase } from "@/lib/supabase";
 import { apiClient } from "@/lib/api-client";
+import { ConfirmationModal, ConfirmationModalProps } from "@/components/ui/ConfirmationModal";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 interface EventAttendanceViewerProps {
@@ -62,6 +64,7 @@ export function EventAttendanceViewer({
   const [departmentFilter, setDepartmentFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<"all" | "punched_in" | "attended" | "pending">("all");
   const [downloadingCertUserId, setDownloadingCertUserId] = useState<string | null>(null);
+  const [confirmModal, setConfirmModal] = useState<Omit<ConfirmationModalProps, "onClose"> | null>(null);
   const [showBroadcastModal, setShowBroadcastModal] = useState(false);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -397,7 +400,7 @@ export function EventAttendanceViewer({
               size="sm"
               onClick={() => {
                 const res = campusStore.toggleEventCertificateRelease(activeEvent.id);
-                alert(`🎓 ${res.message}`);
+                toast.success(res.message);
               }}
               className={cn(
                 "h-9 gap-1.5 rounded-xl text-xs font-bold shadow-md transition-all",
@@ -416,8 +419,26 @@ export function EventAttendanceViewer({
             <Button
               size="sm"
               onClick={() => {
-                const res = campusStore.endAndConcludeEvent(activeEvent.id);
-                alert(`🎓 ${res.message}`);
+                setConfirmModal({
+                  isOpen: true,
+                  title: "Conclude Event & Release Certs?",
+                  subtitle: `Event: ${activeEvent.title}`,
+                  badgeText: "Conclude Event",
+                  variant: "success",
+                  description: `Conclude "${activeEvent.title}"? This will finalize the session, freeze attendance records, and generate verified certificates for all attendees.`,
+                  bullets: [
+                    "Conclude active session across portal",
+                    "Lock and verify all attendance records",
+                    "Release official downloadable PDF certificates"
+                  ],
+                  confirmText: "Conclude & Issue Certs",
+                  cancelText: "Keep Active",
+                  onConfirm: () => {
+                    const res = campusStore.endAndConcludeEvent(activeEvent.id);
+                    toast.success(res.message);
+                    setConfirmModal(null);
+                  },
+                });
               }}
               className="h-9 gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-[#1A3C6E] text-xs font-bold text-white shadow-md hover:opacity-95"
             >
@@ -717,11 +738,11 @@ export function EventAttendanceViewer({
                         variant="outline"
                         onClick={() => {
                           const res = campusStore.toggleStudentCertificateAccess(activeEvent.id, reg.userId);
-                          alert(
-                            res.unlocked
-                              ? `🎓 Certificate download access granted to ${reg.userName}!`
-                              : `🔒 Certificate download access revoked for ${reg.userName}.`
-                          );
+                          if (res.unlocked) {
+                            toast.success(`Certificate download access granted to ${reg.userName}!`);
+                          } else {
+                            toast.info(`Certificate download access revoked for ${reg.userName}.`);
+                          }
                         }}
                         className={cn(
                           "h-7 gap-1 rounded-lg text-[10px] font-bold transition-all",
@@ -780,6 +801,22 @@ export function EventAttendanceViewer({
         <EventBroadcastModal
           event={activeEvent}
           onClose={() => setShowBroadcastModal(false)}
+        />
+      )}
+
+      {confirmModal && (
+        <ConfirmationModal
+          isOpen={confirmModal.isOpen}
+          onClose={() => setConfirmModal(null)}
+          onConfirm={confirmModal.onConfirm}
+          title={confirmModal.title}
+          subtitle={confirmModal.subtitle}
+          description={confirmModal.description}
+          badgeText={confirmModal.badgeText}
+          bullets={confirmModal.bullets}
+          confirmText={confirmModal.confirmText}
+          cancelText={confirmModal.cancelText}
+          variant={confirmModal.variant}
         />
       )}
     </div>

@@ -2,6 +2,7 @@ import React, { useState, useRef } from "react";
 import { Camera, Upload, X, Check, Image as ImageIcon, Sparkles, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { campusStore } from "@/lib/campus-store";
+import { toast } from "sonner";
 
 interface ChangeProfilePictureModalProps {
   isOpen: boolean;
@@ -47,12 +48,12 @@ export function ChangeProfilePictureModal({
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-      alert("Please select a valid image file (PNG, JPG, WebP).");
+      toast.error("Please select a valid image file (PNG, JPG, WebP).");
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      alert("Image is too large. Please select a photo under 5MB.");
+      toast.error("Image is too large. Please select a photo under 5MB.");
       return;
     }
 
@@ -62,10 +63,11 @@ export function ChangeProfilePictureModal({
       const base64 = event.target?.result as string;
       setSelectedPhoto(base64);
       setIsUploading(false);
+      toast.success("Photo selected successfully!");
     };
     reader.onerror = () => {
       setIsUploading(false);
-      alert("Failed to read image file.");
+      toast.error("Failed to read image file.");
     };
     reader.readAsDataURL(file);
   };

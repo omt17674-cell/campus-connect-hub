@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CampusEvent, TeamMember } from "@/lib/types";
 import { campusStore } from "@/lib/campus-store";
+import { toast } from "sonner";
 
 interface TeamRegisterModalProps {
   event: CampusEvent;
@@ -59,7 +60,7 @@ export function TeamRegisterModal({
     // Validate that at least minMembers are filled
     const validMembers = members.filter((m) => m.name.trim() && m.rollNo.trim());
     if (validMembers.length < minMembers) {
-      alert(`Please add at least ${minMembers} members for this team event.`);
+      toast.error(`Please add at least ${minMembers} members for this team event.`);
       return;
     }
 

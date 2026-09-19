@@ -46,6 +46,8 @@ import { StudentRegistryViewer } from "@/components/admin/StudentRegistryViewer"
 import { CreateEventModal } from "@/components/organizer/CreateEventModal";
 import { LiveAttendanceModal } from "@/components/organizer/LiveAttendanceModal";
 import { CampusEvent, EventCategory, EventStatus } from "@/lib/types";
+import { ConfirmationModal, ConfirmationModalProps } from "@/components/ui/ConfirmationModal";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 interface AdminDashboardProps {
@@ -65,6 +67,7 @@ export function AdminDashboard({ state, onOpenGateModal }: AdminDashboardProps) 
   const [eventSearchQuery, setEventSearchQuery] = useState("");
   const [eventStatusFilter, setEventStatusFilter] = useState<string>("all");
   const [eventCategoryFilter, setEventCategoryFilter] = useState<string>("all");
+  const [confirmModal, setConfirmModal] = useState<Omit<ConfirmationModalProps, "onClose"> | null>(null);
 
   // Sync fresh records directly from Supabase on load
   useEffect(() => {
@@ -170,18 +173,30 @@ export function AdminDashboard({ state, onOpenGateModal }: AdminDashboardProps) 
 
   const handleTriggerAlerts = () => {
     campusStore.triggerLowAttendanceAlerts();
-    alert("Warning emails & mentor notifications dispatched successfully!");
+    toast.success("Warning emails & mentor notifications dispatched successfully!");
   };
 
   const handleMarkAsHeld = (event: CampusEvent) => {
-    if (
-      confirm(
-        `Mark event "${event.title}" as Held?\n\nThis will conclude the session, digitally verify attendance, and generate official participation certificates for all registered attendees.`
-      )
-    ) {
-      const res = campusStore.endAndConcludeEvent(event.id);
-      alert(`🎓 ${res.message}`);
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: "Mark Event as Held & Conclude?",
+      subtitle: `Event: ${event.title} (${event.category.toUpperCase()})`,
+      badgeText: "Conclude Session",
+      variant: "success",
+      description: `Are you sure you want to mark "${event.title}" as Held? This will conclude the session, digitally verify attendance, and generate official participation certificates for all registered attendees.`,
+      bullets: [
+        "Conclude the active event session across campus",
+        "Digitally verify and finalize attendance records",
+        "Generate official GSFC University participation certificates"
+      ],
+      confirmText: "Confirm & Conclude Event",
+      cancelText: "Keep Active",
+      onConfirm: () => {
+        const res = campusStore.endAndConcludeEvent(event.id);
+        toast.success(res.message);
+        setConfirmModal(null);
+      },
+    });
   };
 
   const handleHoldLiveSession = (event: CampusEvent) => {
@@ -196,12 +211,28 @@ export function AdminDashboard({ state, onOpenGateModal }: AdminDashboardProps) 
   const handleToggleHoldEvent = (event: CampusEvent) => {
     if (event.status === "cancelled") {
       campusStore.updateEventStatus(event.id, "upcoming");
-      alert(`✅ Event "${event.title}" has been resumed as Upcoming.`);
+      toast.success(`Event "${event.title}" has been resumed as Upcoming.`);
     } else {
-      if (confirm(`Are you sure you want to put event "${event.title}" on hold (cancelled)?`)) {
-        campusStore.updateEventStatus(event.id, "cancelled");
-        alert(`⏸️ Event "${event.title}" is now on hold.`);
-      }
+      setConfirmModal({
+        isOpen: true,
+        title: "Put Event On Hold?",
+        subtitle: `Event: ${event.title} (${event.category.toUpperCase()})`,
+        badgeText: "Pause Event",
+        variant: "warning",
+        description: `Are you sure you want to put "${event.title}" on hold? This will pause student registrations and live sessions until resumed.`,
+        bullets: [
+          "Event status will be set to 'On Hold'",
+          "New student registrations will be paused",
+          "You can resume this event at any time"
+        ],
+        confirmText: "Put On Hold",
+        cancelText: "Cancel",
+        onConfirm: () => {
+          campusStore.updateEventStatus(event.id, "cancelled");
+          toast.info(`Event "${event.title}" is now on hold.`);
+          setConfirmModal(null);
+        },
+      });
     }
   };
 
@@ -994,6 +1025,23 @@ export function AdminDashboard({ state, onOpenGateModal }: AdminDashboardProps) 
           event={liveEventModal}
           state={state}
           onClose={() => setLiveEventModal(null)}
+        />
+      )}
+
+      {/* Modern UI Confirmation Modal */}
+      {confirmModal && (
+        <ConfirmationModal
+          isOpen={confirmModal.isOpen}
+          onClose={() => setConfirmModal(null)}
+          onConfirm={confirmModal.onConfirm}
+          title={confirmModal.title}
+          subtitle={confirmModal.subtitle}
+          description={confirmModal.description}
+          badgeText={confirmModal.badgeText}
+          bullets={confirmModal.bullets}
+          confirmText={confirmModal.confirmText}
+          cancelText={confirmModal.cancelText}
+          variant={confirmModal.variant}
         />
       )}
     </div>

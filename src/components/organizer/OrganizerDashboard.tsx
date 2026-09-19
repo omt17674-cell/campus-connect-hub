@@ -19,6 +19,9 @@ import { CreateEventModal } from "./CreateEventModal";
 import { LiveAttendanceModal } from "./LiveAttendanceModal";
 import { AttendeesManagerModal } from "./AttendeesManagerModal";
 import { EventAttendanceViewer } from "./EventAttendanceViewer";
+import { ConfirmationModal, ConfirmationModalProps } from "@/components/ui/ConfirmationModal";
+import { campusStore } from "@/lib/campus-store";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 interface OrganizerDashboardProps {
@@ -31,6 +34,7 @@ export function OrganizerDashboard({ state }: OrganizerDashboardProps) {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [liveEventModal, setLiveEventModal] = useState<CampusEvent | null>(null);
   const [attendeesModalEvent, setAttendeesModalEvent] = useState<CampusEvent | null>(null);
+  const [confirmModal, setConfirmModal] = useState<Omit<ConfirmationModalProps, "onClose"> | null>(null);
 
   const myEvents = state.events;
 
@@ -253,8 +257,26 @@ export function OrganizerDashboard({ state }: OrganizerDashboardProps) {
                         <Button
                           size="sm"
                           onClick={() => {
-                            const res = campusStore.endAndConcludeEvent(event.id);
-                            alert(`🎓 ${res.message}`);
+                            setConfirmModal({
+                              isOpen: true,
+                              title: "Conclude Event & Issue Certs?",
+                              subtitle: `Event: ${event.title}`,
+                              badgeText: "Conclude Session",
+                              variant: "success",
+                              description: `Are you sure you want to conclude "${event.title}"? This will finalize attendance and generate verified certificates.`,
+                              bullets: [
+                                "Conclude active session across portal",
+                                "Lock and verify all attendee records",
+                                "Generate official digital participation certificates"
+                              ],
+                              confirmText: "Conclude & Issue Certs",
+                              cancelText: "Keep Active",
+                              onConfirm: () => {
+                                const res = campusStore.endAndConcludeEvent(event.id);
+                                toast.success(res.message);
+                                setConfirmModal(null);
+                              },
+                            });
                           }}
                           className="h-9 gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-[#1A3C6E] text-xs font-bold text-white shadow-md hover:opacity-95"
                         >
@@ -309,6 +331,22 @@ export function OrganizerDashboard({ state }: OrganizerDashboardProps) {
           event={attendeesModalEvent}
           state={state}
           onClose={() => setAttendeesModalEvent(null)}
+        />
+      )}
+
+      {confirmModal && (
+        <ConfirmationModal
+          isOpen={confirmModal.isOpen}
+          onClose={() => setConfirmModal(null)}
+          onConfirm={confirmModal.onConfirm}
+          title={confirmModal.title}
+          subtitle={confirmModal.subtitle}
+          description={confirmModal.description}
+          badgeText={confirmModal.badgeText}
+          bullets={confirmModal.bullets}
+          confirmText={confirmModal.confirmText}
+          cancelText={confirmModal.cancelText}
+          variant={confirmModal.variant}
         />
       )}
     </div>

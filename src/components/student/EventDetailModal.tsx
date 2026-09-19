@@ -28,6 +28,7 @@ import { generateIcsFile, getGoogleCalendarUrl } from "@/lib/calendar-export";
 import { generateCertificatePdf } from "@/lib/certificate-generator";
 import { TeamRegisterModal } from "./TeamRegisterModal";
 import { FeedbackModal } from "./FeedbackModal";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 interface EventDetailModalProps {
@@ -107,7 +108,7 @@ export function EventDetailModal({
       }).catch(() => {});
     } else {
       navigator.clipboard.writeText(window.location.href);
-      alert("Event link copied to clipboard!");
+      toast.success("Event link copied to clipboard!");
     }
   };
 
