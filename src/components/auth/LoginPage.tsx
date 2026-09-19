@@ -237,16 +237,30 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
       const cleanInputUpper = cleanInput.toUpperCase();
       const cleanEmailLower = cleanEmail.toLowerCase();
       const currentState = campusStore.getState();
+      const storedAccounts = getStoredAccounts();
+
+      // Extract roll prefix if input is email (e.g. "24bt04171@..." -> "24BT04171")
+      const extractedRoll = cleanInput.includes("@")
+        ? cleanInput.split("@")[0].toUpperCase()
+        : cleanInputUpper;
 
       // 1. FAST LOCAL CHECK (0ms): Look for student in local state / cache
       let matchedStudent: any = currentState.newRegisteredStudents?.find(
-        (s) => s.rollNo?.toUpperCase() === cleanInputUpper || s.email?.toLowerCase() === cleanEmailLower
+        (s) =>
+          s.rollNo?.toUpperCase() === extractedRoll ||
+          s.rollNo?.toUpperCase() === cleanInputUpper ||
+          s.email?.toLowerCase() === cleanEmailLower
       );
-      let matchedAccount: any = currentState.accounts?.find(
-        (a) => a.idOrRoll?.toUpperCase() === cleanInputUpper || a.email?.toLowerCase() === cleanEmailLower
+      let matchedAccount: any = storedAccounts.find(
+        (a) =>
+          a.idOrRoll?.toUpperCase() === extractedRoll ||
+          a.idOrRoll?.toUpperCase() === cleanInputUpper ||
+          a.email?.toLowerCase() === cleanEmailLower
       );
       const matchedReg: any = currentState.registrations?.find(
-        (r) => r.userRollNo?.toUpperCase() === cleanInputUpper
+        (r) =>
+          r.userRollNo?.toUpperCase() === extractedRoll ||
+          r.userRollNo?.toUpperCase() === cleanInputUpper
       );
 
       let targetEmail = matchedStudent?.email || matchedAccount?.email || cleanEmail;
@@ -397,7 +411,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
         accountRow?.idOrRoll ||
         matchedReg?.userRollNo ||
         userMeta.roll_no ||
-        cleanInputUpper;
+        extractedRoll;
 
       const role = (accountRow?.role || userMeta.role || selectedRole) as UserRole;
       const dept =
@@ -414,6 +428,13 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
         userMeta?.mobile_number ||
         undefined;
 
+      const stableId =
+        accountRow?.id ||
+        studentRow?.id ||
+        matchedReg?.userId ||
+        authData?.user?.id ||
+        `u-${roll.toLowerCase()}`;
+
       const foundAccount: CampusAccount = {
         role,
         roleTitle: role === "admin" ? "Administration" : role === "organizer" ? "TPC Admin" : "GSFC Student",
@@ -423,7 +444,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
         email: targetEmail,
         password: cleanPass,
         profile: {
-          id: accountRow?.id || studentRow?.id || matchedReg?.userId || authData?.user?.id || `u-${roll.toLowerCase()}`,
+          id: stableId,
           name,
           rollNo: roll,
           email: targetEmail,
@@ -447,6 +468,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
       };
 
       campusStore.loginWithAccount(foundAccount);
+      console.log(`[Auth Session] Logged in user: ${name} | currentUser.id: ${stableId} | rollNo: ${roll} | role: ${role}`);
       setIsLoggingIn(false);
       setStatusMessage({ text: `Welcome back, ${name}!`, type: "success" });
       if (onLoginSuccess) onLoginSuccess();

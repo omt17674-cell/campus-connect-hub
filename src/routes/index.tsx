@@ -3,8 +3,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import {
   Award,
   Building2,
+  Calendar,
   CalendarDays,
   Flame,
+  History,
   QrCode,
   Radio,
   ScanBarcode,
@@ -20,6 +22,8 @@ import { StudentBottomNav, StudentNavView } from "@/components/navigation/Studen
 import { HomeFeed } from "@/components/student/HomeFeed";
 import { AttendanceHub } from "@/components/student/AttendanceHub";
 import { MyEventsView } from "@/components/student/MyEventsView";
+import { UpcomingEventsView } from "@/components/student/UpcomingEventsView";
+import { PastEventsView } from "@/components/student/PastEventsView";
 import { GamificationView } from "@/components/student/GamificationView";
 import { ProfileView } from "@/components/student/ProfileView";
 import { StudentPassportView } from "@/components/student/StudentPassportView";
@@ -148,6 +152,36 @@ function CampusConnectApp() {
                   >
                     <TicketCheck className="mr-1.5 size-3.5" />
                     {t.nav.myEvents}
+                  </Button>
+
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setStudentView("upcoming")}
+                    className={cn(
+                      "rounded-xl text-xs font-bold",
+                      studentView === "upcoming"
+                        ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <Calendar className="mr-1.5 size-3.5 text-[#F2A93B]" />
+                    Upcoming Events
+                  </Button>
+
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setStudentView("past")}
+                    className={cn(
+                      "rounded-xl text-xs font-bold",
+                      studentView === "past"
+                        ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <History className="mr-1.5 size-3.5" />
+                    Past Events
                   </Button>
 
                   <Button
@@ -284,6 +318,21 @@ function CampusConnectApp() {
                   state={state}
                   onSelectEvent={setSelectedEvent}
                   onOpenPunchModal={(evt) => setPunchModalEvent(evt)}
+                />
+              )}
+
+              {studentView === "upcoming" && (
+                <UpcomingEventsView
+                  state={state}
+                  onSelectEvent={setSelectedEvent}
+                  onOpenPunchModal={(evt) => setPunchModalEvent(evt)}
+                />
+              )}
+
+              {studentView === "past" && (
+                <PastEventsView
+                  state={state}
+                  onSelectEvent={setSelectedEvent}
                 />
               )}
 

@@ -32,6 +32,7 @@ import { EventBroadcastModal } from "@/components/faculty/EventBroadcastModal";
 import { supabase } from "@/lib/supabase";
 import { apiClient } from "@/lib/api-client";
 import { ConfirmationModal, ConfirmationModalProps } from "@/components/ui/ConfirmationModal";
+import { DateRangeFilter } from "@/components/admin/DateRangeFilter";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -63,6 +64,8 @@ export function EventAttendanceViewer({
   const [searchQuery, setSearchQuery] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<"all" | "punched_in" | "attended" | "pending">("all");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [downloadingCertUserId, setDownloadingCertUserId] = useState<string | null>(null);
   const [confirmModal, setConfirmModal] = useState<Omit<ConfirmationModalProps, "onClose"> | null>(null);
   const [showBroadcastModal, setShowBroadcastModal] = useState(false);
@@ -200,6 +203,15 @@ export function EventAttendanceViewer({
     }
     if (statusFilter === "pending") {
       return !reg.punchInTime && reg.status !== "attended" && reg.status !== "punched_in";
+    }
+
+    if (startDate) {
+      const regDate = (reg.punchInTime || reg.registeredAt || "").split("T")[0];
+      if (regDate && regDate < startDate) return false;
+    }
+    if (endDate) {
+      const regDate = (reg.punchInTime || reg.registeredAt || "").split("T")[0];
+      if (regDate && regDate > endDate) return false;
     }
 
     return true;
@@ -544,6 +556,17 @@ export function EventAttendanceViewer({
             ))}
           </select>
         </div>
+
+        {/* Date Range Filter */}
+        <DateRangeFilter
+          startDate={startDate}
+          endDate={endDate}
+          onDateChange={(s, e) => {
+            setStartDate(s);
+            setEndDate(e);
+          }}
+          label="Attendance Date"
+        />
 
         {/* Status Filter Pills */}
         <div className="flex items-center gap-1.5 overflow-x-auto text-xs">

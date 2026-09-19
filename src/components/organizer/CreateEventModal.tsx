@@ -40,11 +40,11 @@ export function CreateEventModal({ onClose, onSuccess }: CreateEventModalProps) 
   const [volunteerHoursReward, setVolunteerHoursReward] = useState(4);
   const [bannerImage, setBannerImage] = useState(PRESET_BANNERS[0].url);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !description.trim()) return;
 
-    campusStore.createEvent({
+    await campusStore.createEvent({
       title,
       description,
       category,
@@ -67,7 +67,6 @@ export function CreateEventModal({ onClose, onSuccess }: CreateEventModalProps) 
       ],
     });
 
-    toast.success(`Event "${title}" created and scheduled!`);
     onSuccess();
   };
 

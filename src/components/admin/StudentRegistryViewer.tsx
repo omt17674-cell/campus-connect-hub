@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { CampusState, campusStore } from "@/lib/campus-store";
 import { NewRegisteredStudent } from "@/lib/types";
 import { EditStudentModal } from "./EditStudentModal";
+import { DateRangeFilter } from "./DateRangeFilter";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
@@ -33,6 +34,8 @@ export function StudentRegistryViewer({ state }: StudentRegistryViewerProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("all");
   const [residenceFilter, setResidenceFilter] = useState<"all" | "hostel" | "dayscholar">("all");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [editingStudent, setEditingStudent] = useState<NewRegisteredStudent | null>(null);
 
@@ -99,7 +102,11 @@ export function StudentRegistryViewer({ state }: StudentRegistryViewerProps) {
     const matchesResidence =
       residenceFilter === "all" || s.residenceType === residenceFilter;
 
-    return matchesSearch && matchesDept && matchesResidence;
+    const matchesDate =
+      (!startDate || (s.createdAt && s.createdAt.split("T")[0] >= startDate)) &&
+      (!endDate || (s.createdAt && s.createdAt.split("T")[0] <= endDate));
+
+    return matchesSearch && matchesDept && matchesResidence && matchesDate;
   });
 
   const handleExportCsv = () => {
@@ -234,6 +241,16 @@ export function StudentRegistryViewer({ state }: StudentRegistryViewerProps) {
             <option value="dayscholar">Day Scholars Only</option>
           </select>
         </div>
+
+        <DateRangeFilter
+          startDate={startDate}
+          endDate={endDate}
+          onDateChange={(s, e) => {
+            setStartDate(s);
+            setEndDate(e);
+          }}
+          label="Registration Date"
+        />
       </div>
 
       {/* Students Table */}

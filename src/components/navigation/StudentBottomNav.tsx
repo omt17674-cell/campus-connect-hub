@@ -17,6 +17,8 @@ import { cn } from "@/lib/utils";
 export type StudentNavView =
   | "home"
   | "events"
+  | "upcoming"
+  | "past"
   | "scan"
   | "passport"
   | "clubs"

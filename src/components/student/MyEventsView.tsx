@@ -42,34 +42,92 @@ export function MyEventsView({ state, onSelectEvent, onOpenPunchModal }: MyEvent
     department: "Computer Science & Engineering",
   };
 
-  const currentRollNo = currentUser.rollNo?.toLowerCase() || "";
-  const currentUserId = currentUser.id || "";
-  const currentUserName = currentUser.name?.toLowerCase() || "";
+  const currentRollNo = (currentUser.rollNo || "").trim().toLowerCase();
+  const currentUserId = (currentUser.id || "").trim();
+  const currentUserName = (currentUser.name || "").trim().toLowerCase();
+  const currentUserEmail = (currentUser.email || "").trim().toLowerCase();
 
   const registrations = state?.registrations || [];
   const events = state?.events || [];
   const attendanceRecords = state?.attendanceRecords || [];
 
-  const userRegistrations = registrations.filter(
-    (r) =>
-      r &&
-      (r.userId === currentUserId ||
-        (r.userRollNo && r.userRollNo.toLowerCase() === currentRollNo) ||
-        (r.userName && r.userName.toLowerCase() === currentUserName))
-  );
+  const isStudentMatch = (userId?: string, rollNo?: string, userName?: string) => {
+    if (currentUserId && userId === currentUserId) return true;
+    if (currentRollNo && rollNo) {
+      const cleanR = rollNo.toLowerCase();
+      if (cleanR === currentRollNo || cleanR.includes(currentRollNo) || currentRollNo.includes(cleanR)) return true;
+    }
+    if (currentUserName && userName) {
+      const cleanN = userName.toLowerCase();
+      if (cleanN === currentUserName || cleanN.includes(currentUserName) || currentUserName.includes(cleanN)) return true;
+    }
+    return false;
+  };
 
-  const attendedEvents = events.filter((e) =>
+  const userRegistrations = registrations.filter((r) => {
+    if (!r) return false;
+    const matchId = Boolean(currentUserId && r.userId === currentUserId);
+    const matchRoll = Boolean(
+      currentRollNo &&
+      r.userRollNo &&
+      (r.userRollNo.toLowerCase() === currentRollNo ||
+        r.userRollNo.toLowerCase().includes(currentRollNo) ||
+        currentRollNo.includes(r.userRollNo.toLowerCase()))
+    );
+    const matchEmail = Boolean(
+      currentUserEmail &&
+      (r as any).userEmail &&
+      (r as any).userEmail.toLowerCase() === currentUserEmail
+    );
+    const matchName = Boolean(
+      currentUserName &&
+      r.userName &&
+      (r.userName.toLowerCase() === currentUserName ||
+        r.userName.toLowerCase().includes(currentUserName) ||
+        currentUserName.includes(r.userName.toLowerCase()))
+    );
+    return matchId || matchRoll || matchEmail || matchName;
+  });
+
+  // Resilient event list: ensure any event the student is registered for is included
+  const allEventsMap = new Map<string, CampusEvent>();
+  events.forEach((e) => allEventsMap.set(e.id, e));
+  userRegistrations.forEach((r) => {
+    if (!allEventsMap.has(r.eventId)) {
+      allEventsMap.set(r.eventId, {
+        id: r.eventId,
+        title: (r as any).eventTitle || "University Campus Event",
+        description: "Official scheduled event session",
+        category: "academic",
+        department: r.department || currentUser.department,
+        date: r.registeredAt ? new Date(r.registeredAt).toISOString().split("T")[0] : new Date().toISOString().split("T")[0],
+        time: "10:00 AM",
+        venue: "GSFC Campus Auditorium",
+        organizerName: "TPC Admin",
+        organizerEmail: "tpc.admin@gsfcuniversity.ac.in",
+        capacity: 100,
+        registeredCount: 1,
+        waitlistCount: 0,
+        status: "upcoming",
+        averageRating: 5.0,
+        reviewCount: 0,
+      });
+    }
+  });
+  const allEvents = Array.from(allEventsMap.values());
+
+  const attendedEvents = allEvents.filter((e) =>
     e &&
     (attendanceRecords.some(
       (a) =>
         a &&
         a.eventId === e.id &&
-        (a.userId === currentUserId || (a.userRollNo && a.userRollNo.toLowerCase() === currentRollNo))
+        isStudentMatch(a.userId, a.userRollNo, a.userName)
     ) ||
       userRegistrations.some((r) => r.eventId === e.id && r.status === "attended"))
   );
 
-  const registeredEvents = events.filter((e) =>
+  const registeredEvents = allEvents.filter((e) =>
     e &&
     userRegistrations.some(
       (r) =>
@@ -82,7 +140,7 @@ export function MyEventsView({ state, onSelectEvent, onOpenPunchModal }: MyEvent
     )
   );
 
-  const pastEvents = events.filter(
+  const pastEvents = allEvents.filter(
     (e) => e && e.status === "completed" && !attendedEvents.some((ae) => ae && ae.id === e.id)
   );
 

@@ -47,6 +47,7 @@ import { CreateEventModal } from "@/components/organizer/CreateEventModal";
 import { LiveAttendanceModal } from "@/components/organizer/LiveAttendanceModal";
 import { CampusEvent, EventCategory, EventStatus } from "@/lib/types";
 import { ConfirmationModal, ConfirmationModalProps } from "@/components/ui/ConfirmationModal";
+import { DateRangeFilter } from "@/components/admin/DateRangeFilter";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -69,6 +70,16 @@ export function AdminDashboard({ state, onOpenGateModal }: AdminDashboardProps) 
   const [eventCategoryFilter, setEventCategoryFilter] = useState<string>("all");
   const [confirmModal, setConfirmModal] = useState<Omit<ConfirmationModalProps, "onClose"> | null>(null);
 
+  // Date filter states for Approvals, Attendance Flags, and Audit Trail
+  const [approvalsStartDate, setApprovalsStartDate] = useState("");
+  const [approvalsEndDate, setApprovalsEndDate] = useState("");
+
+  const [flagsStartDate, setFlagsStartDate] = useState("");
+  const [flagsEndDate, setFlagsEndDate] = useState("");
+
+  const [auditStartDate, setAuditStartDate] = useState("");
+  const [auditEndDate, setAuditEndDate] = useState("");
+
   // Sync fresh records directly from Supabase on load
   useEffect(() => {
     campusStore.loadFromSupabase();
@@ -81,6 +92,19 @@ export function AdminDashboard({ state, onOpenGateModal }: AdminDashboardProps) 
   };
 
   const pendingApprovals = state.events.filter((e) => e.status === "pending_approval");
+  const filteredApprovals = pendingApprovals.filter((evt) => {
+    if (!approvalsStartDate && !approvalsEndDate) return true;
+    if (!evt.date) return false;
+    try {
+      const d = new Date(evt.date).toISOString().slice(0, 10);
+      if (approvalsStartDate && d < approvalsStartDate) return false;
+      if (approvalsEndDate && d > approvalsEndDate) return false;
+      return true;
+    } catch {
+      return true;
+    }
+  });
+
   const activeVisitors = state.visitorRecords.filter((v) => v.status === "active");
 
   const totalEvents = state.events.length;
@@ -123,6 +147,14 @@ export function AdminDashboard({ state, onOpenGateModal }: AdminDashboardProps) 
     state.newRegisteredStudents || []
   )
     .filter((s) => {
+      // Date range filtering if specified
+      if (s.createdAt && (flagsStartDate || flagsEndDate)) {
+        try {
+          const cd = new Date(s.createdAt).toISOString().slice(0, 10);
+          if (flagsStartDate && cd < flagsStartDate) return false;
+          if (flagsEndDate && cd > flagsEndDate) return false;
+        } catch {}
+      }
       const studentAtt = state.attendanceRecords.filter((a) => a.userRollNo === s.rollNo).length;
       const studentReg = state.registrations.filter((r) => r.userRollNo === s.rollNo).length;
       return studentReg > 0 && (studentAtt / studentReg) * 100 < 75;
@@ -138,6 +170,19 @@ export function AdminDashboard({ state, onOpenGateModal }: AdminDashboardProps) 
         mentor: "Faculty Mentor",
       };
     });
+
+  const filteredAuditLogs = state.auditLogs.filter((log) => {
+    if (!auditStartDate && !auditEndDate) return true;
+    if (!log.timestamp) return false;
+    try {
+      const d = new Date(log.timestamp).toISOString().slice(0, 10);
+      if (auditStartDate && d < auditStartDate) return false;
+      if (auditEndDate && d > auditEndDate) return false;
+      return true;
+    } catch {
+      return true;
+    }
+  });
 
   const handleExportFullCsv = () => {
     const rows = [
@@ -163,12 +208,12 @@ export function AdminDashboard({ state, onOpenGateModal }: AdminDashboardProps) 
     document.body.removeChild(link);
   };
 
-  const handleApprove = (id: string) => {
-    campusStore.approveEvent(id);
+  const handleApprove = async (id: string) => {
+    await campusStore.approveEvent(id);
   };
 
-  const handleReject = (id: string) => {
-    campusStore.rejectEvent(id);
+  const handleReject = async (id: string) => {
+    await campusStore.rejectEvent(id);
   };
 
   const handleTriggerAlerts = () => {
@@ -847,7 +892,7 @@ export function AdminDashboard({ state, onOpenGateModal }: AdminDashboardProps) 
 
       {/* Approvals Queue */}
       {adminTab === "approvals" && (
-        <div className="rounded-3xl border border-border/80 bg-card/60 p-6 shadow-xl shadow-brand/5 backdrop-blur-2xl">
+        <div className="rounded-3xl border border-border/80 bg-card/60 p-6 shadow-xl shadow-brand/5 backdrop-blur-2xl space-y-4">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="font-display text-lg font-black text-foreground">
@@ -859,15 +904,29 @@ export function AdminDashboard({ state, onOpenGateModal }: AdminDashboardProps) 
             </div>
           </div>
 
-          <div className="mt-5 space-y-3">
-            {pendingApprovals.length === 0 ? (
+          <DateRangeFilter
+            startDate={approvalsStartDate}
+            endDate={approvalsEndDate}
+            onStartDateChange={setApprovalsStartDate}
+            onEndDateChange={setApprovalsEndDate}
+            onReset={() => {
+              setApprovalsStartDate("");
+              setApprovalsEndDate("");
+            }}
+            label="Filter by Event Date"
+          />
+
+          <div className="space-y-3">
+            {filteredApprovals.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-10 text-center text-muted-foreground">
                 <ShieldCheck className="size-10 text-emerald-500" />
-                <p className="mt-2 text-sm font-bold text-foreground">All pending events reviewed!</p>
+                <p className="mt-2 text-sm font-bold text-foreground">
+                  {pendingApprovals.length === 0 ? "All pending events reviewed!" : "No pending proposals match the selected date range."}
+                </p>
                 <p className="text-xs">No pending proposals awaiting administrative authorization.</p>
               </div>
             ) : (
-              pendingApprovals.map((evt) => (
+              filteredApprovals.map((evt) => (
                 <div
                   key={evt.id}
                   className="flex flex-col justify-between gap-4 rounded-2xl border border-border/70 bg-card/70 p-4 sm:flex-row sm:items-center"
@@ -915,7 +974,7 @@ export function AdminDashboard({ state, onOpenGateModal }: AdminDashboardProps) 
 
       {/* Attendance Flags & Low Attendance Actions */}
       {adminTab === "alerts" && (
-        <div className="rounded-3xl border border-border/80 bg-card/60 p-6 shadow-xl shadow-brand/5 backdrop-blur-2xl">
+        <div className="rounded-3xl border border-border/80 bg-card/60 p-6 shadow-xl shadow-brand/5 backdrop-blur-2xl space-y-4">
           <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
             <div>
               <h3 className="font-display text-lg font-black text-foreground">
@@ -935,7 +994,19 @@ export function AdminDashboard({ state, onOpenGateModal }: AdminDashboardProps) 
             </Button>
           </div>
 
-          <div className="mt-5 overflow-x-auto">
+          <DateRangeFilter
+            startDate={flagsStartDate}
+            endDate={flagsEndDate}
+            onStartDateChange={setFlagsStartDate}
+            onEndDateChange={setFlagsEndDate}
+            onReset={() => {
+              setFlagsStartDate("");
+              setFlagsEndDate("");
+            }}
+            label="Filter by Student Registration / Flag Date"
+          />
+
+          <div className="overflow-x-auto">
             <table className="w-full min-w-[560px] text-left text-xs">
               <thead className="border-b border-border/70 text-[10px] uppercase tracking-wider text-muted-foreground">
                 <tr>
@@ -948,22 +1019,30 @@ export function AdminDashboard({ state, onOpenGateModal }: AdminDashboardProps) 
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/60">
-                {flaggedStudents.map((st) => (
-                  <tr key={st.rollNo} className="hover:bg-muted/20">
-                    <td className="py-3.5 font-bold text-foreground">{st.name}</td>
-                    <td className="py-3.5 text-muted-foreground">{st.rollNo}</td>
-                    <td className="py-3.5 text-muted-foreground">{st.dept}</td>
-                    <td className="py-3.5 font-bold text-rose-600 dark:text-rose-400">
-                      {st.attendance}%
-                    </td>
-                    <td className="py-3.5 text-muted-foreground">{st.mentor}</td>
-                    <td className="py-3.5 text-right">
-                      <span className="rounded-full bg-rose-500/15 px-2.5 py-1 text-[10px] font-bold text-rose-600 dark:text-rose-400">
-                        Notice Dispatched
-                      </span>
+                {flaggedStudents.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="py-8 text-center text-xs text-muted-foreground font-medium">
+                      No students flagged below 75% attendance in this date range.
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  flaggedStudents.map((st) => (
+                    <tr key={st.rollNo} className="hover:bg-muted/20">
+                      <td className="py-3.5 font-bold text-foreground">{st.name}</td>
+                      <td className="py-3.5 text-muted-foreground">{st.rollNo}</td>
+                      <td className="py-3.5 text-muted-foreground">{st.dept}</td>
+                      <td className="py-3.5 font-bold text-rose-600 dark:text-rose-400">
+                        {st.attendance}%
+                      </td>
+                      <td className="py-3.5 text-muted-foreground">{st.mentor}</td>
+                      <td className="py-3.5 text-right">
+                        <span className="rounded-full bg-rose-500/15 px-2.5 py-1 text-[10px] font-bold text-rose-600 dark:text-rose-400">
+                          Notice Dispatched
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -972,7 +1051,7 @@ export function AdminDashboard({ state, onOpenGateModal }: AdminDashboardProps) 
 
       {/* Immutable Audit Log */}
       {adminTab === "audit" && (
-        <div className="rounded-3xl border border-border/80 bg-card/60 p-6 shadow-xl shadow-brand/5 backdrop-blur-2xl">
+        <div className="rounded-3xl border border-border/80 bg-card/60 p-6 shadow-xl shadow-brand/5 backdrop-blur-2xl space-y-4">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="font-display text-lg font-black text-foreground">
@@ -984,27 +1063,45 @@ export function AdminDashboard({ state, onOpenGateModal }: AdminDashboardProps) 
             </div>
           </div>
 
-          <div className="mt-5 space-y-2.5">
-            {state.auditLogs.map((log) => (
-              <div
-                key={log.id}
-                className="flex items-start justify-between gap-4 rounded-2xl border border-border/60 bg-card/40 p-3.5 text-xs"
-              >
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-brand">{log.action}</span>
-                    <span className="text-muted-foreground">by</span>
-                    <span className="font-semibold text-foreground">{log.performedBy}</span>
-                  </div>
-                  <p className="mt-1 text-muted-foreground">
-                    Target: <span className="font-semibold text-foreground">{log.target}</span> · {log.details}
-                  </p>
-                </div>
-                <span className="shrink-0 text-[10px] font-mono text-muted-foreground">
-                  {log.timestamp}
-                </span>
+          <DateRangeFilter
+            startDate={auditStartDate}
+            endDate={auditEndDate}
+            onStartDateChange={setAuditStartDate}
+            onEndDateChange={setAuditEndDate}
+            onReset={() => {
+              setAuditStartDate("");
+              setAuditEndDate("");
+            }}
+            label="Filter by Event / Action Date"
+          />
+
+          <div className="space-y-2.5">
+            {filteredAuditLogs.length === 0 ? (
+              <div className="py-8 text-center text-xs text-muted-foreground font-medium">
+                No audit log records found for the selected date range.
               </div>
-            ))}
+            ) : (
+              filteredAuditLogs.map((log) => (
+                <div
+                  key={log.id}
+                  className="flex items-start justify-between gap-4 rounded-2xl border border-border/60 bg-card/40 p-3.5 text-xs"
+                >
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-brand">{log.action}</span>
+                      <span className="text-muted-foreground">by</span>
+                      <span className="font-semibold text-foreground">{log.performedBy}</span>
+                    </div>
+                    <p className="mt-1 text-muted-foreground">
+                      Target: <span className="font-semibold text-foreground">{log.target}</span> · {log.details}
+                    </p>
+                  </div>
+                  <span className="shrink-0 text-[10px] font-mono text-muted-foreground">
+                    {log.timestamp}
+                  </span>
+                </div>
+              ))
+            )}
           </div>
         </div>
       )}

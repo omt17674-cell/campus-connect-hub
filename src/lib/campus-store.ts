@@ -798,7 +798,7 @@ export function initSupabaseRealtimeSync() {
       .channel("public-db-changes")
       .on("postgres_changes", { event: "*", schema: "public" }, (payload) => {
         console.debug("Supabase realtime Postgres change:", payload.table, payload.eventType);
-        campusStore.loadFromSupabase();
+        campusStore.loadFromSupabase(true);
       })
       .subscribe();
   } catch (err) {
@@ -1281,9 +1281,9 @@ export const campusStore = {
             }
           : prev.digitalId,
     }));
-    // Load fresh data from Supabase after login
+    // Load fresh data from Supabase immediately after login (force=true bypasses debounce)
     if (typeof window !== "undefined") {
-      setTimeout(() => campusStore.loadFromSupabase(), 300);
+      campusStore.loadFromSupabase(true).catch(() => {});
     }
   },
 
@@ -1863,7 +1863,7 @@ export const campusStore = {
     return { syncedCount };
   },
 
-  createEvent(eventData: Omit<CampusEvent, "id" | "registeredCount" | "waitlistCount" | "status">): CampusEvent {
+  async createEvent(eventData: Omit<CampusEvent, "id" | "registeredCount" | "waitlistCount" | "status">): Promise<{ success: boolean; event: CampusEvent; error?: string }> {
     const state = campusStore.getState();
     const isDeanAdmin = state.currentRole === "admin";
     const status: CampusEvent["status"] = isDeanAdmin ? "upcoming" : eventData.approvalRequired ? "pending_approval" : "upcoming";
@@ -1887,48 +1887,97 @@ export const campusStore = {
       details: `Status: ${status} · Capacity: ${newEvent.capacity} · Dept: ${newEvent.department}`,
     };
 
+    // Optimistically update local store
     campusStore.setState((prev) => ({
       events: [newEvent, ...prev.events],
       auditLogs: [auditEntry, ...prev.auditLogs],
     }));
 
+    // Await database write to Supabase
     if (typeof window !== "undefined" && navigator.onLine) {
-      supabase
-        .from("events")
-        .upsert(serializeEventForDb(newEvent))
-        .then(({ error }) => {
-          if (error) logSupabaseError("upsert", "events", error);
-        });
+      try {
+        const { error } = await supabase
+          .from("events")
+          .upsert(serializeEventForDb(newEvent));
+
+        if (error) {
+          logSupabaseError("upsert", "events", error);
+          toast.error(`Database write warning: ${error.message}`);
+          return { success: false, event: newEvent, error: error.message };
+        }
+      } catch (err: any) {
+        logSupabaseError("upsert_catch", "events", err);
+        return { success: false, event: newEvent, error: err.message };
+      }
     }
 
-    return newEvent;
+    return { success: true, event: newEvent };
   },
 
-  approveEvent(eventId: string) {
-    campusStore.setState((prev) => {
-      const event = prev.events.find((e) => e.id === eventId);
-      const audit: AuditLogEntry = {
-        id: `aud-${Date.now()}`,
-        action: "Event Approved by Dean",
-        performedBy: "Dr. Ananya Sharma (Admin)",
-        target: event?.title || eventId,
-        timestamp: new Date().toISOString().replace("T", " ").slice(0, 19),
-        details: "Event status transitioned from pending_approval to upcoming",
-      };
-      return {
-        events: prev.events.map((e) => (e.id === eventId ? { ...e, status: "upcoming" } : e)),
-        auditLogs: [audit, ...prev.auditLogs],
-      };
-    });
+  async approveEvent(eventId: string): Promise<boolean> {
+    const state = campusStore.getState();
+    const event = state.events.find((e) => e.id === eventId);
+    const audit: AuditLogEntry = {
+      id: `aud-${Date.now()}`,
+      action: "Event Approved by Dean",
+      performedBy: "Dr. Ananya Sharma (Admin)",
+      target: event?.title || eventId,
+      timestamp: new Date().toISOString().replace("T", " ").slice(0, 19),
+      details: "Event status transitioned from pending_approval to upcoming",
+    };
+
+    campusStore.setState((prev) => ({
+      events: prev.events.map((e) => (e.id === eventId ? { ...e, status: "upcoming" } : e)),
+      auditLogs: [audit, ...prev.auditLogs],
+    }));
+
+    if (typeof window !== "undefined" && navigator.onLine) {
+      try {
+        const { error } = await supabase
+          .from("events")
+          .update({ status: "upcoming" })
+          .eq("id", eventId);
+
+        if (error) {
+          logSupabaseError("update", "events", error);
+          toast.error(`Failed to update event in database: ${error.message}`);
+          return false;
+        }
+        toast.success(`Event approved and published to campus directory!`);
+      } catch (err) {
+        logSupabaseError("update_catch", "events", err);
+        return false;
+      }
+    }
+    return true;
   },
 
-  rejectEvent(eventId: string) {
+  async rejectEvent(eventId: string): Promise<boolean> {
     campusStore.setState((prev) => ({
       events: prev.events.map((e) => (e.id === eventId ? { ...e, status: "rejected" } : e)),
     }));
+
+    if (typeof window !== "undefined" && navigator.onLine) {
+      try {
+        const { error } = await supabase
+          .from("events")
+          .update({ status: "rejected" })
+          .eq("id", eventId);
+
+        if (error) {
+          logSupabaseError("update", "events", error);
+          return false;
+        }
+        toast.info("Event proposal rejected.");
+      } catch (err) {
+        logSupabaseError("update_catch", "events", err);
+        return false;
+      }
+    }
+    return true;
   },
 
-  updateEventStatus(eventId: string, status: EventStatus) {
+  async updateEventStatus(eventId: string, status: EventStatus): Promise<boolean> {
     campusStore.setState((prev) => {
       const event = prev.events.find((e) => e.id === eventId);
       const audit: AuditLogEntry = {
@@ -1944,6 +1993,24 @@ export const campusStore = {
         auditLogs: [audit, ...prev.auditLogs],
       };
     });
+
+    if (typeof window !== "undefined" && navigator.onLine) {
+      try {
+        const { error } = await supabase
+          .from("events")
+          .update({ status })
+          .eq("id", eventId);
+
+        if (error) {
+          logSupabaseError("update", "events", error);
+          return false;
+        }
+      } catch (err) {
+        logSupabaseError("update_catch", "events", err);
+        return false;
+      }
+    }
+    return true;
   },
 
   updateRegistrationStatus(registrationId: string, status: Registration["status"]) {

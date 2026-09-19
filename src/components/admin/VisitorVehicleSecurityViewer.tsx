@@ -28,6 +28,8 @@ import { VisitorRecord, VehicleRecord } from "@/lib/types";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
+import { DateRangeFilter } from "./DateRangeFilter";
+
 interface VisitorVehicleSecurityViewerProps {
   state: CampusState;
   onOpenGateModal?: (() => void) | undefined;
@@ -41,11 +43,27 @@ export function VisitorVehicleSecurityViewer({
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "exited">("all");
   const [selectedVisitorPass, setSelectedVisitorPass] = useState<VisitorRecord | null>(null);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
 
   // Compute metrics
   const activeVisitors = state.visitorRecords.filter((v) => v.status === "active");
   const parkedVehicles = state.vehicleRecords.filter((v) => v.status === "parked");
   const evVehicles = state.vehicleRecords.filter((v) => v.vehicleType === "ev");
+
+  // Helper date check
+  const matchesDate = (timestampStr?: string) => {
+    if (!startDate && !endDate) return true;
+    if (!timestampStr) return false;
+    try {
+      const itemDate = new Date(timestampStr).toISOString().slice(0, 10);
+      if (startDate && itemDate < startDate) return false;
+      if (endDate && itemDate > endDate) return false;
+      return true;
+    } catch {
+      return true;
+    }
+  };
 
   // Filtered Visitors
   const filteredVisitors = state.visitorRecords.filter((v) => {
@@ -57,8 +75,9 @@ export function VisitorVehicleSecurityViewer({
       (v.vehicleNumber && v.vehicleNumber.toLowerCase().includes(searchQuery.toLowerCase()));
 
     if (!matchesSearch) return false;
-    if (statusFilter === "active") return v.status === "active";
-    if (statusFilter === "exited") return v.status === "exited";
+    if (statusFilter === "active" && v.status !== "active") return false;
+    if (statusFilter === "exited" && v.status !== "exited") return false;
+    if (!matchesDate(v.entryTime)) return false;
     return true;
   });
 
@@ -71,8 +90,9 @@ export function VisitorVehicleSecurityViewer({
       veh.parkingBay.toLowerCase().includes(searchQuery.toLowerCase());
 
     if (!matchesSearch) return false;
-    if (statusFilter === "active") return veh.status === "parked";
-    if (statusFilter === "exited") return veh.status === "exited";
+    if (statusFilter === "active" && veh.status !== "parked") return false;
+    if (statusFilter === "exited" && veh.status !== "exited") return false;
+    if (!matchesDate(veh.entryTime)) return false;
     return true;
   });
 
@@ -284,6 +304,19 @@ export function VisitorVehicleSecurityViewer({
           className="h-9 w-full rounded-xl border border-border/80 bg-background pl-8 pr-3 text-xs font-medium text-foreground placeholder:text-muted-foreground focus:border-[#1A3C6E] focus:outline-none"
         />
       </div>
+
+      {/* Date-Range Filter */}
+      <DateRangeFilter
+        startDate={startDate}
+        endDate={endDate}
+        onStartDateChange={setStartDate}
+        onEndDateChange={setEndDate}
+        onReset={() => {
+          setStartDate("");
+          setEndDate("");
+        }}
+        label={activeTab === "visitors" ? "Filter by Entry Date" : "Filter by Parking Date"}
+      />
 
       {/* Table: External Visitors */}
       {activeTab === "visitors" && (
