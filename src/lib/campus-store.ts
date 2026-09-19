@@ -1898,9 +1898,79 @@ export const campusStore = {
   },
 
   updateRegistrationStatus(registrationId: string, status: Registration["status"]) {
-    campusStore.setState((prev) => ({
-      registrations: prev.registrations.map((r) => (r.id === registrationId ? { ...r, status } : r)),
-    }));
+    const now = new Date().toISOString();
+    campusStore.setState((prev) => {
+      const targetReg = prev.registrations.find((r) => r.id === registrationId);
+      if (!targetReg) return prev;
+
+      const punchInTime =
+        status === "punched_in" || status === "attended"
+          ? targetReg.punchInTime || now
+          : targetReg.punchInTime;
+
+      const punchOutTime =
+        status === "attended"
+          ? targetReg.punchOutTime || now
+          : status === "punched_in"
+          ? undefined
+          : targetReg.punchOutTime;
+
+      const updatedRegs = prev.registrations.map((r) =>
+        r.id === registrationId
+          ? {
+              ...r,
+              status,
+              punchInTime,
+              punchOutTime,
+            }
+          : r
+      );
+
+      // Also ensure attendanceRecords has an entry for this student & event
+      const existingAtt = prev.attendanceRecords.find(
+        (a) => a.eventId === targetReg.eventId && a.userId === targetReg.userId
+      );
+
+      let updatedAttRecords = prev.attendanceRecords;
+      if (status === "punched_in" || status === "attended") {
+        if (existingAtt) {
+          updatedAttRecords = prev.attendanceRecords.map((a) =>
+            a.id === existingAtt.id
+              ? {
+                  ...a,
+                  punchInTime: a.punchInTime || punchInTime,
+                  punchOutTime: status === "attended" ? a.punchOutTime || punchOutTime : a.punchOutTime,
+                  verifiedMethod: a.verifiedMethod || "manual_override",
+                  synced: true,
+                }
+              : a
+          );
+        } else {
+          const newRecord: AttendanceRecord = {
+            id: `att-${Date.now()}-${targetReg.userId.slice(-4)}`,
+            eventId: targetReg.eventId,
+            userId: targetReg.userId,
+            userName: targetReg.userName,
+            userRollNo: targetReg.userRollNo,
+            department: targetReg.department,
+            timestamp: punchInTime || now,
+            punchInTime: punchInTime || now,
+            punchOutTime: status === "attended" ? punchOutTime || now : undefined,
+            verifiedMethod: "manual_override",
+            tokenUsed: "ADMIN-OVERRIDE",
+            synced: true,
+            distanceFromVenueMeters: 12,
+            certificateId: `GSFC-CERT-${targetReg.eventId.replace(/[^a-zA-Z0-9]/g, "").toUpperCase()}-${targetReg.userRollNo.replace(/[^a-zA-Z0-9]/g, "").slice(-4)}`,
+          };
+          updatedAttRecords = [newRecord, ...prev.attendanceRecords];
+        }
+      }
+
+      return {
+        registrations: updatedRegs,
+        attendanceRecords: updatedAttRecords,
+      };
+    });
   },
 
   submitFeedback(eventId: string, rating: number, comment: string) {

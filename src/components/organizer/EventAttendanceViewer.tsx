@@ -601,12 +601,35 @@ export function EventAttendanceViewer({
             ) : (
               filteredRoster.map((reg) => {
                 const att = eventAttendanceRecords.find((a) => a.userId === reg.userId);
-                const hasPunchIn = Boolean(reg.punchInTime || att?.punchInTime || att?.timestamp);
-                const hasPunchOut = Boolean(reg.punchOutTime || att?.punchOutTime);
+                const hasPunchIn = Boolean(
+                  reg.punchInTime || att?.punchInTime || att?.timestamp || reg.status === "punched_in" || reg.status === "attended"
+                );
+                const hasPunchOut = Boolean(reg.punchOutTime || att?.punchOutTime || reg.status === "attended");
                 const isCompleted = reg.status === "attended" || hasPunchOut;
                 const isCertAccessGranted = Boolean(
                   activeEvent.certificatesReleased || reg.certificateUnlocked || att?.certificateUnlocked
                 );
+
+                const formatTimeDisplay = (timeStr?: string) => {
+                  if (!timeStr) return null;
+                  try {
+                    const d = new Date(timeStr);
+                    if (!isNaN(d.getTime())) {
+                      return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true });
+                    }
+                  } catch {}
+                  return timeStr.slice(11, 16);
+                };
+
+                const punchInTimeStr =
+                  formatTimeDisplay(reg.punchInTime) ||
+                  formatTimeDisplay(att?.punchInTime) ||
+                  formatTimeDisplay(att?.timestamp) ||
+                  (hasPunchIn ? "Active" : null);
+
+                const punchOutTimeStr =
+                  formatTimeDisplay(reg.punchOutTime) ||
+                  formatTimeDisplay(att?.punchOutTime);
 
                 return (
                   <tr key={reg.id} className="hover:bg-card/40 transition-colors">
@@ -627,7 +650,7 @@ export function EventAttendanceViewer({
                         <div>
                           <span className="font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
                             <LogIn className="size-3" />
-                            {reg.punchInTime ? reg.punchInTime.slice(11, 16) : att?.timestamp ? att.timestamp.slice(11, 16) : "10:04 AM"}
+                            {punchInTimeStr}
                           </span>
                           <span className="text-[10px] text-muted-foreground flex items-center gap-1">
                             <MapPin className="size-2.5 text-brand" />
@@ -635,7 +658,17 @@ export function EventAttendanceViewer({
                           </span>
                         </div>
                       ) : (
-                        <span className="text-muted-foreground font-mono text-[11px]">— Not Punched —</span>
+                        <div className="flex flex-col items-start gap-1">
+                          <span className="text-muted-foreground font-mono text-[11px]">— Not Punched —</span>
+                          <button
+                            type="button"
+                            onClick={() => campusStore.updateRegistrationStatus(reg.id, "punched_in")}
+                            className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 underline flex items-center gap-1"
+                            title="Quick Punch In"
+                          >
+                            <LogIn className="size-2.5" /> Punch In Now
+                          </button>
+                        </div>
                       )}
                     </td>
 
@@ -645,15 +678,24 @@ export function EventAttendanceViewer({
                         <div>
                           <span className="font-bold text-blue-600 dark:text-blue-400 flex items-center gap-1">
                             <LogOut className="size-3" />
-                            {reg.punchOutTime ? reg.punchOutTime.slice(11, 16) : "04:55 PM"}
+                            {punchOutTimeStr || "Completed"}
                           </span>
                           <span className="text-[10px] text-muted-foreground">Session Completed</span>
                         </div>
                       ) : hasPunchIn ? (
-                        <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1">
-                          <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                          Active in Hall
-                        </span>
+                        <div className="flex flex-col items-start gap-1">
+                          <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1">
+                            <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                            Active in Hall
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => campusStore.updateRegistrationStatus(reg.id, "attended")}
+                            className="text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 underline flex items-center gap-1"
+                          >
+                            <LogOut className="size-2.5" /> Punch Out
+                          </button>
+                        </div>
                       ) : (
                         <span className="text-muted-foreground font-mono text-[11px]">—</span>
                       )}
