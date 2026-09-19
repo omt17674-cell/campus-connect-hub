@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import {
   Building2,
   Calendar,
@@ -31,15 +32,57 @@ export function InternshipDetailModal({
   onApply,
   hasApplied = false,
 }: InternshipDetailModalProps) {
+  // Handle Escape key to close modal
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onClose();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen, onClose]);
+
+  // Lock body scroll while modal is active
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-md">
-      <div className="relative flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-3xl border border-border/80 bg-card shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="internship-detail-title"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-md animate-in fade-in duration-200"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+    >
+      <div
+        className="relative flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-3xl border border-border/80 bg-card shadow-2xl animate-in fade-in zoom-in-95 duration-200"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header with GSFC gradient */}
         <div className="relative overflow-hidden bg-gradient-to-r from-[#1A3C6E] via-[#0E2342] to-[#1A3C6E] p-6 text-white">
-          <div className="absolute -right-10 -top-10 size-40 rounded-full bg-[#F2A93B]/15 blur-2xl" />
-          <div className="flex items-start justify-between gap-4">
+          <div className="pointer-events-none absolute -right-10 -top-10 size-40 rounded-full bg-[#F2A93B]/15 blur-2xl" />
+          <div className="relative z-10 flex items-start justify-between gap-4">
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <span className="rounded-full bg-[#F2A93B]/20 px-3 py-0.5 text-[11px] font-black uppercase text-[#F2A93B]">
@@ -49,7 +92,7 @@ export function InternshipDetailModal({
                   {internship.department}
                 </span>
               </div>
-              <h2 className="mt-2 text-xl font-black text-white sm:text-2xl">
+              <h2 id="internship-detail-title" className="mt-2 text-xl font-black text-white sm:text-2xl">
                 {internship.title}
               </h2>
               <div className="mt-1 flex items-center gap-2 text-sm font-semibold text-white/80">
@@ -60,10 +103,14 @@ export function InternshipDetailModal({
 
             <button
               type="button"
-              onClick={onClose}
-              className="flex size-9 items-center justify-center rounded-full bg-white/10 text-white/80 transition-colors hover:bg-white/20 hover:text-white"
+              onClick={(e) => {
+                e.stopPropagation();
+                onClose();
+              }}
+              aria-label="Close internship details"
+              className="relative z-20 flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-full bg-white/10 text-white/90 transition-all hover:bg-white/20 hover:text-white hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-[#F2A93B]"
             >
-              <X className="size-4" />
+              <X className="size-5" />
             </button>
           </div>
         </div>

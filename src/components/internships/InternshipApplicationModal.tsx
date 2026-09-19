@@ -1,10 +1,12 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   AlertCircle,
+  Briefcase,
   Building2,
   Calendar,
   Check,
   CheckCircle2,
+  Clock,
   FileCheck2,
   FileText,
   GraduationCap,
@@ -22,6 +24,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Internship, UserProfile, NewRegisteredStudent } from "@/lib/types";
 import { campusStore } from "@/lib/campus-store";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 interface InternshipApplicationModalProps {
@@ -93,15 +96,67 @@ export function InternshipApplicationModal({
     `Respected Hiring Team, I am submitting my formal application for the ${internship.title} position at ${internship.companyName}.`
   );
 
-  // Documents
+  // Documents (Section 5)
   const [resumeFileName, setResumeFileName] = useState<string>("Resume_Om_Thakkar_2026.pdf");
   const [collegeIdAttached, setCollegeIdAttached] = useState<boolean>(true);
   const [isUploadingResume, setIsUploadingResume] = useState(false);
+
+  // Section 6: Schedule & Modality
+  const [expectedJoiningDate, setExpectedJoiningDate] = useState("2026-06-01");
+  const [preferredModality, setPreferredModality] = useState(internship.mode || "In-Plant / On-Site");
+  const [dailyShiftTimings, setDailyShiftTimings] = useState("General Shift: 09:00 AM - 05:30 PM");
+  const [commuteArrangement, setCommuteArrangement] = useState("University Bus / Campus Resident");
+
+  // Section 7: Company Details & Official Offer / Confirmation
+  const [companyName, setCompanyName] = useState(internship.companyName || "Gujarat State Fertilizers & Chemicals (GSFC) Ltd.");
+  const [companyDivision, setCompanyDivision] = useState(internship.department || "Process Automation & Edge Systems");
+  const [internshipRole, setInternshipRole] = useState(internship.title || "Industrial Process Automation & IoT Intern");
+  const [hrMentorName, setHrMentorName] = useState("Dr. R. K. Patel (Senior Process GM / Industrial Mentor)");
+  const [hrEmail, setHrEmail] = useState("careers.industrial@gsfc.co.in");
+  const [hrPhone, setHrPhone] = useState("+91 265 2240451");
+  const [companyLocation, setCompanyLocation] = useState(
+    internship.location || "Fertilizernagar, P.O. Petrochemicals, Vadodara, Gujarat 391750"
+  );
+  const [companyStipend, setCompanyStipend] = useState(internship.stipend || "₹12,000 / month");
+
+  // Offer Letter or Confirmation Mail Document State
+  const [offerDocumentType, setOfferDocumentType] = useState<"offer_letter" | "confirmation_mail">("offer_letter");
+  const [offerDocumentName, setOfferDocumentName] = useState<string>("GSFC_Industrial_Offer_Letter_2026.pdf");
+  const [isUploadingOffer, setIsUploadingOffer] = useState(false);
 
   // Declaration
   const [declarationAccepted, setDeclarationAccepted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionSuccessNotice, setSubmissionSuccessNotice] = useState<string | null>(null);
+
+  // Handle Escape key to close modal
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onClose();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen, onClose]);
+
+  // Lock body scroll while modal is active
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -113,6 +168,20 @@ export function InternshipApplicationModal({
         setResumeFileName(file.name);
         setIsUploadingResume(false);
         toast.success(`Resume "${file.name}" uploaded successfully!`);
+      }, 600);
+    }
+  };
+
+  const handleOfferDocumentSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setIsUploadingOffer(true);
+      setTimeout(() => {
+        setOfferDocumentName(file.name);
+        setIsUploadingOffer(false);
+        toast.success(
+          `${offerDocumentType === "offer_letter" ? "Company offer letter" : "Confirmation mail"} "${file.name}" uploaded successfully!`
+        );
       }, 600);
     }
   };
@@ -160,6 +229,24 @@ export function InternshipApplicationModal({
           dob,
           gender,
           college,
+          schedule: {
+            expectedJoiningDate,
+            preferredModality,
+            dailyShiftTimings,
+            commuteArrangement,
+          },
+          companyDetails: {
+            companyName,
+            division: companyDivision,
+            designation: internshipRole,
+            hrMentorName,
+            hrEmail,
+            hrPhone,
+            companyLocation,
+            stipend: companyStipend,
+            offerDocumentName,
+            offerDocumentType,
+          },
         },
         address: {
           street: address,
@@ -178,6 +265,15 @@ export function InternshipApplicationModal({
         documents: [
           { name: resumeFileName, url: `/resumes/${resumeFileName}`, type: "resume" },
           { name: `College_ID_${enrollmentNumber}.pdf`, url: `/id-cards/${enrollmentNumber}.pdf`, type: "college_id" },
+          ...(offerDocumentName
+            ? [
+                {
+                  name: offerDocumentName,
+                  url: `/offer-letters/${offerDocumentName}`,
+                  type: offerDocumentType === "confirmation_mail" ? "confirmation_mail" : "offer_letter",
+                },
+              ]
+            : []),
         ],
         declarationAccepted: true,
       });
@@ -196,12 +292,25 @@ export function InternshipApplicationModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-background/80 backdrop-blur-md">
-      <div className="relative flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-3xl border border-border/80 bg-card shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="internship-form-modal-title"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-background/80 backdrop-blur-md animate-in fade-in duration-200"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+    >
+      <div
+        className="relative flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-3xl border border-border/80 bg-card shadow-2xl animate-in fade-in zoom-in-95 duration-200"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="relative overflow-hidden bg-gradient-to-r from-[#1A3C6E] via-[#0E2342] to-[#1A3C6E] p-5 sm:p-6 text-white">
-          <div className="absolute -right-8 -top-8 size-36 rounded-full bg-[#F2A93B]/15 blur-2xl" />
-          <div className="flex items-start justify-between gap-4">
+          <div className="pointer-events-none absolute -right-8 -top-8 size-36 rounded-full bg-[#F2A93B]/15 blur-2xl" />
+          <div className="relative z-10 flex items-start justify-between gap-4">
             <div>
               <div className="flex items-center gap-2">
                 <span className="rounded-full bg-[#F2A93B]/20 px-3 py-0.5 text-[10px] font-black uppercase tracking-wider text-[#F2A93B]">
@@ -209,7 +318,7 @@ export function InternshipApplicationModal({
                 </span>
                 <span className="text-xs text-white/80 font-mono">ID: {internship.id}</span>
               </div>
-              <h2 className="mt-2 text-lg sm:text-2xl font-black text-white">
+              <h2 id="internship-form-modal-title" className="mt-2 text-lg sm:text-2xl font-black text-white">
                 Application Form — {internship.title}
               </h2>
               <div className="mt-1 flex items-center gap-2 text-xs font-semibold text-white/85">
@@ -224,10 +333,14 @@ export function InternshipApplicationModal({
 
             <button
               type="button"
-              onClick={onClose}
-              className="flex size-8 items-center justify-center rounded-full bg-white/10 text-white/80 transition-colors hover:bg-white/20 hover:text-white"
+              onClick={(e) => {
+                e.stopPropagation();
+                onClose();
+              }}
+              aria-label="Close application form"
+              className="relative z-20 flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-full bg-white/10 text-white/90 transition-all hover:bg-white/20 hover:text-white hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-[#F2A93B]"
             >
-              <X className="size-4" />
+              <X className="size-5" />
             </button>
           </div>
         </div>
@@ -641,10 +754,274 @@ export function InternshipApplicationModal({
               </div>
             </div>
 
-            {/* SECTION 6: DECLARATION & CONSENT */}
+            {/* SECTION 6: SCHEDULE & WORK MODALITY */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 border-b border-border/70 pb-2">
+                <Clock className="size-4 text-[#F2A93B]" />
+                <h3 className="text-xs font-black uppercase tracking-wider text-foreground">
+                  6. Internship Schedule & Work Modality
+                </h3>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div>
+                  <label className="text-[11px] font-bold text-muted-foreground">Expected Joining Date</label>
+                  <input
+                    type="date"
+                    value={expectedJoiningDate}
+                    onChange={(e) => setExpectedJoiningDate(e.target.value)}
+                    className="mt-1 w-full rounded-xl border border-border bg-background p-2.5 text-xs font-medium text-foreground focus:border-brand focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-bold text-muted-foreground">Preferred Work Modality</label>
+                  <select
+                    value={preferredModality}
+                    onChange={(e) => setPreferredModality(e.target.value)}
+                    className="mt-1 w-full rounded-xl border border-border bg-background p-2.5 text-xs font-medium text-foreground focus:border-brand focus:outline-none"
+                  >
+                    <option value="In-Plant / On-Site">In-Plant / On-Site</option>
+                    <option value="Hybrid (Office + Remote)">Hybrid (Office + Remote)</option>
+                    <option value="Remote / Virtual">Remote / Virtual</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-bold text-muted-foreground">Daily Shift Timings</label>
+                  <input
+                    type="text"
+                    value={dailyShiftTimings}
+                    onChange={(e) => setDailyShiftTimings(e.target.value)}
+                    placeholder="e.g. 09:00 AM - 05:30 PM"
+                    className="mt-1 w-full rounded-xl border border-border bg-background p-2.5 text-xs font-medium text-foreground focus:border-brand focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-bold text-muted-foreground">Commute / Stay Arrangement</label>
+                  <input
+                    type="text"
+                    value={commuteArrangement}
+                    onChange={(e) => setCommuteArrangement(e.target.value)}
+                    placeholder="e.g. University Bus / Hostel"
+                    className="mt-1 w-full rounded-xl border border-border bg-background p-2.5 text-xs font-medium text-foreground focus:border-brand focus:outline-none"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* SECTION 7: COMPANY DETAILS & OFFER LETTER / CONFIRMATION MAIL */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 border-b border-border/70 pb-2">
+                <Building2 className="size-4 text-[#F2A93B]" />
+                <h3 className="text-xs font-black uppercase tracking-wider text-foreground">
+                  7. Company Details & Offer Letter / Confirmation Mail
+                </h3>
+              </div>
+
+              {/* Requirement Guidance Note */}
+              <div className="rounded-2xl border border-blue-500/20 bg-blue-500/10 p-4 text-xs text-blue-900 dark:text-blue-200">
+                <div className="flex items-center gap-2 font-bold">
+                  <Info className="size-4 text-brand shrink-0" />
+                  <span>Official Corporate Placement Verification</span>
+                </div>
+                <p className="mt-1 leading-relaxed text-blue-800/90 dark:text-blue-300">
+                  Please verify the sponsoring company details and <strong>upload your official company offer letter or selection confirmation mail</strong>. The Dean's Office and TPC require this document to validate your industrial tenure, issue the formal university NOC, and activate your daily GPS attendance gate.
+                </p>
+              </div>
+
+              {/* Company Information Inputs */}
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <div>
+                  <label className="text-[11px] font-bold text-muted-foreground">
+                    Company / Organization Name <span className="text-destructive">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={companyName}
+                    onChange={(e) => setCompanyName(e.target.value)}
+                    placeholder="e.g. GSFC Ltd. / Tata Motors / L&T"
+                    className="mt-1 w-full rounded-xl border border-border bg-background p-2.5 text-xs font-medium text-foreground focus:border-brand focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-bold text-muted-foreground">
+                    Designated Department / Division
+                  </label>
+                  <input
+                    type="text"
+                    value={companyDivision}
+                    onChange={(e) => setCompanyDivision(e.target.value)}
+                    placeholder="e.g. Automation & Edge Systems"
+                    className="mt-1 w-full rounded-xl border border-border bg-background p-2.5 text-xs font-medium text-foreground focus:border-brand focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-bold text-muted-foreground">
+                    Internship Role / Designation <span className="text-destructive">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={internshipRole}
+                    onChange={(e) => setInternshipRole(e.target.value)}
+                    placeholder="e.g. Graduate Engineering Trainee"
+                    className="mt-1 w-full rounded-xl border border-border bg-background p-2.5 text-xs font-medium text-foreground focus:border-brand focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-bold text-muted-foreground">
+                    HR / Industry Mentor Full Name <span className="text-destructive">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={hrMentorName}
+                    onChange={(e) => setHrMentorName(e.target.value)}
+                    placeholder="e.g. Mr. Rajesh Patel (HR Lead)"
+                    className="mt-1 w-full rounded-xl border border-border bg-background p-2.5 text-xs font-medium text-foreground focus:border-brand focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-bold text-muted-foreground">
+                    Official HR / Mentor Email <span className="text-destructive">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={hrEmail}
+                    onChange={(e) => setHrEmail(e.target.value)}
+                    placeholder="e.g. hr.careers@company.com"
+                    className="mt-1 w-full rounded-xl border border-border bg-background p-2.5 text-xs font-medium text-foreground focus:border-brand focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-bold text-muted-foreground">
+                    HR / Office Contact Number
+                  </label>
+                  <input
+                    type="tel"
+                    value={hrPhone}
+                    onChange={(e) => setHrPhone(e.target.value)}
+                    placeholder="e.g. +91 265 2240451"
+                    className="mt-1 w-full rounded-xl border border-border bg-background p-2.5 text-xs font-medium text-foreground focus:border-brand focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-bold text-muted-foreground">
+                    Monthly Stipend / Remuneration
+                  </label>
+                  <input
+                    type="text"
+                    value={companyStipend}
+                    onChange={(e) => setCompanyStipend(e.target.value)}
+                    placeholder="e.g. ₹15,000 / month"
+                    className="mt-1 w-full rounded-xl border border-border bg-background p-2.5 text-xs font-medium text-foreground focus:border-brand focus:outline-none"
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="text-[11px] font-bold text-muted-foreground">
+                    Corporate Office / Plant Location Address <span className="text-destructive">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={companyLocation}
+                    onChange={(e) => setCompanyLocation(e.target.value)}
+                    placeholder="e.g. P.O. Petrochemicals, Vadodara, Gujarat 391750"
+                    className="mt-1 w-full rounded-xl border border-border bg-background p-2.5 text-xs font-medium text-foreground focus:border-brand focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Offer Document / Confirmation Mail Upload Box */}
+              <div className="rounded-2xl border border-border/80 bg-muted/20 p-4 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <span className="text-xs font-black text-foreground">
+                      Upload Offer Letter or Confirmation Mail
+                    </span>
+                    <p className="text-[10px] text-muted-foreground">
+                      Upload your formal appointment letter or selection confirmation email from the company
+                    </p>
+                  </div>
+
+                  {/* Document Type Selector */}
+                  <div className="flex items-center gap-1 rounded-xl bg-card p-1 border border-border/60">
+                    <button
+                      type="button"
+                      onClick={() => setOfferDocumentType("offer_letter")}
+                      className={cn(
+                        "rounded-lg px-2.5 py-1 text-[10px] font-bold transition-all",
+                        offerDocumentType === "offer_letter"
+                          ? "bg-[#1A3C6E] text-white shadow-sm"
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      Offer Letter (PDF)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setOfferDocumentType("confirmation_mail")}
+                      className={cn(
+                        "rounded-lg px-2.5 py-1 text-[10px] font-bold transition-all",
+                        offerDocumentType === "confirmation_mail"
+                          ? "bg-[#1A3C6E] text-white shadow-sm"
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      Confirmation Mail
+                    </button>
+                  </div>
+                </div>
+
+                <div className="mt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-border/70 bg-card p-3.5">
+                  <div className="flex items-center gap-3 truncate">
+                    <div className="flex size-10 items-center justify-center rounded-xl bg-[#F2A93B]/15 text-[#F2A93B] shrink-0">
+                      <FileCheck2 className="size-5" />
+                    </div>
+                    <div className="truncate">
+                      <div className="flex items-center gap-2">
+                        <span className="truncate text-xs font-bold text-foreground">
+                          {isUploadingOffer ? "Uploading document..." : offerDocumentName}
+                        </span>
+                        <span className="rounded bg-emerald-500/15 px-2 py-0.5 text-[9px] font-black text-emerald-600 dark:text-emerald-400 shrink-0">
+                          {offerDocumentType === "offer_letter" ? "Offer Letter" : "Confirmation Mail"}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                        Accepted formats: PDF, PNG, JPG, DOCX (Max 10MB)
+                      </p>
+                    </div>
+                  </div>
+
+                  <label className="cursor-pointer inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#1A3C6E]/10 hover:bg-[#1A3C6E]/20 text-[#1A3C6E] dark:bg-white/10 dark:hover:bg-white/20 dark:text-white px-4 py-2 text-xs font-bold transition-colors shrink-0">
+                    <Upload className="size-3.5" />
+                    <span>Replace Document</span>
+                    <input
+                      type="file"
+                      accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
+                      onChange={handleOfferDocumentSelect}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            {/* SECTION 8: DECLARATION & CONSENT */}
             <div className="rounded-2xl border border-border/80 bg-card/60 p-4 space-y-3">
               <h4 className="text-xs font-black uppercase tracking-wider text-foreground">
-                6. Student Declaration & Attendance Agreement
+                8. Student Declaration & Attendance Agreement
               </h4>
 
               <label className="flex items-start gap-3 cursor-pointer select-none">
@@ -656,7 +1033,7 @@ export function InternshipApplicationModal({
                   className="mt-1 size-4 rounded border-border text-brand focus:ring-brand"
                 />
                 <span className="text-xs leading-relaxed text-muted-foreground">
-                  I confirm that the information provided by me is correct, and I agree to strictly abide by the university's internship rules, corporate workplace policies, and the daily live GPS attendance punch requirements. I understand that falsification will result in immediate disqualification and disciplinary action by the Dean's Office.
+                  I confirm that all personal, academic, and company offer details provided above (including the attached offer letter / confirmation email) are authentic and correct. I agree to strictly abide by the university's internship rules, corporate workplace policies, and the daily live GPS attendance punch requirements. I understand that falsification will result in immediate disqualification and disciplinary action by the Dean's Office.
                 </span>
               </label>
             </div>

@@ -284,6 +284,29 @@ export function MyInternshipApplicationsView({
                 </div>
               </div>
 
+              {/* Attached Verification & Company Documents */}
+              {app.documents && app.documents.length > 0 && (
+                <div className="border-t border-border/60 pt-3 pb-1">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
+                    Attached Verification Documents & Company Proofs ({app.documents.length})
+                  </span>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {app.documents.map((doc, dIdx) => (
+                      <div
+                        key={dIdx}
+                        className="flex items-center gap-1.5 rounded-xl border border-border/70 bg-muted/40 px-3 py-1.5 text-xs font-semibold text-foreground"
+                      >
+                        <FileCheck className="size-3.5 text-[#F2A93B]" />
+                        <span className="truncate max-w-[200px]">{doc.name}</span>
+                        <span className="rounded bg-brand/10 px-1.5 py-0.5 text-[9px] font-bold text-brand uppercase">
+                          {doc.type.replace("_", " ")}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Reviewer Feedback / Remarks */}
               {(app.adminComment || app.deanComment || app.rejectionReason) && (
                 <div className="mt-2 space-y-2 border-t border-border/60 pt-4">
