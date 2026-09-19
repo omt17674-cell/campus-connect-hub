@@ -105,7 +105,6 @@ export function serializeAttendanceForDb(att: Partial<AttendanceRecord>): any {
     user_longitude: att.userLongitude || null,
     distance_from_venue_meters: att.distanceFromVenueMeters || null,
     location_verified: att.locationVerified ?? true,
-    certificate_unlocked: att.certificateUnlocked ?? false,
     synced: true,
   };
 }
