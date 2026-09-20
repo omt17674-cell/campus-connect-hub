@@ -690,6 +690,20 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
       console.warn("[Registration OTP] Email dispatch error:", emailErr);
     }
 
+    if (!emailResult.sent) {
+      return jsonResponse(
+        {
+          success: false,
+          code: "EMAIL_DELIVERY_NOT_CONFIGURED",
+          message:
+            "Verification email could not be sent. Please configure RESEND_API_KEY or SMTP settings in Vercel, then try again.",
+          emailProvider: emailResult.provider,
+          emailConfigured: emailResult.configured,
+        },
+        503,
+      );
+    }
+
     // Send SMS OTP (secondary channel)
     let smsNote = "";
     if (body.mobileNumber) {
