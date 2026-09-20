@@ -1,5 +1,5 @@
 import { supabaseSync } from "./supabase-sync";
-import { supabaseAdmin } from "./supabase-admin";
+import { isSupabaseAdminConfigured, supabaseAdmin } from "./supabase-admin";
 import { confirmUserEmailInAuth } from "./postgres";
 import { sendRegistrationOTP, sendPasswordResetOTP } from "./emailService";
 import { validateQrPayload } from "../lib/qr-engine";
@@ -982,6 +982,17 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
 
   // 3. Authentication: Google Workspace SSO
   if (path === "/api/auth/google" && method === "POST") {
+    if (!isSupabaseAdminConfigured) {
+      return jsonResponse(
+        {
+          success: false,
+          code: "DATABASE_NOT_CONFIGURED",
+          message: "Google sign-in is temporarily unavailable. Configure SUPABASE_SERVICE_ROLE_KEY on the server.",
+        },
+        503,
+      );
+    }
+
     const bearerToken = (request.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "").trim();
     if (!bearerToken) {
       return jsonResponse({ success: false, message: "A valid Supabase authentication token is required." }, 401);
