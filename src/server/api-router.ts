@@ -2151,5 +2151,123 @@ ${clubs.map((c) => `- ${c.name} (${c.category}): ${c.description || "Active stud
     }
   }
 
+  // Phone.Email Authentication - Verify phone number
+  if (path === "/api/auth/phone-email/verify" && method === "POST") {
+    const body = await parseBody<{ user_json_url: string; role?: string }>(request);
+    if (!body || !body.user_json_url) {
+      return jsonResponse(
+        { success: false, message: "user_json_url is required" },
+        400
+      );
+    }
+
+    try {
+      // Import the phone email service
+      const { verifyPhoneEmailUser } = await import("./phoneEmailService");
+      
+      // Verify phone number with Phone.Email service
+      const verificationResult = await verifyPhoneEmailUser(body.user_json_url);
+      
+      if (!verificationResult.success) {
+        return jsonResponse(
+          { 
+            success: false, 
+            message: verificationResult.error || "Phone verification failed" 
+          },
+          400
+        );
+      }
+
+      const phoneData = verificationResult.data!;
+      const fullPhoneNumber = verificationResult.fullPhoneNumber!;
+      
+      // Check if this phone number is already registered
+      const { data: existingStudent, error: studentError } = await supabaseAdmin
+        .from("new_registered_students")
+        .select("*")
+        .eq("mobile_number", fullPhoneNumber)
+        .maybeSingle();
+
+      if (studentError && studentError.code !== "PGRST116") {
+        console.error("[PhoneEmail] Database lookup error:", studentError);
+      }
+
+      // If student exists, return their account info for login
+      if (existingStudent) {
+        const account = {
+          role: (existingStudent.role || body.role || "student") as any,
+          roleTitle: existingStudent.role === "admin" ? "Administrator" : 
+                    existingStudent.role === "organizer" ? "Event Organizer" : "GSFC Student",
+          roleBadge: existingStudent.roll_no || "N/A",
+          name: existingStudent.full_name || `${phoneData.user_first_name || ""} ${phoneData.user_last_name || ""}`.trim() || "Student",
+          idOrRoll: existingStudent.roll_no || fullPhoneNumber,
+          email: existingStudent.email || phoneData.user_email || `${fullPhoneNumber}@phone.verified`,
+          password: "", // Phone-verified accounts don't need password storage
+          profile: {
+            id: existingStudent.id,
+            name: existingStudent.full_name,
+            rollNo: existingStudent.roll_no,
+            email: existingStudent.email,
+            role: existingStudent.role || "student",
+            department: existingStudent.department || "Not Specified",
+            school: existingStudent.school || "GSFC University",
+            degree: existingStudent.degree || "Undergraduate",
+            semester: existingStudent.semester || 1,
+            residenceType: existingStudent.residence_type || "dayscholar",
+            hostelBlockOrBusRoute: existingStudent.hostel_block_or_bus_route,
+            clubsInterested: existingStudent.clubs_interested || [],
+            mobileNumber: fullPhoneNumber,
+            avatar: existingStudent.full_name?.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase() || "ST",
+            points: 100,
+            streakDays: 1,
+            volunteerHours: 0,
+            attendanceRate: 100,
+            badges: ["b1"],
+            isVerified: true,
+          },
+        };
+
+        return jsonResponse({
+          success: true,
+          message: `Welcome back, ${existingStudent.full_name}!`,
+          account,
+          isExistingUser: true,
+          phoneData: {
+            countryCode: phoneData.user_country_code,
+            phoneNumber: phoneData.user_phone_number,
+            fullPhoneNumber,
+            firstName: phoneData.user_first_name,
+            lastName: phoneData.user_last_name,
+          },
+        });
+      }
+
+      // New user - return phone data for registration completion
+      return jsonResponse({
+        success: true,
+        message: "Phone number verified successfully. Please complete your registration.",
+        isExistingUser: false,
+        phoneData: {
+          countryCode: phoneData.user_country_code,
+          phoneNumber: phoneData.user_phone_number,
+          fullPhoneNumber,
+          firstName: phoneData.user_first_name,
+          lastName: phoneData.user_last_name,
+          email: phoneData.user_email,
+        },
+      });
+
+    } catch (err: any) {
+      console.error("[PhoneEmail] Verification error:", err);
+      return jsonResponse(
+        {
+          success: false,
+          message: err?.message || "Failed to verify phone number",
+        },
+        500
+      );
+    }
+  }
+
   return jsonResponse({ error: "Route not found in GSFC API Gateway" }, 404);
 }

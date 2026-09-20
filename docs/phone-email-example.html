@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phone.Email Authentication - Test Example</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .demo-section {
+            background: #f7f9fc;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 25px;
+        }
+
+        .demo-section h2 {
+            color: #333;
+            font-size: 18px;
+            margin-bottom: 15px;
+        }
+
+        #signInContainer {
+            margin: 20px 0;
+        }
+
+        .result-box {
+            background: #e8f5e9;
+            border: 2px solid #4caf50;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .result-box.show {
+            display: block;
+        }
+
+        .result-box h3 {
+            color: #2e7d32;
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+
+        .result-item {
+            background: white;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+
+        .result-item strong {
+            color: #1976d2;
+            display: inline-block;
+            min-width: 130px;
+        }
+
+        .code-section {
+            background: #263238;
+            color: #aed581;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 25px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            overflow-x: auto;
+        }
+
+        .code-section h3 {
+            color: #ffab91;
+            margin-bottom: 10px;
+        }
+
+        .info-box {
+            background: #fff3e0;
+            border-left: 4px solid #ff9800;
+            padding: 15px;
+            margin-top: 20px;
+            border-radius: 4px;
+        }
+
+        .info-box strong {
+            color: #e65100;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 10px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            color: #999;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📱 Phone.Email Test</h1>
+            <p>GSFC University - Campus Connect Hub</p>
+        </div>
+
+        <div class="demo-section">
+            <h2>🔐 Phone Number Authentication</h2>
+            <p style="color: #666; font-size: 13px; margin-bottom: 15px;">
+                Click the button below to verify your phone number using Phone.Email
+            </p>
+
+            <div id="signInContainer">
+                <div class="pe_signin_button" data-client-id="11230043630311578801"></div>
+            </div>
+
+            <div id="loadingIndicator" class="loading" style="display: none;">
+                <div class="spinner"></div>
+                <p>Loading Phone.Email widget...</p>
+            </div>
+        </div>
+
+        <div id="resultBox" class="result-box">
+            <h3>✅ Phone Verification Successful!</h3>
+            <div id="resultContent"></div>
+        </div>
+
+        <div class="info-box">
+            <strong>ℹ️ Note:</strong> In production, the <code>user_json_url</code> must be verified on your backend server for security. Never trust client-side data alone.
+        </div>
+
+        <div class="code-section">
+            <h3>Backend Verification Required:</h3>
+            <pre>// Example: Node.js backend
+const response = await fetch(user_json_url);
+const userData = await response.json();
+
+console.log(userData.user_country_code);
+console.log(userData.user_phone_number);</pre>
+        </div>
+
+        <div class="footer">
+            <p>Powered by Phone.Email & GSFC Campus Connect Hub</p>
+        </div>
+    </div>
+
+    <script>
+        // Show loading initially
+        document.getElementById('loadingIndicator').style.display = 'block';
+
+        function loadScript() {
+            // Create a script element
+            const script = document.createElement('script');
+            script.src = 'https://www.phone.email/sign_in_button_v1.js';
+            script.async = true;
+
+            script.onload = () => {
+                console.log('Phone.Email script loaded successfully');
+                document.getElementById('loadingIndicator').style.display = 'none';
+            };
+
+            script.onerror = () => {
+                console.error('Failed to load Phone.Email script');
+                document.getElementById('loadingIndicator').innerHTML = 
+                    '<p style="color: #d32f2f;">❌ Failed to load Phone.Email service. Please check your internet connection.</p>';
+            };
+
+            // Append the script to the document body
+            document.body.appendChild(script);
+
+            // Define the phoneEmailListener function
+            window.phoneEmailListener = (userObj) => {
+                const { user_json_url } = userObj;
+                
+                console.log('Phone verification successful!');
+                console.log('User JSON URL:', user_json_url);
+
+                // In production, send this URL to your backend:
+                // await fetch('/api/auth/phone-email/verify', {
+                //   method: 'POST',
+                //   headers: { 'Content-Type': 'application/json' },
+                //   body: JSON.stringify({ user_json_url })
+                // });
+
+                // For demo purposes, fetch and display the data
+                fetchAndDisplayUserData(user_json_url);
+            };
+        }
+
+        async function fetchAndDisplayUserData(userJsonUrl) {
+            try {
+                const response = await fetch(userJsonUrl);
+                const userData = await response.json();
+
+                console.log('User Data:', userData);
+
+                // Display results
+                const resultBox = document.getElementById('resultBox');
+                const resultContent = document.getElementById('resultContent');
+
+                const fullPhone = `${userData.user_country_code}${userData.user_phone_number}`;
+                const name = `${userData.user_first_name || ''} ${userData.user_last_name || ''}`.trim() || 'Not provided';
+
+                resultContent.innerHTML = `
+                    <div class="result-item">
+                        <strong>Country Code:</strong> ${userData.user_country_code}
+                    </div>
+                    <div class="result-item">
+                        <strong>Phone Number:</strong> ${userData.user_phone_number}
+                    </div>
+                    <div class="result-item">
+                        <strong>Full Phone:</strong> ${fullPhone}
+                    </div>
+                    <div class="result-item">
+                        <strong>Name:</strong> ${name}
+                    </div>
+                    ${userData.user_email ? `
+                    <div class="result-item">
+                        <strong>Email:</strong> ${userData.user_email}
+                    </div>
+                    ` : ''}
+                `;
+
+                resultBox.classList.add('show');
+
+                // Show success alert
+                alert('Phone verification successful! Check the page for details.');
+
+            } catch (error) {
+                console.error('Error fetching user data:', error);
+                alert('Phone verification completed, but failed to fetch user details. Check console for user_json_url.');
+            }
+        }
+
+        // Load script on page load
+        window.onload = loadScript;
+    </script>
+</body>
+</html>

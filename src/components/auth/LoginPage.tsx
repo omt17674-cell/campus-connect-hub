@@ -43,6 +43,7 @@ import { ShortCampusTourModal } from "@/components/tour/ShortCampusTourModal";
 import { supabase } from "@/lib/supabase";
 import { apiClient } from "@/lib/api-client";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
+import { PhoneEmailAuthButton } from "@/components/auth/PhoneEmailAuth";
 
 interface LoginPageProps {
 
@@ -558,6 +559,63 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
     } catch (err: any) {
       setIsLoggingIn(false);
       setStatusMessage({ text: err?.message || "OTP verification network error.", type: "error" });
+    }
+  };
+
+  // Handle Phone.Email Authentication
+  const handlePhoneEmailAuth = async (userJsonUrl: string) => {
+    setIsLoggingIn(true);
+    setStatusMessage(null);
+
+    try {
+      const result = await apiClient.verifyPhoneEmail(userJsonUrl, selectedRole);
+      
+      if (!result.success) {
+        setIsLoggingIn(false);
+        setStatusMessage({
+          text: result.message || "Phone verification failed",
+          type: "error"
+        });
+        return;
+      }
+
+      // If existing user, log them in directly
+      if (result.isExistingUser && result.account) {
+        campusStore.loginWithAccount(result.account);
+        setIsLoggingIn(false);
+        setStatusMessage({ 
+          text: result.message || `Welcome back, ${result.account.name}!`, 
+          type: "success" 
+        });
+        if (onLoginSuccess) onLoginSuccess();
+        return;
+      }
+
+      // New user - pre-fill registration form
+      if (result.phoneData) {
+        const { fullPhoneNumber, firstName, lastName, email } = result.phoneData;
+        
+        setActiveTab("register");
+        setRegPhone(fullPhoneNumber);
+        if (firstName || lastName) {
+          setRegFullName(`${firstName || ""} ${lastName || ""}`.trim());
+        }
+        if (email) {
+          setRegEmail(email);
+        }
+        
+        setIsLoggingIn(false);
+        setStatusMessage({
+          text: "Phone verified! Please complete your registration.",
+          type: "success"
+        });
+      }
+    } catch (err: any) {
+      setIsLoggingIn(false);
+      setStatusMessage({
+        text: err?.message || "Failed to verify phone number",
+        type: "error"
+      });
     }
   };
 
@@ -1677,6 +1735,14 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
                   <span>Sign in with Google Workspace</span>
                 </button>
               </div>
+
+              {/* Phone.Email Authentication */}
+              <PhoneEmailAuthButton
+                onSuccess={handlePhoneEmailAuth}
+                onError={(error) => {
+                  setStatusMessage({ text: error, type: "error" });
+                }}
+              />
             </div>
           )}
 

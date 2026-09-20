@@ -323,4 +323,25 @@ export const apiClient = {
       return { success: false, message: "Network error completing password reset." };
     }
   },
+
+  /**
+   * Phone.Email Authentication - Verify phone number
+   * @param userJsonUrl - The URL provided by Phone.Email service
+   * @param role - Optional role for the user (student, organizer, admin)
+   */
+  async verifyPhoneEmail(userJsonUrl: string, role?: string) {
+    try {
+      const res = await fetch("/api/auth/phone-email/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_json_url: userJsonUrl, role }),
+      });
+      return await res.json();
+    } catch (e) {
+      return { 
+        success: false, 
+        message: "Network error verifying phone number." 
+      };
+    }
+  },
 };
