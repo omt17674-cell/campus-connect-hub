@@ -2,6 +2,7 @@ import { supabaseSync } from "./supabase-sync";
 import { supabaseAdmin } from "./supabase-admin";
 import { confirmUserEmailInAuth } from "./postgres";
 import { sendRegistrationOTP, sendPasswordResetOTP } from "./emailService";
+import { validateQrPayload } from "../lib/qr-engine";
 import {
   CampusEvent,
   Registration,
@@ -14,11 +15,11 @@ import {
 
 // In-Memory OTP Store with 5-minute expiration & attempt throttling
 interface OtpEntry {
-  code: string;
+  codeHash: string;
   expiresAt: number; // 5 minutes validity
   attempts: number;
   mobileNumber: string;
-  purpose: "login" | "attendance" | "general";
+  purpose: "login" | "attendance" | "registration" | "general";
   createdAt: number;
 }
 
@@ -78,7 +79,7 @@ async function dispatchSms(
   mobile: string,
   otp: string,
   purpose: string,
-): Promise<{ dispatched: boolean; provider: string; note: string }> {
+): Promise<{ dispatched: boolean; configured: boolean; provider: string; note: string }> {
   const purposeText =
     purpose === "login"
       ? "Portal Sign-In"
@@ -87,11 +88,13 @@ async function dispatchSms(
         : "Event Attendance Check-In";
   const message = `[GSFC University] Your verification code for ${purposeText} is: ${otp}. Valid for 10 minutes. Do not share this OTP with anyone.`;
 
-  // Check if Twilio is configured
+  const configuredProvider = (process.env.SMS_PROVIDER || "").toLowerCase();
+
+  // Twilio is used only when explicitly selected and fully configured.
   const twilioSid = process.env.TWILIO_ACCOUNT_SID;
   const twilioAuth = process.env.TWILIO_AUTH_TOKEN;
   const twilioPhone = process.env.TWILIO_PHONE_NUMBER;
-  if (twilioSid && twilioAuth && twilioPhone) {
+  if (configuredProvider === "twilio" && twilioSid && twilioAuth && twilioPhone) {
     try {
       const auth = Buffer.from(`${twilioSid}:${twilioAuth}`).toString("base64");
       const resp = await fetch(
@@ -112,6 +115,7 @@ async function dispatchSms(
       if (resp.ok) {
         return {
           dispatched: true,
+          configured: true,
           provider: "Twilio SMS Gateway",
           note: `Delivered to +91${mobile}`,
         };
@@ -121,9 +125,9 @@ async function dispatchSms(
     }
   }
 
-  // Check if Fast2SMS or MSG91 is configured
+  // Fast2SMS is used only when explicitly selected and configured.
   const fast2smsKey = process.env.FAST2SMS_API_KEY;
-  if (fast2smsKey) {
+  if (configuredProvider === "fast2sms" && fast2smsKey) {
     try {
       const resp = await fetch("https://www.fast2sms.com/dev/bulkV2", {
         method: "POST",
@@ -140,6 +144,7 @@ async function dispatchSms(
       if (resp.ok) {
         return {
           dispatched: true,
+          configured: true,
           provider: "Fast2SMS India Gateway",
           note: `Delivered to +91${mobile}`,
         };
@@ -149,12 +154,14 @@ async function dispatchSms(
     }
   }
 
-  // Development / Demo mode log (Never print raw OTP code in logs)
-  console.log(`[SMS Gateway Simulated] 📲 SMS dispatched to +91${mobile} for ${purposeText}`);
   return {
-    dispatched: true,
-    provider: "GSFC Campus SMS Gateway (Simulated / Dev Mode)",
-    note: `SMS API configured. Real carrier SMS dispatches via TWILIO_ACCOUNT_SID or FAST2SMS_API_KEY.`,
+    dispatched: false,
+    configured: false,
+    provider: "none",
+    note:
+      process.env.NODE_ENV === "production"
+        ? "No production SMS provider is configured."
+        : "Development SMS provider is not configured; no message was sent.",
   };
 }
 
@@ -191,6 +198,7 @@ export interface ActiveSession {
   expiresAt: number;
 }
 const activeSessions = new Map<string, ActiveSession>();
+const usedQrTokens = new Map<string, number>();
 
 export function createServerSession(user: {
   id: string;
@@ -199,7 +207,7 @@ export function createServerSession(user: {
   name: string;
   rollNo?: string;
 }): string {
-  const token = `gsfc-session-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 10)}`;
+  const token = `gsfc-session-${crypto.randomUUID()}`;
   activeSessions.set(token, {
     userId: user.id,
     role: user.role,
@@ -225,36 +233,8 @@ async function getAuthenticatedUser(request: Request): Promise<ActiveSession | n
     return session;
   }
 
-  // If token is in gsfc- session format, verify against database accounts table
-  if (token.startsWith("gsfc-")) {
-    try {
-      const parts = token.split("-");
-      const identifier = parts[2];
-      if (identifier) {
-        const account = await supabaseSync.getAccountByIdentifier(identifier);
-        if (account) {
-          const restoredSession: ActiveSession = {
-            userId: account.id,
-            role: account.role,
-            email: account.email,
-            name: account.name,
-            rollNo: account.roll_no,
-            expiresAt: Date.now() + 24 * 60 * 60 * 1000,
-          };
-          activeSessions.set(token, restoredSession);
-          return restoredSession;
-        }
-      }
-    } catch {}
-  }
-
   return null;
 }
-
-// GSFC University Campus Center Coordinates for Server-Side Geofencing
-const GSFC_CAMPUS_LAT = 22.361944;
-const GSFC_CAMPUS_LON = 73.188889;
-const MAX_ALLOWED_CAMPUS_RADIUS_METERS = 500; // 500 meters perimeter around GSFC University campus
 
 function calculateHaversineMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371000; // Radius of Earth in meters
@@ -380,7 +360,7 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
 
   // 1c. OTP Generation & SMS Dispatch
   if (path === "/api/auth/otp/send" && method === "POST") {
-    const body = await parseBody<{ mobileNumber: string; purpose?: "login" | "attendance" }>(
+    const body = await parseBody<{ mobileNumber: string; purpose?: "login" | "attendance" | "registration" }>(
       request,
     );
     if (!body || !body.mobileNumber) {
@@ -434,7 +414,7 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
     const expiresAt = Date.now() + 5 * 60 * 1000;
 
     otpStore.set(cleanNumber, {
-      code: generatedOtp,
+      codeHash: await sha256(generatedOtp),
       expiresAt,
       attempts: 0,
       mobileNumber: cleanNumber,
@@ -444,12 +424,23 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
 
     const smsResult = await dispatchSms(cleanNumber, generatedOtp, body.purpose || "login");
 
+    if (!smsResult.dispatched) {
+      otpStore.delete(cleanNumber);
+      return jsonResponse(
+        {
+          success: false,
+          code: "SMS_PROVIDER_NOT_CONFIGURED",
+          message: "Mobile verification is temporarily unavailable. Please contact administration.",
+        },
+        503,
+      );
+    }
+
     return jsonResponse({
       success: true,
-      message: `OTP successfully generated and dispatched to +91 ${cleanNumber}. Valid for 5 minutes.`,
+      message: `OTP sent to your registered mobile number. Valid for 5 minutes.`,
       expiresInSeconds: 300,
       expiresAt,
-      otp: generatedOtp, // Included in response for developer testing & verification flows
       smsProvider: smsResult.provider,
     });
   }
@@ -459,7 +450,7 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
     const body = await parseBody<{
       mobileNumber: string;
       code: string;
-      purpose?: "login" | "attendance";
+      purpose?: "login" | "attendance" | "registration";
       role?: string;
     }>(request);
     if (!body || !body.mobileNumber || !body.code) {
@@ -508,7 +499,8 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
       );
     }
 
-    if (body.code.trim() !== entry.code) {
+    const submittedHash = await sha256(body.code.trim());
+    if (submittedHash !== entry.codeHash) {
       entry.attempts += 1;
       return jsonResponse(
         {
@@ -523,6 +515,10 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
     otpStore.delete(cleanNumber);
 
     // If for Login: fetch student/account profile strictly from Supabase Database
+    if (body.purpose === "registration") {
+      return jsonResponse({ success: true, verified: true, message: "Mobile number verified successfully." });
+    }
+
     if (body.purpose === "login" || !body.purpose) {
       // 1. Check in new_registered_students
       let matchedStudent: any = null;
@@ -725,10 +721,6 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
         emailProvider: emailResult.provider,
         emailConfigured: emailResult.configured,
         smsNote,
-        // DEV ONLY: include OTP preview if email not configured (removed in production)
-        ...(process.env.NODE_ENV !== "production" && !emailResult.configured
-          ? { devOtp: generatedOtp, devNote: "⚠️ DEV ONLY: Email provider not configured. Remove before production." }
-          : {}),
       },
       200,
     );
@@ -990,18 +982,23 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
 
   // 3. Authentication: Google Workspace SSO
   if (path === "/api/auth/google" && method === "POST") {
-    const body = await parseBody<{ email?: string; name?: string; rollNo?: string }>(request);
-    if (!body?.email) {
-      return jsonResponse({ success: false, message: "Missing Google account email." }, 400);
+    const bearerToken = (request.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "").trim();
+    if (!bearerToken) {
+      return jsonResponse({ success: false, message: "A valid Supabase authentication token is required." }, 401);
     }
-    const cleanEmail = body.email.trim().toLowerCase();
+
+    const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(bearerToken);
+    if (authError || !authData.user?.email) {
+      return jsonResponse({ success: false, message: "Google authentication could not be verified." }, 401);
+    }
+    const cleanEmail = authData.user.email.trim().toLowerCase();
 
     // Verify against registered database accounts or students
     let account = await supabaseSync.getAccountByIdentifier(cleanEmail);
     let matchedStudent = null;
 
     if (!account) {
-      matchedStudent = await supabaseSync.getStudentByRollOrEmail(body.rollNo || "", cleanEmail);
+      matchedStudent = await supabaseSync.getStudentByRollOrEmail("___NONE___", cleanEmail);
       if (matchedStudent) {
         const studentAccountPayload = {
           id: matchedStudent.id,
@@ -1029,7 +1026,7 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
           success: false,
           code: "ACCOUNT_NOT_AUTHORIZED",
           message:
-            "Your Google account is not authorized for this portal. Please complete Student Registration first or contact university administration.",
+            "Your Google account is not registered with GSFC University. Please complete student registration or contact administration.",
         },
         403,
       );
@@ -1234,21 +1231,35 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
   if (path === "/api/attendance/check-in" && method === "POST") {
     const body = await parseBody<{
       eventId: string;
-      userId: string;
-      userRollNo: string;
-      userName: string;
-      department: string;
       token: string;
-      locationData?: {
-        latitude: number;
-        longitude: number;
-        distanceMeters?: number;
-        verified?: boolean;
-      };
+      latitude: number;
+      longitude: number;
+      accuracy: number;
+      capturedAt: string;
     }>(request);
 
-    if (!body || !body.eventId || !body.userId) {
+    const authUser = await getAuthenticatedUser(request);
+    if (!authUser) {
+      return jsonResponse({ success: false, code: "UNAUTHENTICATED", message: "Please sign in again before checking in." }, 401);
+    }
+
+    if (!body || !body.eventId || !body.token || !Number.isFinite(body.latitude) || !Number.isFinite(body.longitude)) {
       return jsonResponse({ success: false, message: "Invalid check-in payload." }, 400);
+    }
+
+    if (body.latitude < -90 || body.latitude > 90 || body.longitude < -180 || body.longitude > 180) {
+      return jsonResponse({ success: false, code: "INVALID_COORDINATES", message: "Invalid GPS coordinates." }, 400);
+    }
+
+    const capturedAt = Date.parse(body.capturedAt);
+    const ageMs = Date.now() - capturedAt;
+    if (!Number.isFinite(capturedAt) || ageMs < -30000 || ageMs > 120000) {
+      return jsonResponse({ success: false, code: "STALE_LOCATION", message: "Location fix is stale. Please refresh GPS and try again." }, 400);
+    }
+
+    const maxAccuracy = Number(process.env.MAX_ACCEPTABLE_ACCURACY_METERS || 50);
+    if (!Number.isFinite(body.accuracy) || body.accuracy < 0 || body.accuracy > maxAccuracy) {
+      return jsonResponse({ success: false, code: "LOW_LOCATION_ACCURACY", message: `GPS accuracy must be ${maxAccuracy}m or better.` }, 403);
     }
 
     // Token validation: must be present and non-empty
@@ -1263,15 +1274,27 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
       );
     }
 
+    const qrValidation = validateQrPayload(body.token, body.eventId);
+    if (!qrValidation.valid) {
+      return jsonResponse({ success: false, code: "INVALID_QR", message: qrValidation.reason || "QR code is invalid or expired." }, 403);
+    }
+    const qrKey = `${body.eventId}:${authUser.userId}:${qrValidation.payload?.token || body.token}`;
+    if (usedQrTokens.has(qrKey)) {
+      return jsonResponse({ success: false, code: "QR_ALREADY_USED", message: "This QR attendance code has already been used." }, 409);
+    }
+
     const event = await supabaseSync.getEventById(body.eventId);
     if (!event) return jsonResponse({ success: false, message: "Event not found." }, 404);
+    if (event.status !== "live") {
+      return jsonResponse({ success: false, code: "EVENT_NOT_ACTIVE", message: "Attendance is not active for this event." }, 403);
+    }
 
     // Verify student is actually registered for this event
     const eventRegistrations = await supabaseSync.getRegistrations(body.eventId);
     const userReg = eventRegistrations.find(
       (r) =>
-        r.userId === body.userId ||
-        (body.userRollNo && r.userRollNo.toUpperCase() === body.userRollNo.toUpperCase()),
+        r.userId === authUser.userId ||
+        (authUser.rollNo && r.userRollNo.toUpperCase() === authUser.rollNo.toUpperCase()),
     );
     if (!userReg) {
       return jsonResponse(
@@ -1288,8 +1311,8 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
     const existingRecords = await supabaseSync.getAttendance(body.eventId);
     const existing = existingRecords.find(
       (a) =>
-        a.userId === body.userId ||
-        (body.userRollNo && a.userRollNo.toUpperCase() === body.userRollNo.toUpperCase()),
+        a.userId === authUser.userId ||
+        (authUser.rollNo && a.userRollNo.toUpperCase() === authUser.rollNo.toUpperCase()),
     );
     if (existing) {
       return jsonResponse(
@@ -1303,31 +1326,33 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
     }
 
     // Server-Side Geofence Calculation using Haversine Formula against GSFC Campus Coordinates
-    let distanceMeters = 15;
+    const venueLatitude = event.venueLatitude;
+    const venueLongitude = event.venueLongitude;
+    const allowedRadius = event.allowedRadiusMeters || 350;
+    if (!Number.isFinite(venueLatitude) || !Number.isFinite(venueLongitude)) {
+      return jsonResponse({ success: false, code: "VENUE_NOT_CONFIGURED", message: "This event does not have a verified venue configured." }, 503);
+    }
+
+    let distanceMeters = calculateHaversineMeters(
+      venueLatitude,
+      venueLongitude,
+      body.latitude,
+      body.longitude,
+    );
     let isLocationVerified = true;
 
-    if (body.locationData?.latitude && body.locationData?.longitude) {
-      distanceMeters = calculateHaversineMeters(
-        GSFC_CAMPUS_LAT,
-        GSFC_CAMPUS_LON,
-        body.locationData.latitude,
-        body.locationData.longitude,
+    if (distanceMeters > allowedRadius) {
+      isLocationVerified = false;
+      return jsonResponse(
+        {
+          success: false,
+          code: "GEOFENCE_VALIDATION_FAILED",
+          message: `Attendance could not be verified because you are outside the permitted event area (${distanceMeters}m away; maximum ${allowedRadius}m).`,
+          distanceMeters,
+          maxAllowedMeters: allowedRadius,
+        },
+        403,
       );
-
-      // Validate distance within allowable perimeter
-      if (distanceMeters > MAX_ALLOWED_CAMPUS_RADIUS_METERS) {
-        isLocationVerified = false;
-        return jsonResponse(
-          {
-            success: false,
-            code: "GEOFENCE_VALIDATION_FAILED",
-            message: `Location verification failed: You are ${distanceMeters}m from the GSFC University campus venue (max permitted: ${MAX_ALLOWED_CAMPUS_RADIUS_METERS}m). Live attendance punch must be performed on campus.`,
-            distanceMeters,
-            maxAllowedMeters: MAX_ALLOWED_CAMPUS_RADIUS_METERS,
-          },
-          403,
-        );
-      }
     }
 
     const certId = `GSFC-CERT-${event.id.toUpperCase()}-${body.userRollNo.slice(-4)}-${Date.now().toString(36).toUpperCase()}`;
@@ -1336,23 +1361,28 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
       id: `att-${Date.now()}`,
       eventId: body.eventId,
       eventTitle: event.title,
-      userId: body.userId,
-      userName: body.userName,
-      userRollNo: body.userRollNo,
-      department: body.department,
+      userId: authUser.userId,
+      userName: authUser.name,
+      userRollNo: authUser.rollNo || userReg.userRollNo,
+      department: userReg.department,
       timestamp: new Date().toISOString(),
       punchInTime: new Date().toISOString(),
       verifiedMethod: "qr_scan",
-      tokenUsed: body.token,
+      tokenUsed: qrValidation.payload?.token || body.token,
       synced: true,
       certificateId: certId,
-      userLatitude: body.locationData?.latitude,
-      userLongitude: body.locationData?.longitude,
+      userLatitude: body.latitude,
+      userLongitude: body.longitude,
+      accuracyMeters: body.accuracy,
       distanceFromVenueMeters: distanceMeters,
       locationVerified: isLocationVerified,
     };
 
-    await supabaseSync.saveAttendance(record);
+    const saved = await supabaseSync.saveAttendance(record);
+    if (!saved) {
+      return jsonResponse({ success: false, code: "DATABASE_ERROR", message: "Attendance could not be saved to the university database." }, 500);
+    }
+    usedQrTokens.set(qrKey, Date.now());
 
     return jsonResponse({
       success: true,
@@ -1726,12 +1756,21 @@ ${clubs.map((c) => `- ${c.name} (${c.category}): ${c.description || "Active stud
       );
     }
 
+    const sessionToken = createServerSession({
+      id: `u-${cleanRoll.toLowerCase()}`,
+      role: "student",
+      email: cleanEmail,
+      name: newStudent.fullName,
+      rollNo: cleanRoll,
+    });
+
     return jsonResponse(
       {
         success: true,
         message:
           "Student registration saved to database successfully. Pending university verification.",
         student: newStudent,
+        token: sessionToken,
         identityLocked: true,
         supabaseSyncStatus: "synced",
       },
@@ -1974,10 +2013,6 @@ ${clubs.map((c) => `- ${c.name} (${c.category}): ${c.description || "Active stud
       {
         success: true,
         message: "If an account is associated with this email address, a verification code has been sent.",
-        // DEV ONLY hint
-        ...(process.env.NODE_ENV !== "production" && accountExists
-          ? { devOtp: generatedOtp, devNote: "⚠️ DEV ONLY: Email provider not configured. Remove before production." }
-          : {}),
       },
       200,
     );
@@ -2201,124 +2236,6 @@ ${clubs.map((c) => `- ${c.name} (${c.category}): ${c.description || "Active stud
           message: "An unexpected error occurred while updating your password. Please try again.",
         },
         500,
-      );
-    }
-  }
-
-  // Phone.Email Authentication - Verify phone number
-  if (path === "/api/auth/phone-email/verify" && method === "POST") {
-    const body = await parseBody<{ user_json_url: string; role?: string }>(request);
-    if (!body || !body.user_json_url) {
-      return jsonResponse(
-        { success: false, message: "user_json_url is required" },
-        400
-      );
-    }
-
-    try {
-      // Import the phone email service
-      const { verifyPhoneEmailUser } = await import("./phoneEmailService");
-      
-      // Verify phone number with Phone.Email service
-      const verificationResult = await verifyPhoneEmailUser(body.user_json_url);
-      
-      if (!verificationResult.success) {
-        return jsonResponse(
-          { 
-            success: false, 
-            message: verificationResult.error || "Phone verification failed" 
-          },
-          400
-        );
-      }
-
-      const phoneData = verificationResult.data!;
-      const fullPhoneNumber = verificationResult.fullPhoneNumber!;
-      
-      // Check if this phone number is already registered
-      const { data: existingStudent, error: studentError } = await supabaseAdmin
-        .from("new_registered_students")
-        .select("*")
-        .eq("mobile_number", fullPhoneNumber)
-        .maybeSingle();
-
-      if (studentError && studentError.code !== "PGRST116") {
-        console.error("[PhoneEmail] Database lookup error:", studentError);
-      }
-
-      // If student exists, return their account info for login
-      if (existingStudent) {
-        const account = {
-          role: (existingStudent.role || body.role || "student") as any,
-          roleTitle: existingStudent.role === "admin" ? "Administrator" : 
-                    existingStudent.role === "organizer" ? "Event Organizer" : "GSFC Student",
-          roleBadge: existingStudent.roll_no || "N/A",
-          name: existingStudent.full_name || `${phoneData.user_first_name || ""} ${phoneData.user_last_name || ""}`.trim() || "Student",
-          idOrRoll: existingStudent.roll_no || fullPhoneNumber,
-          email: existingStudent.email || phoneData.user_email || `${fullPhoneNumber}@phone.verified`,
-          password: "", // Phone-verified accounts don't need password storage
-          profile: {
-            id: existingStudent.id,
-            name: existingStudent.full_name,
-            rollNo: existingStudent.roll_no,
-            email: existingStudent.email,
-            role: existingStudent.role || "student",
-            department: existingStudent.department || "Not Specified",
-            school: existingStudent.school || "GSFC University",
-            degree: existingStudent.degree || "Undergraduate",
-            semester: existingStudent.semester || 1,
-            residenceType: existingStudent.residence_type || "dayscholar",
-            hostelBlockOrBusRoute: existingStudent.hostel_block_or_bus_route,
-            clubsInterested: existingStudent.clubs_interested || [],
-            mobileNumber: fullPhoneNumber,
-            avatar: existingStudent.full_name?.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase() || "ST",
-            points: 100,
-            streakDays: 1,
-            volunteerHours: 0,
-            attendanceRate: 100,
-            badges: ["b1"],
-            isVerified: true,
-          },
-        };
-
-        return jsonResponse({
-          success: true,
-          message: `Welcome back, ${existingStudent.full_name}!`,
-          account,
-          isExistingUser: true,
-          phoneData: {
-            countryCode: phoneData.user_country_code,
-            phoneNumber: phoneData.user_phone_number,
-            fullPhoneNumber,
-            firstName: phoneData.user_first_name,
-            lastName: phoneData.user_last_name,
-          },
-        });
-      }
-
-      // New user - return phone data for registration completion
-      return jsonResponse({
-        success: true,
-        message: "Phone number verified successfully. Please complete your registration.",
-        isExistingUser: false,
-        phoneData: {
-          countryCode: phoneData.user_country_code,
-          phoneNumber: phoneData.user_phone_number,
-          fullPhoneNumber,
-          firstName: phoneData.user_first_name,
-          lastName: phoneData.user_last_name,
-          email: phoneData.user_email,
-        },
-      });
-
-    } catch (err: any) {
-      console.error("[PhoneEmail] Verification error:", err);
-      return jsonResponse(
-        {
-          success: false,
-          message: err?.message || "Failed to verify phone number",
-        },
-        500
       );
     }
   }

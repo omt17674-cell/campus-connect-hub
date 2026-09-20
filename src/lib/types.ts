@@ -122,6 +122,7 @@ export interface AttendanceRecord {
   certificateUnlocked?: boolean;
   userLatitude?: number;
   userLongitude?: number;
+  accuracyMeters?: number;
   distanceFromVenueMeters?: number;
   locationVerified?: boolean;
   locationAddress?: string;

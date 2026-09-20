@@ -172,6 +172,7 @@ export interface CampusState {
 }
 
 const INITIAL_USER: UserProfile = STUDENT_ACCOUNT.profile;
+let serverSessionToken: string | null = null;
 export const SAMPLE_ORGANIZER: UserProfile = TPC_ADMIN_ACCOUNT.profile;
 export const SAMPLE_ADMIN: UserProfile = ADMIN_ACCOUNT.profile;
 
@@ -1939,7 +1940,8 @@ export const campusStore = {
     CAMPUS_ACCOUNTS.push(...updated);
   },
 
-  loginWithAccount(account: CampusAccount) {
+  loginWithAccount(account: CampusAccount, sessionToken?: string) {
+    if (sessionToken) serverSessionToken = sessionToken;
     const currentState = campusStore.getState();
     const cleanRoll = (account.profile?.rollNo || account.idOrRoll || "").toUpperCase();
     const cleanEmail = (account.email || account.profile?.email || "").toLowerCase();
@@ -2030,6 +2032,11 @@ export const campusStore = {
       currentRole: "student",
       digitalId: INITIAL_DIGITAL_ID,
     }));
+    serverSessionToken = null;
+  },
+
+  getServerSessionToken() {
+    return serverSessionToken;
   },
 
   setRole(role: UserRole) {
@@ -2213,7 +2220,7 @@ export const campusStore = {
     }
   },
 
-  recordCheckIn(
+  async recordCheckIn(
     eventId: string,
     token: string,
     forcedOffline = false,
@@ -2222,8 +2229,10 @@ export const campusStore = {
       longitude: number;
       distanceMeters: number;
       verified: boolean;
+      accuracy?: number;
+      capturedAt?: string;
     },
-  ): { success: boolean; offlineQueued: boolean; message: string; record?: AttendanceRecord } {
+  ): Promise<{ success: boolean; offlineQueued: boolean; message: string; record?: AttendanceRecord }> {
     const state = campusStore.getState();
     const event = state.events.find((e) => e.id === eventId);
     if (!event) return { success: false, offlineQueued: false, message: "Event not found." };
@@ -2275,6 +2284,39 @@ export const campusStore = {
         offlineQueued: true,
         message:
           "Offline: Check-in saved securely on device with location metadata. Will auto-sync when online.",
+      };
+    }
+
+    const sessionToken = serverSessionToken;
+    if (!sessionToken) {
+      return {
+        success: false,
+        offlineQueued: false,
+        message: "Your authenticated session has expired. Please sign in again.",
+      };
+    }
+
+    const serverResponse = await fetch("/api/attendance/check-in", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${sessionToken}`,
+      },
+      body: JSON.stringify({
+        eventId,
+        token,
+        latitude: locationData?.latitude,
+        longitude: locationData?.longitude,
+        accuracy: locationData?.accuracy,
+        capturedAt: locationData?.capturedAt,
+      }),
+    });
+    const serverResult = await serverResponse.json().catch(() => null);
+    if (!serverResponse.ok || !serverResult?.success) {
+      return {
+        success: false,
+        offlineQueued: false,
+        message: serverResult?.message || "Attendance could not be verified by the server.",
       };
     }
 

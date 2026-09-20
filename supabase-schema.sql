@@ -85,6 +85,9 @@ CREATE TABLE IF NOT EXISTS public.events (
   date DATE NOT NULL,
   time TEXT NOT NULL,
   venue TEXT NOT NULL,
+  venue_latitude NUMERIC NOT NULL DEFAULT 22.3685,
+  venue_longitude NUMERIC NOT NULL DEFAULT 73.1895,
+  allowed_radius_meters INT NOT NULL DEFAULT 350,
   organizer_name TEXT NOT NULL,
   organizer_email TEXT NOT NULL,
   capacity INT NOT NULL DEFAULT 100,
@@ -135,6 +138,7 @@ CREATE TABLE IF NOT EXISTS public.attendance (
   certificate_id TEXT,
   user_latitude NUMERIC,
   user_longitude NUMERIC,
+  accuracy_meters NUMERIC,
   distance_from_venue_meters INT,
   location_verified BOOLEAN DEFAULT TRUE,
   synced BOOLEAN DEFAULT TRUE,
@@ -281,6 +285,10 @@ CREATE INDEX IF NOT EXISTS idx_new_students_email ON public.new_registered_stude
 CREATE INDEX IF NOT EXISTS idx_new_students_mobile ON public.new_registered_students(mobile_number);
 CREATE INDEX IF NOT EXISTS idx_events_date ON public.events(date);
 CREATE INDEX IF NOT EXISTS idx_events_status ON public.events(status);
+
+ALTER TABLE public.events ADD COLUMN IF NOT EXISTS venue_latitude NUMERIC NOT NULL DEFAULT 22.3685;
+ALTER TABLE public.events ADD COLUMN IF NOT EXISTS venue_longitude NUMERIC NOT NULL DEFAULT 73.1895;
+ALTER TABLE public.events ADD COLUMN IF NOT EXISTS allowed_radius_meters INT NOT NULL DEFAULT 350;
 CREATE INDEX IF NOT EXISTS idx_registrations_user ON public.registrations(user_id, event_id);
 CREATE INDEX IF NOT EXISTS idx_attendance_user ON public.attendance(user_id, event_id);
 CREATE INDEX IF NOT EXISTS idx_attendance_event ON public.attendance(event_id);
@@ -344,6 +352,30 @@ BEGIN
 EXCEPTION WHEN OTHERS THEN
   NULL;
 END $$;
+
+-- Replace the legacy public policies above with least-privilege policies.
+-- Server routes use the service role for authorized reads and writes.
+DROP POLICY IF EXISTS "Allow public read accounts" ON public.accounts;
+DROP POLICY IF EXISTS "Allow public insert accounts" ON public.accounts;
+DROP POLICY IF EXISTS "Allow public update accounts" ON public.accounts;
+DROP POLICY IF EXISTS "Allow public read new_students" ON public.new_registered_students;
+DROP POLICY IF EXISTS "Allow public insert new_students" ON public.new_registered_students;
+DROP POLICY IF EXISTS "Allow public update new_students" ON public.new_registered_students;
+DROP POLICY IF EXISTS "Allow public read attendance" ON public.attendance;
+DROP POLICY IF EXISTS "Allow public insert attendance" ON public.attendance;
+DROP POLICY IF EXISTS "Allow public update attendance" ON public.attendance;
+
+CREATE POLICY "Users can read their own account" ON public.accounts
+  FOR SELECT TO authenticated
+  USING (lower(email) = lower(coalesce(auth.jwt() ->> 'email', '')));
+
+CREATE POLICY "Users can read their own registration" ON public.new_registered_students
+  FOR SELECT TO authenticated
+  USING (lower(email) = lower(coalesce(auth.jwt() ->> 'email', '')));
+
+CREATE POLICY "Users can read their own attendance" ON public.attendance
+  FOR SELECT TO authenticated
+  USING (user_id = auth.uid()::text);
 
 -- ==============================================================================
 -- INITIAL MASTER DATA FOR GOVERNANCE ACCOUNTS (ADMIN & ORGANIZER)

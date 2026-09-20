@@ -26,6 +26,8 @@ import {
   Coordinates,
   getLiveStudentLocation,
   GSFC_CAMPUS_VENUES,
+  MAX_ACCEPTABLE_ACCURACY_METERS,
+  MAX_REJECTABLE_ACCURACY_METERS,
 } from "@/lib/geofence-engine";
 import { translations } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -52,8 +54,7 @@ export function QRScannerModal({ onClose, onSuccess }: QRScannerModalProps) {
   // Live Location & Geofencing state
   const [userLocation, setUserLocation] = useState<Coordinates>({ latitude: 22.3688, longitude: 73.1893 });
   const [locationAccuracy, setLocationAccuracy] = useState<number>(15);
-  const [locationStatus, setLocationStatus] = useState<"loading" | "acquired" | "simulated" | "denied">("loading");
-  const [locationBypass, setLocationBypass] = useState(false);
+  const [locationStatus, setLocationStatus] = useState<"loading" | "acquired" | "denied">("loading");
 
   // Default to live event or first event
   const liveEvent = state.events.find((e) => e.status === "live") || state.events[0];
@@ -81,10 +82,8 @@ export function QRScannerModal({ onClose, onSuccess }: QRScannerModalProps) {
           setLocationStatus("acquired");
         }
       } catch (e) {
-        // Fallback to default on-campus simulation coords
         if (isMounted) {
-          setUserLocation({ latitude: 22.3689, longitude: 73.1892 });
-          setLocationStatus("simulated");
+          setLocationStatus("denied");
         }
       }
     }
@@ -170,10 +169,10 @@ export function QRScannerModal({ onClose, onSuccess }: QRScannerModalProps) {
     };
   }, []);
 
-  const handleProcessScan = (payloadJson: string, eventId: string) => {
+  const handleProcessScan = async (payloadJson: string, eventId: string) => {
     setScanStatus("scanning");
 
-    setTimeout(() => {
+    setTimeout(async () => {
       // Validate token
       const validation = validateQrPayload(payloadJson, eventId);
       if (!validation.valid) {
@@ -190,7 +189,25 @@ export function QRScannerModal({ onClose, onSuccess }: QRScannerModalProps) {
       }
 
       // Check Geofencing
-      if (!isInsideGeofence && !locationBypass) {
+      if (locationStatus !== "acquired") {
+        setScanStatus("error");
+        setErrorMessage("Location permission is required to verify your presence at this event.");
+        return;
+      }
+
+      if (locationAccuracy > MAX_REJECTABLE_ACCURACY_METERS) {
+        setScanStatus("error");
+        setErrorMessage("Unable to verify your location because GPS accuracy is too low. Please move to an open area and try again.");
+        return;
+      }
+
+      if (locationAccuracy > MAX_ACCEPTABLE_ACCURACY_METERS) {
+        setScanStatus("error");
+        setErrorMessage(`GPS accuracy is ±${locationAccuracy}m. Please refresh your location until accuracy is ±${MAX_ACCEPTABLE_ACCURACY_METERS}m or better.`);
+        return;
+      }
+
+      if (!isInsideGeofence) {
         setScanStatus("error");
         setErrorMessage(
           `Geofence Failed: You are ${currentDistanceMeters}m away from ${event.venue}. Attendance requires you to be within ${allowedRadius}m of the campus venue.`
@@ -201,15 +218,17 @@ export function QRScannerModal({ onClose, onSuccess }: QRScannerModalProps) {
       setScannedEvent(event);
 
       // Perform check-in via store (attaching live GPS coordinates)
-      const res = campusStore.recordCheckIn(
+      const res = await campusStore.recordCheckIn(
         eventId,
-        validation.payload?.token || "QR-VERIFIED",
+        payloadJson,
         false,
         {
           latitude: userLocation.latitude,
           longitude: userLocation.longitude,
           distanceMeters: currentDistanceMeters,
-          verified: isInsideGeofence || locationBypass,
+          verified: isInsideGeofence,
+          accuracy: locationAccuracy,
+          capturedAt: new Date().toISOString(),
         }
       );
 
@@ -316,7 +335,7 @@ export function QRScannerModal({ onClose, onSuccess }: QRScannerModalProps) {
               <span>
                 {locationStatus === "acquired"
                   ? `Live GPS Locked (±${locationAccuracy || 10}m)`
-                  : "Device Location Active"}
+                  : "Location permission required"}
               </span>
             </div>
             <button
@@ -328,7 +347,7 @@ export function QRScannerModal({ onClose, onSuccess }: QRScannerModalProps) {
                   setLocationAccuracy(Math.round(accuracy));
                   setLocationStatus("acquired");
                 } catch {
-                  setLocationStatus("simulated");
+                  setLocationStatus("denied");
                 }
               }}
               className="font-bold text-brand hover:underline flex items-center gap-1 text-[11px]"
@@ -434,16 +453,6 @@ export function QRScannerModal({ onClose, onSuccess }: QRScannerModalProps) {
                 >
                   <RefreshCw className="mr-1.5 size-3.5" /> Try Again
                 </Button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setLocationBypass(true);
-                    setScanStatus("ready");
-                  }}
-                  className="inline-flex items-center justify-center rounded-xl border border-rose-300/50 bg-rose-900/90 px-3.5 py-1.5 text-xs font-bold text-white shadow-sm transition-colors hover:bg-rose-800 hover:border-rose-200"
-                >
-                  Bypass Geofence (Admin Demo)
-                </button>
               </div>
             </div>
           )}
