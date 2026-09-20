@@ -309,6 +309,8 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
         engine: "Supabase PostgreSQL",
         projectRef: "llhfumrtotectnbpeabu",
         connected: supabaseStatus.connected,
+        configured: isSupabaseAdminConfigured,
+        error: supabaseStatus.error || null,
         note: supabaseStatus.connected
           ? "Active & Synchronized with Supabase"
           : "Ready (Run supabase-schema.sql if tables uncreated)",
