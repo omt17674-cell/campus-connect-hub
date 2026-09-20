@@ -44,6 +44,7 @@ export function QRScannerModal({ onClose, onSuccess }: QRScannerModalProps) {
   const [offlineSaved, setOfflineSaved] = useState(false);
   const [scannedEvent, setScannedEvent] = useState<CampusEvent | null>(null);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
+  const [cameraError, setCameraError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const scanFrameRef = useRef<number | null>(null);
@@ -123,37 +124,48 @@ export function QRScannerModal({ onClose, onSuccess }: QRScannerModalProps) {
   }, [hasCameraPermission, scanStatus, selectedSimEventId]);
 
   // Request actual camera stream if available on device
-  useEffect(() => {
-    let mounted = true;
-
-    async function initCamera() {
-      try {
-        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-          const stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: "environment" },
-          });
-          if (mounted) {
-            streamRef.current = stream;
-            if (videoRef.current) {
-              videoRef.current.srcObject = stream;
-            }
-            setHasCameraPermission(true);
-          }
-        } else {
-          setHasCameraPermission(false);
-        }
-      } catch (err) {
-        console.warn("Camera access not available or denied, simulator available:", err);
-        if (mounted) setHasCameraPermission(false);
+  const startCamera = async () => {
+    setCameraError(null);
+    setHasCameraPermission(null);
+    try {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error("Camera access is not supported by this browser.");
       }
-    }
 
-    initCamera();
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: {
+          facingMode: { ideal: "environment" },
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
+      });
+      streamRef.current = stream;
+      setHasCameraPermission(true);
+    } catch (err) {
+      console.warn("Camera access not available or denied, simulator available:", err);
+      setCameraError(err instanceof Error ? err.message : "Camera permission was denied.");
+      setHasCameraPermission(false);
+    }
+  };
+
+  // The first camera request can resolve before the video element mounts.
+  // Attach the retained stream after permission changes the rendered view.
+  useEffect(() => {
+    if (!hasCameraPermission || !videoRef.current || !streamRef.current) return;
+    videoRef.current.srcObject = streamRef.current;
+    void videoRef.current.play().catch(() => {
+      setCameraError("Tap Start Camera to begin the mobile camera preview.");
+    });
+  }, [hasCameraPermission]);
+
+  useEffect(() => {
+    void startCamera();
 
     return () => {
-      mounted = false;
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
       }
     };
   }, []);
@@ -339,10 +351,19 @@ export function QRScannerModal({ onClose, onSuccess }: QRScannerModalProps) {
           ) : (
             <div className="flex size-full flex-col items-center justify-center p-6 text-center text-slate-300">
               <Camera className="size-10 text-brand opacity-60" />
-              <p className="mt-2 text-xs font-semibold">Camera Viewfinder Active</p>
+              <p className="mt-2 text-xs font-semibold">Camera preview unavailable</p>
               <p className="mt-1 text-[11px] text-slate-400">
-                (GPS Geofence + Rotating QR Active)
+                {cameraError || "Allow camera permission to scan QR codes."}
               </p>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => void startCamera()}
+                className="mt-3 rounded-xl bg-[#1A3C6E] text-xs font-bold text-white"
+              >
+                <Camera className="mr-1.5 size-3.5 text-[#F2A93B]" />
+                Start Camera
+              </Button>
             </div>
           )}
 
