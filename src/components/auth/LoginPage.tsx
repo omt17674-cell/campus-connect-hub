@@ -107,6 +107,29 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
 
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
+  // ── Forgot Password State ─────────────────────────────────────────────────
+  const [forgotStep, setForgotStep] = useState<"email" | "otp" | "newPassword" | "success" | null>(null);
+  const [fpEmail, setFpEmail] = useState("");
+  const [fpOtp, setFpOtp] = useState("");
+  const [fpResetToken, setFpResetToken] = useState("");
+  const [fpNewPassword, setFpNewPassword] = useState("");
+  const [fpConfirmPassword, setFpConfirmPassword] = useState("");
+  const [fpShowNewPass, setFpShowNewPass] = useState(false);
+  const [fpShowConfirmPass, setFpShowConfirmPass] = useState(false);
+  const [fpTimer, setFpTimer] = useState(0);
+  const [fpLoading, setFpLoading] = useState(false);
+  const [fpError, setFpError] = useState<string | null>(null);
+  const [fpDevOtp, setFpDevOtp] = useState<string | null>(null);
+
+  // Countdown for forgot-password OTP resend
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (forgotStep === "otp" && fpTimer > 0) {
+      timer = setInterval(() => setFpTimer((p) => p - 1), 1000);
+    }
+    return () => clearInterval(timer);
+  }, [forgotStep, fpTimer]);
+
   // Email OTP countdown timer for registration
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -1285,12 +1308,341 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
               <div className="mt-3 text-center">
                 <button
                   type="button"
-                  onClick={() => alert("Password reset link has been dispatched to your official GSFC University email.")}
+                  onClick={() => {
+                    setForgotStep("email");
+                    setFpEmail("");
+                    setFpOtp("");
+                    setFpResetToken("");
+                    setFpNewPassword("");
+                    setFpConfirmPassword("");
+                    setFpError(null);
+                    setFpDevOtp(null);
+                    setStatusMessage(null);
+                  }}
                   className="text-xs font-bold text-[#1A3C6E] hover:underline"
                 >
-                  Forgot Password ?
+                  Forgot Password?
                 </button>
               </div>
+
+              {/* ── FORGOT PASSWORD INLINE PANEL ── */}
+              {forgotStep && (
+                <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50/80 p-4 animate-in fade-in zoom-in-95 duration-200">
+                  {/* Step header */}
+                  <div className="mb-3 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="flex size-7 items-center justify-center rounded-full bg-[#1A3C6E] text-white">
+                        {forgotStep === "email" ? <Mail className="size-3.5" /> :
+                         forgotStep === "otp" ? <KeyRound className="size-3.5" /> :
+                         forgotStep === "newPassword" ? <Lock className="size-3.5" /> :
+                         <ShieldCheck className="size-3.5 text-emerald-400" />}
+                      </div>
+                      <span className="text-xs font-black text-[#1A3C6E]">
+                        {forgotStep === "email" && "Reset Password"}
+                        {forgotStep === "otp" && "Enter Verification Code"}
+                        {forgotStep === "newPassword" && "Create New Password"}
+                        {forgotStep === "success" && "Password Updated!"}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => { setForgotStep(null); setFpError(null); }}
+                      className="text-slate-400 hover:text-slate-700 text-xs font-bold px-2 py-0.5 rounded hover:bg-slate-200"
+                    >
+                      ✕ Close
+                    </button>
+                  </div>
+
+                  {/* Error message */}
+                  {fpError && (
+                    <div className="mb-2 rounded-lg bg-rose-50 border border-rose-200 px-3 py-2 text-[11px] font-bold text-rose-700">
+                      {fpError}
+                    </div>
+                  )}
+
+                  {/* STEP 1: Email entry */}
+                  {forgotStep === "email" && (
+                    <form
+                      onSubmit={async (e) => {
+                        e.preventDefault();
+                        const emailVal = fpEmail.trim().toLowerCase();
+                        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                        if (!emailRegex.test(emailVal)) {
+                          setFpError("Please enter a valid email address.");
+                          return;
+                        }
+                        setFpLoading(true);
+                        setFpError(null);
+                        try {
+                          const res = await apiClient.requestPasswordReset(emailVal);
+                          setFpLoading(false);
+                          if (res.success) {
+                            if (import.meta.env.DEV && res.devOtp) setFpDevOtp(res.devOtp);
+                            setForgotStep("otp");
+                            setFpTimer(60);
+                            setFpOtp("");
+                          } else if (res.code === "COOLDOWN_ACTIVE") {
+                            setFpError(res.message);
+                            setForgotStep("otp");
+                            setFpTimer(res.retryAfterSeconds || 60);
+                          } else {
+                            setFpError(res.message || "Failed to send code. Try again.");
+                          }
+                        } catch {
+                          setFpLoading(false);
+                          setFpError("Network error. Please check your connection.");
+                        }
+                      }}
+                      className="space-y-3"
+                    >
+                      <p className="text-[11px] text-slate-500">
+                        Enter your registered email address and we'll send a 6-digit verification code.
+                      </p>
+                      <div className="relative flex items-center rounded-xl border border-slate-300 bg-white shadow-sm focus-within:border-[#1A3C6E] focus-within:ring-2 focus-within:ring-[#1A3C6E]/20">
+                        <div className="flex w-10 items-center justify-center rounded-l-xl bg-[#1A3C6E] text-white self-stretch">
+                          <Mail className="size-4" />
+                        </div>
+                        <input
+                          type="email"
+                          value={fpEmail}
+                          onChange={(e) => setFpEmail(e.target.value)}
+                          placeholder="your.email@gsfcuniversity.ac.in"
+                          autoComplete="email"
+                          className="w-full bg-transparent px-3 py-2.5 text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none"
+                        />
+                      </div>
+                      <Button
+                        type="submit"
+                        disabled={fpLoading || !fpEmail.trim()}
+                        className="h-9 w-full rounded-xl bg-gradient-to-r from-[#1A3C6E] to-[#0E2342] text-xs font-black text-white shadow-md hover:opacity-90 flex items-center justify-center gap-2 disabled:opacity-50"
+                      >
+                        {fpLoading ? <><Loader2 className="size-3.5 animate-spin" /><span>Sending...</span></> : <span>Send Verification Code</span>}
+                      </Button>
+                    </form>
+                  )}
+
+                  {/* STEP 2: OTP entry */}
+                  {forgotStep === "otp" && (
+                    <div className="space-y-3">
+                      <p className="text-[11px] text-slate-500">
+                        We sent a 6-digit code to{" "}
+                        <span className="font-bold text-[#1A3C6E]">{maskEmail(fpEmail)}</span>.
+                        Check your email inbox and spam folder.
+                      </p>
+
+                      {import.meta.env.DEV && fpDevOtp && (
+                        <div className="rounded-xl bg-amber-50 border border-amber-200 p-2.5 text-[11px]">
+                          <span className="font-bold text-amber-800">DEV:</span>{" "}
+                          <span className="font-mono font-black text-[#1A3C6E]">{fpDevOtp}</span>{" "}
+                          <button
+                            type="button"
+                            onClick={() => setFpOtp(fpDevOtp)}
+                            className="ml-1 text-[10px] font-black text-[#1A3C6E] underline"
+                          >Fill</button>
+                          <div className="mt-1 text-amber-700">⚠️ Configure email provider for production</div>
+                        </div>
+                      )}
+
+                      <div className="flex justify-center">
+                        <InputOTP
+                          maxLength={6}
+                          value={fpOtp}
+                          onChange={(val) => {
+                            setFpOtp(val);
+                            setFpError(null);
+                          }}
+                        >
+                          <InputOTPGroup className="gap-1.5">
+                            {[0,1,2,3,4,5].map((i) => (
+                              <InputOTPSlot
+                                key={i}
+                                index={i}
+                                className="size-10 rounded-xl border-2 border-slate-300 text-base font-black text-[#1A3C6E] focus:border-[#1A3C6E] shadow-sm bg-white"
+                              />
+                            ))}
+                          </InputOTPGroup>
+                        </InputOTP>
+                      </div>
+
+                      <Button
+                        type="button"
+                        disabled={fpLoading || fpOtp.length !== 6}
+                        onClick={async () => {
+                          setFpLoading(true);
+                          setFpError(null);
+                          try {
+                            const res = await apiClient.verifyPasswordResetOtp(fpEmail.trim().toLowerCase(), fpOtp.trim());
+                            setFpLoading(false);
+                            if (res.success && res.resetToken) {
+                              setFpResetToken(res.resetToken);
+                              setForgotStep("newPassword");
+                            } else {
+                              setFpError(res.message || "Invalid code. Please try again.");
+                              if (res.code === "TOO_MANY_ATTEMPTS") setForgotStep("email");
+                            }
+                          } catch {
+                            setFpLoading(false);
+                            setFpError("Network error. Please check your connection.");
+                          }
+                        }}
+                        className="h-9 w-full rounded-xl bg-gradient-to-r from-emerald-600 to-[#1A3C6E] text-xs font-black text-white shadow-md hover:opacity-90 flex items-center justify-center gap-2 disabled:opacity-50"
+                      >
+                        {fpLoading ? <><Loader2 className="size-3.5 animate-spin" /><span>Verifying...</span></> : <><ShieldCheck className="size-3.5" /><span>Verify Code</span></>}
+                      </Button>
+
+                      <div className="flex items-center justify-between text-[11px]">
+                        <button
+                          type="button"
+                          disabled={fpTimer > 0 || fpLoading}
+                          onClick={async () => {
+                            setFpLoading(true);
+                            setFpError(null);
+                            try {
+                              const res = await apiClient.requestPasswordReset(fpEmail.trim().toLowerCase());
+                              setFpLoading(false);
+                              if (res.success || res.code === "COOLDOWN_ACTIVE") {
+                                if (import.meta.env.DEV && res.devOtp) setFpDevOtp(res.devOtp);
+                                setFpOtp("");
+                                setFpTimer(res.retryAfterSeconds || 60);
+                              } else {
+                                setFpError(res.message || "Failed to resend.");
+                              }
+                            } catch {
+                              setFpLoading(false);
+                              setFpError("Network error.");
+                            }
+                          }}
+                          className={cn(
+                            "font-bold transition-all",
+                            fpTimer > 0 ? "text-slate-400 cursor-not-allowed" : "text-[#1A3C6E] hover:underline cursor-pointer"
+                          )}
+                        >
+                          {fpTimer > 0 ? `Resend in ${fpTimer}s` : "Resend Code"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setForgotStep("email"); setFpOtp(""); setFpError(null); }}
+                          className="text-slate-400 hover:text-slate-700 font-bold"
+                        >
+                          Change Email
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* STEP 3: New password */}
+                  {forgotStep === "newPassword" && (
+                    <form
+                      onSubmit={async (e) => {
+                        e.preventDefault();
+                        if (fpNewPassword.length < 8) {
+                          setFpError("Password must be at least 8 characters.");
+                          return;
+                        }
+                        if (!/\d/.test(fpNewPassword)) {
+                          setFpError("Password must contain at least one number.");
+                          return;
+                        }
+                        if (fpNewPassword !== fpConfirmPassword) {
+                          setFpError("Passwords do not match.");
+                          return;
+                        }
+                        setFpLoading(true);
+                        setFpError(null);
+                        try {
+                          const res = await apiClient.completePasswordReset(fpResetToken, fpNewPassword);
+                          setFpLoading(false);
+                          if (res.success) {
+                            setForgotStep("success");
+                          } else {
+                            setFpError(res.message || "Failed to update password.");
+                            if (res.message?.includes("expired") || res.message?.includes("already been used")) {
+                              setForgotStep("email");
+                            }
+                          }
+                        } catch {
+                          setFpLoading(false);
+                          setFpError("Network error. Please check your connection.");
+                        }
+                      }}
+                      className="space-y-3"
+                    >
+                      <p className="text-[11px] text-slate-500">
+                        Create a strong new password. Must be at least 8 characters and contain a number.
+                      </p>
+
+                      <div className="relative flex items-center rounded-xl border border-slate-300 bg-white shadow-sm focus-within:border-[#1A3C6E] focus-within:ring-2 focus-within:ring-[#1A3C6E]/20">
+                        <div className="flex w-10 items-center justify-center rounded-l-xl bg-[#1A3C6E] text-white self-stretch">
+                          <Lock className="size-4" />
+                        </div>
+                        <input
+                          type={fpShowNewPass ? "text" : "password"}
+                          value={fpNewPassword}
+                          onChange={(e) => { setFpNewPassword(e.target.value); setFpError(null); }}
+                          placeholder="New password (min 8 chars + number)"
+                          autoComplete="new-password"
+                          className="w-full bg-transparent px-3 py-2.5 text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none"
+                        />
+                        <button type="button" onClick={() => setFpShowNewPass(!fpShowNewPass)} className="px-3 text-slate-400 hover:text-slate-600">
+                          {fpShowNewPass ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                        </button>
+                      </div>
+
+                      <div className="relative flex items-center rounded-xl border border-slate-300 bg-white shadow-sm focus-within:border-[#1A3C6E] focus-within:ring-2 focus-within:ring-[#1A3C6E]/20">
+                        <div className="flex w-10 items-center justify-center rounded-l-xl bg-slate-500 text-white self-stretch">
+                          <Lock className="size-4" />
+                        </div>
+                        <input
+                          type={fpShowConfirmPass ? "text" : "password"}
+                          value={fpConfirmPassword}
+                          onChange={(e) => { setFpConfirmPassword(e.target.value); setFpError(null); }}
+                          placeholder="Confirm new password"
+                          autoComplete="new-password"
+                          className="w-full bg-transparent px-3 py-2.5 text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none"
+                        />
+                        <button type="button" onClick={() => setFpShowConfirmPass(!fpShowConfirmPass)} className="px-3 text-slate-400 hover:text-slate-600">
+                          {fpShowConfirmPass ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                        </button>
+                      </div>
+
+                      {fpNewPassword && fpConfirmPassword && fpNewPassword !== fpConfirmPassword && (
+                        <p className="text-[10px] font-bold text-rose-600">⚠️ Passwords do not match</p>
+                      )}
+                      {fpNewPassword.length >= 8 && /\d/.test(fpNewPassword) && fpNewPassword === fpConfirmPassword && (
+                        <p className="text-[10px] font-bold text-emerald-600">✓ Password strength: Good</p>
+                      )}
+
+                      <Button
+                        type="submit"
+                        disabled={fpLoading || !fpNewPassword || !fpConfirmPassword}
+                        className="h-9 w-full rounded-xl bg-gradient-to-r from-emerald-600 to-[#1A3C6E] text-xs font-black text-white shadow-md hover:opacity-90 flex items-center justify-center gap-2 disabled:opacity-50"
+                      >
+                        {fpLoading ? <><Loader2 className="size-3.5 animate-spin" /><span>Updating...</span></> : <span>Reset Password</span>}
+                      </Button>
+                    </form>
+                  )}
+
+                  {/* STEP 4: Success */}
+                  {forgotStep === "success" && (
+                    <div className="space-y-3 text-center py-2">
+                      <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+                        <Check className="size-7" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-black text-emerald-700">Password Updated Successfully!</p>
+                        <p className="mt-1 text-[11px] text-slate-500">You can now sign in with your new password.</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => { setForgotStep(null); setStatusMessage(null); }}
+                        className="text-xs font-black text-[#1A3C6E] underline hover:text-amber-600"
+                      >
+                        Return to Login
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="mt-4 space-y-2">
                 <button
@@ -1348,12 +1700,12 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
                     </p>
                   </div>
 
-                  {regOtpPreview && (
+                  {import.meta.env.DEV && regOtpPreview && (
                     <div className="bg-gradient-to-r from-amber-50 to-blue-50 border border-amber-200/90 rounded-2xl p-3 text-left space-y-1.5 shadow-sm animate-in fade-in zoom-in-95">
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-bold text-[#1A3C6E] flex items-center gap-1.5">
                           <Smartphone className="size-3.5 text-amber-600" />
-                          Verification OTP Code
+                          DEV MODE — OTP Preview
                         </span>
                         <button
                           type="button"
@@ -1363,7 +1715,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
                           }}
                           className="text-[11px] font-black text-[#1A3C6E] hover:underline bg-white px-2.5 py-0.5 rounded-lg border border-amber-300 shadow-xs cursor-pointer"
                         >
-                          Auto-fill & Verify
+                          Auto-fill &amp; Verify
                         </button>
                       </div>
                       <div className="flex items-center justify-between">
@@ -1371,6 +1723,9 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
                           {regOtpPreview}
                         </span>
                         <span className="text-[10px] text-slate-500 font-medium">Valid for 10 minutes</span>
+                      </div>
+                      <div className="text-[10px] text-amber-700 bg-amber-100 rounded-lg px-2 py-1">
+                        ⚠️ Configure SMTP_* or RESEND_API_KEY to send real emails
                       </div>
                     </div>
                   )}

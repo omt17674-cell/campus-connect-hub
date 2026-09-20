@@ -279,4 +279,48 @@ export const apiClient = {
       };
     }
   },
+
+  // ─── Forgot Password OTP Flow ───────────────────────────────────────────
+
+  /** Step 1: Request a password reset OTP to be emailed */
+  async requestPasswordReset(email: string) {
+    try {
+      const res = await fetch("/api/auth/password-reset/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      return await res.json();
+    } catch (e) {
+      return { success: false, message: "Network error sending password reset code." };
+    }
+  },
+
+  /** Step 2: Verify the password reset OTP → returns a short-lived resetToken */
+  async verifyPasswordResetOtp(email: string, otp: string) {
+    try {
+      const res = await fetch("/api/auth/password-reset/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, otp }),
+      });
+      return await res.json();
+    } catch (e) {
+      return { success: false, message: "Network error verifying password reset code." };
+    }
+  },
+
+  /** Step 3: Complete the password reset using the server-issued resetToken */
+  async completePasswordReset(resetToken: string, newPassword: string) {
+    try {
+      const res = await fetch("/api/auth/password-reset/complete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ resetToken, newPassword }),
+      });
+      return await res.json();
+    } catch (e) {
+      return { success: false, message: "Network error completing password reset." };
+    }
+  },
 };

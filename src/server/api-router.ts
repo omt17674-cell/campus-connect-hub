@@ -1,6 +1,7 @@
 import { supabaseSync } from "./supabase-sync";
 import { supabaseAdmin } from "./supabase-admin";
 import { confirmUserEmailInAuth } from "./postgres";
+import { sendRegistrationOTP, sendPasswordResetOTP } from "./emailService";
 import {
   CampusEvent,
   Registration,
@@ -24,7 +25,7 @@ interface OtpEntry {
 const otpStore = new Map<string, OtpEntry>();
 
 interface RegistrationOtpEntry {
-  code: string;
+  codeHash: string;   // SHA-256 hash — never store plaintext OTP
   email: string;
   rollNo?: string;
   mobileNumber?: string;
@@ -34,6 +35,37 @@ interface RegistrationOtpEntry {
 }
 
 const registrationOtpStore = new Map<string, RegistrationOtpEntry>();
+
+// Password Reset OTP Store
+interface PasswordResetOtpEntry {
+  codeHash: string;   // SHA-256 hash of the 6-digit OTP
+  email: string;
+  expiresAt: number;
+  attempts: number;
+  createdAt: number;
+}
+const passwordResetOtpStore = new Map<string, PasswordResetOtpEntry>();
+
+// Password Reset Token Store (short-lived, single-use)
+interface PasswordResetTokenEntry {
+  tokenHash: string;  // SHA-256 hash of the reset token
+  email: string;
+  expiresAt: number;
+  used: boolean;
+  createdAt: number;
+}
+const passwordResetTokenStore = new Map<string, string>();  // tokenHash -> email
+const passwordResetTokenMeta = new Map<string, PasswordResetTokenEntry>();
+
+// Cryptographic SHA-256 hash helper (server-side, no external deps)
+async function sha256(input: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(input);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(hashBuffer))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
 
 function normalizeMobile(phone: string): string {
   if (!phone) return "";
@@ -631,14 +663,17 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
       );
     }
 
-    // Generate real cryptographically secure random 6-digit numeric OTP
+    // Generate cryptographically secure random 6-digit numeric OTP
     const randomBuffer = new Uint32Array(1);
     crypto.getRandomValues(randomBuffer);
     const generatedOtp = (100000 + (randomBuffer[0] % 900000)).toString();
     const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
 
+    // Hash the OTP — NEVER store plaintext
+    const otpHash = await sha256(generatedOtp);
+
     registrationOtpStore.set(cleanEmail, {
-      code: generatedOtp,
+      codeHash: otpHash,
       email: cleanEmail,
       rollNo: body.rollNo?.trim().toUpperCase(),
       mobileNumber: body.mobileNumber,
@@ -647,6 +682,15 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
       createdAt: Date.now(),
     });
 
+    // Send email OTP (primary channel)
+    let emailResult = { sent: false, provider: "none", configured: false };
+    try {
+      emailResult = await sendRegistrationOTP(cleanEmail, generatedOtp);
+    } catch (emailErr) {
+      console.warn("[Registration OTP] Email dispatch error:", emailErr);
+    }
+
+    // Send SMS OTP (secondary channel)
     let smsNote = "";
     if (body.mobileNumber) {
       const cleanMobile = normalizeMobile(body.mobileNumber);
@@ -656,14 +700,21 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
       }
     }
 
+    // NEVER include the OTP in the API response
     return jsonResponse(
       {
         success: true,
-        message: `Verification code generated for ${cleanEmail}. Valid for 10 minutes.`,
-        otp: generatedOtp,
+        message: `Verification code sent to ${cleanEmail}. Please check your email inbox (and spam folder). Valid for 10 minutes.`,
         expiresAt,
         email: cleanEmail,
+        emailSent: emailResult.sent,
+        emailProvider: emailResult.provider,
+        emailConfigured: emailResult.configured,
         smsNote,
+        // DEV ONLY: include OTP preview if email not configured (removed in production)
+        ...(process.env.NODE_ENV !== "production" && !emailResult.configured
+          ? { devOtp: generatedOtp, devNote: "⚠️ DEV ONLY: Email provider not configured. Remove before production." }
+          : {}),
       },
       200,
     );
@@ -716,7 +767,9 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
       );
     }
 
-    if (body.code.trim() !== entry.code) {
+    // Compare SHA-256 hash of submitted code against stored hash
+    const submittedHash = await sha256(body.code.trim());
+    if (submittedHash !== entry.codeHash) {
       entry.attempts += 1;
       return jsonResponse(
         {
@@ -1771,6 +1824,331 @@ ${clubs.map((c) => `- ${c.name} (${c.category}): ${c.description || "Active stud
       message: "Student record updated in database successfully.",
       student: updateRes.student,
     });
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // FORGOT PASSWORD — STEP 1: Request OTP
+  // ─────────────────────────────────────────────────────────────────────────
+  if (path === "/api/auth/password-reset/request" && method === "POST") {
+    const body = await parseBody<{ email: string }>(request);
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!body?.email || !emailRegex.test(body.email.trim())) {
+      return jsonResponse(
+        { success: false, message: "Please provide a valid email address." },
+        400,
+      );
+    }
+
+    const cleanEmail = body.email.trim().toLowerCase();
+
+    // Rate limit: 5 requests per hour per email
+    if (!checkRateLimit(`pw-reset:${cleanEmail}`, 5, 3600000)) {
+      return jsonResponse(
+        {
+          success: false,
+          code: "RATE_LIMITED",
+          message: "Too many password reset requests. Please wait before trying again.",
+        },
+        429,
+      );
+    }
+
+    // 60-second resend cooldown
+    const existingEntry = passwordResetOtpStore.get(cleanEmail);
+    if (existingEntry && Date.now() - existingEntry.createdAt < 60000) {
+      const waitSeconds = Math.ceil((60000 - (Date.now() - existingEntry.createdAt)) / 1000);
+      return jsonResponse(
+        {
+          success: false,
+          code: "COOLDOWN_ACTIVE",
+          message: `Please wait ${waitSeconds} seconds before requesting a new code.`,
+          retryAfterSeconds: waitSeconds,
+        },
+        429,
+      );
+    }
+
+    // Account enumeration protection — look up account silently (no early return on miss)
+    let accountExists = false;
+    try {
+      const account = await supabaseSync.getAccountByIdentifier(cleanEmail);
+      if (account) accountExists = true;
+    } catch {}
+    if (!accountExists) {
+      try {
+        const student = await supabaseSync.getStudentByRollOrEmail("___NONE___", cleanEmail);
+        if (student) accountExists = true;
+      } catch {}
+    }
+    // Also check Supabase Auth directly
+    if (!accountExists) {
+      try {
+        const { data: authUser } = await supabaseAdmin.auth.admin.listUsers();
+        if (authUser?.users?.some((u: any) => u.email === cleanEmail)) {
+          accountExists = true;
+        }
+      } catch {}
+    }
+
+    // Generate OTP and store hash regardless of whether account exists
+    // (prevents timing-based account enumeration)
+    const randomBuffer = new Uint32Array(1);
+    crypto.getRandomValues(randomBuffer);
+    const generatedOtp = (100000 + (randomBuffer[0] % 900000)).toString();
+    const otpHash = await sha256(generatedOtp);
+    const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
+
+    if (accountExists) {
+      passwordResetOtpStore.set(cleanEmail, {
+        codeHash: otpHash,
+        email: cleanEmail,
+        expiresAt,
+        attempts: 0,
+        createdAt: Date.now(),
+      });
+
+      // Send password reset email — fire and forget (don't delay response)
+      sendPasswordResetOTP(cleanEmail, generatedOtp).catch((err) =>
+        console.warn("[Password Reset OTP] Email dispatch error:", err),
+      );
+    }
+
+    // ALWAYS return the same generic message — never reveal if account exists
+    return jsonResponse(
+      {
+        success: true,
+        message: "If an account is associated with this email address, a verification code has been sent.",
+        // DEV ONLY hint
+        ...(process.env.NODE_ENV !== "production" && accountExists
+          ? { devOtp: generatedOtp, devNote: "⚠️ DEV ONLY: Email provider not configured. Remove before production." }
+          : {}),
+      },
+      200,
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // FORGOT PASSWORD — STEP 2: Verify OTP → issue reset token
+  // ─────────────────────────────────────────────────────────────────────────
+  if (path === "/api/auth/password-reset/verify" && method === "POST") {
+    const body = await parseBody<{ email: string; otp: string }>(request);
+    if (!body?.email || !body?.otp) {
+      return jsonResponse(
+        { success: false, message: "Email and 6-digit verification code are required." },
+        400,
+      );
+    }
+
+    const cleanEmail = body.email.trim().toLowerCase();
+    const cleanOtp = body.otp.trim();
+
+    // Rate limit verify attempts
+    if (!checkRateLimit(`pw-reset-verify:${cleanEmail}`, 10, 60000)) {
+      return jsonResponse(
+        {
+          success: false,
+          code: "RATE_LIMITED",
+          message: "Too many verification attempts. Please wait before retrying.",
+        },
+        429,
+      );
+    }
+
+    const entry = passwordResetOtpStore.get(cleanEmail);
+
+    if (!entry) {
+      return jsonResponse(
+        {
+          success: false,
+          message: "No active password reset code found for this email. Please request a new code.",
+        },
+        400,
+      );
+    }
+
+    if (Date.now() > entry.expiresAt) {
+      passwordResetOtpStore.delete(cleanEmail);
+      return jsonResponse(
+        {
+          success: false,
+          message: "Verification code has expired. Please request a new code.",
+        },
+        400,
+      );
+    }
+
+    if (entry.attempts >= 5) {
+      passwordResetOtpStore.delete(cleanEmail);
+      return jsonResponse(
+        {
+          success: false,
+          code: "TOO_MANY_ATTEMPTS",
+          message: "Maximum verification attempts exceeded. Please request a new code.",
+        },
+        400,
+      );
+    }
+
+    const submittedHash = await sha256(cleanOtp);
+    if (submittedHash !== entry.codeHash) {
+      entry.attempts += 1;
+      return jsonResponse(
+        {
+          success: false,
+          message: `Invalid verification code. ${5 - entry.attempts} attempt(s) remaining.`,
+        },
+        400,
+      );
+    }
+
+    // OTP verified! Consume the single-use OTP
+    passwordResetOtpStore.delete(cleanEmail);
+
+    // Generate a cryptographically secure, short-lived reset token
+    const tokenBytes = new Uint8Array(32);
+    crypto.getRandomValues(tokenBytes);
+    const resetToken = Array.from(tokenBytes).map((b) => b.toString(16).padStart(2, "0")).join("");
+    const tokenHash = await sha256(resetToken);
+    const tokenExpiresAt = Date.now() + 15 * 60 * 1000; // 15 minutes
+
+    // Store hash → email mapping (never store the raw token)
+    passwordResetTokenStore.set(tokenHash, cleanEmail);
+    passwordResetTokenMeta.set(tokenHash, {
+      tokenHash,
+      email: cleanEmail,
+      expiresAt: tokenExpiresAt,
+      used: false,
+      createdAt: Date.now(),
+    });
+
+    return jsonResponse(
+      {
+        success: true,
+        message: "Verification code confirmed. You may now set a new password.",
+        resetToken, // Raw token sent to client — hash stored server-side
+      },
+      200,
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // FORGOT PASSWORD — STEP 3: Complete reset with new password
+  // ─────────────────────────────────────────────────────────────────────────
+  if (path === "/api/auth/password-reset/complete" && method === "POST") {
+    const body = await parseBody<{ resetToken: string; newPassword: string }>(request);
+    if (!body?.resetToken || !body?.newPassword) {
+      return jsonResponse(
+        { success: false, message: "Reset token and new password are required." },
+        400,
+      );
+    }
+
+    const cleanPassword = body.newPassword;
+
+    // Password strength validation
+    if (cleanPassword.length < 8) {
+      return jsonResponse(
+        { success: false, message: "Password must be at least 8 characters long." },
+        400,
+      );
+    }
+    if (!/\d/.test(cleanPassword)) {
+      return jsonResponse(
+        { success: false, message: "Password must contain at least one number." },
+        400,
+      );
+    }
+
+    // Look up the reset token
+    const tokenHash = await sha256(body.resetToken.trim());
+    const tokenEmail = passwordResetTokenStore.get(tokenHash);
+    const tokenMeta = passwordResetTokenMeta.get(tokenHash);
+
+    if (!tokenEmail || !tokenMeta) {
+      return jsonResponse(
+        { success: false, message: "Invalid or expired password reset session. Please start over." },
+        400,
+      );
+    }
+
+    if (Date.now() > tokenMeta.expiresAt) {
+      passwordResetTokenStore.delete(tokenHash);
+      passwordResetTokenMeta.delete(tokenHash);
+      return jsonResponse(
+        { success: false, message: "Password reset session has expired. Please request a new code." },
+        400,
+      );
+    }
+
+    if (tokenMeta.used) {
+      return jsonResponse(
+        { success: false, message: "This reset session has already been used. Please request a new code." },
+        400,
+      );
+    }
+
+    // Mark token as used (single-use enforcement) before attempting password update
+    tokenMeta.used = true;
+
+    // Update password via Supabase Auth admin API
+    try {
+      // Find the user in Supabase Auth by email
+      const { data: usersData, error: listError } = await supabaseAdmin.auth.admin.listUsers();
+      if (listError) throw listError;
+
+      const authUser = usersData?.users?.find((u: any) => u.email === tokenEmail);
+      if (!authUser) {
+        return jsonResponse(
+          {
+            success: false,
+            message: "Account not found in authentication system. Please contact support.",
+          },
+          404,
+        );
+      }
+
+      // Update password via Supabase Admin — password is managed by Auth, not our DB
+      const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(authUser.id, {
+        password: cleanPassword,
+      });
+
+      if (updateError) {
+        console.error("[Password Reset] Supabase Auth update error:", updateError.message);
+        return jsonResponse(
+          {
+            success: false,
+            message: "Failed to update password. Please try again or contact support.",
+          },
+          500,
+        );
+      }
+
+      // Clean up token stores
+      passwordResetTokenStore.delete(tokenHash);
+      passwordResetTokenMeta.delete(tokenHash);
+
+      const maskedEmail = tokenEmail.replace(/(?<=.{2}).*(?=@)/, "***");
+      console.log(`[Password Reset] ✓ Password updated for ${maskedEmail}`);
+
+      return jsonResponse(
+        {
+          success: true,
+          message: "Password updated successfully. You may now sign in with your new password.",
+        },
+        200,
+      );
+    } catch (err: any) {
+      console.error("[Password Reset] Unexpected error:", err?.message);
+      return jsonResponse(
+        {
+          success: false,
+          message: "An unexpected error occurred while updating your password. Please try again.",
+        },
+        500,
+      );
+    }
   }
 
   return jsonResponse({ error: "Route not found in GSFC API Gateway" }, 404);

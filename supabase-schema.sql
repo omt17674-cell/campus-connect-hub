@@ -719,4 +719,51 @@ CREATE INDEX IF NOT EXISTS idx_attendance_event_id ON public.attendance(event_id
 CREATE INDEX IF NOT EXISTS idx_events_date_status ON public.events(date, status);
 CREATE INDEX IF NOT EXISTS idx_internship_apps_student ON public.internship_applications(student_id, status);
 
+-- ==============================================================================
+-- 14. EMAIL OTP AUTHENTICATION TABLES
+-- ==============================================================================
+
+-- OTP verifications table — stores SHA-256 hashed OTPs (NEVER plaintext)
+CREATE TABLE IF NOT EXISTS public.auth_otp_verifications (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email TEXT NOT NULL,
+  purpose TEXT NOT NULL CHECK (purpose IN ('registration', 'password_reset')),
+  otp_hash TEXT NOT NULL,           -- SHA-256 hash of the 6-digit OTP
+  expires_at TIMESTAMPTZ NOT NULL,
+  attempts INT DEFAULT 0,
+  verified_at TIMESTAMPTZ,
+  used_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  request_id TEXT                   -- Opaque request ID for safe log tracing
+);
+
+CREATE INDEX IF NOT EXISTS idx_otp_email_purpose ON public.auth_otp_verifications(email, purpose);
+CREATE INDEX IF NOT EXISTS idx_otp_expires ON public.auth_otp_verifications(expires_at);
+
+-- Auto-clean expired OTP records (optional — run as cron or pg_cron)
+-- DELETE FROM public.auth_otp_verifications WHERE expires_at < NOW() - INTERVAL '1 hour';
+
+-- Password reset tokens — SHA-256 hashed short-lived tokens
+CREATE TABLE IF NOT EXISTS public.password_reset_tokens (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email TEXT NOT NULL,
+  token_hash TEXT NOT NULL,         -- SHA-256 hash of the reset token
+  expires_at TIMESTAMPTZ NOT NULL,
+  used_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_reset_token_email ON public.password_reset_tokens(email);
+CREATE INDEX IF NOT EXISTS idx_reset_token_expires ON public.password_reset_tokens(expires_at);
+
+-- Enable RLS on OTP tables (OTP operations are server-side only via service role key)
+ALTER TABLE public.auth_otp_verifications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.password_reset_tokens ENABLE ROW LEVEL SECURITY;
+
+-- Service role can do everything; anon/authenticated roles have no access
+CREATE POLICY "otp_service_role_only" ON public.auth_otp_verifications
+  USING (false) WITH CHECK (false);
+
+CREATE POLICY "reset_token_service_role_only" ON public.password_reset_tokens
+  USING (false) WITH CHECK (false);
 

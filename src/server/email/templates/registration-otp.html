@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Registration Verification Code — Campus Connect Hub</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #F1F5F9; color: #1E293B; }
+    .wrapper { max-width: 600px; margin: 0 auto; padding: 32px 16px; }
+    .card { background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.08); }
+    .header { background: linear-gradient(135deg, #1A3C6E 0%, #0E2342 100%); padding: 32px 40px; text-align: center; }
+    .header-logo { display: inline-flex; align-items: center; justify-content: center; width: 56px; height: 56px; background: rgba(242,169,59,0.18); border-radius: 50%; margin-bottom: 16px; }
+    .header-logo svg { width: 32px; height: 32px; fill: #F2A93B; }
+    .header-title { color: #ffffff; font-size: 22px; font-weight: 900; letter-spacing: -0.5px; }
+    .header-title span { color: #F2A93B; }
+    .header-sub { color: rgba(255,255,255,0.65); font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; margin-top: 4px; }
+    .body { padding: 40px; }
+    .badge { display: inline-block; background: #EFF6FF; border: 1px solid #BFDBFE; color: #1A3C6E; font-size: 10px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; padding: 4px 12px; border-radius: 999px; margin-bottom: 20px; }
+    .heading { font-size: 24px; font-weight: 900; color: #1A3C6E; letter-spacing: -0.5px; margin-bottom: 8px; }
+    .subheading { font-size: 14px; color: #64748B; line-height: 1.6; margin-bottom: 28px; }
+    .otp-label { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.12em; color: #94A3B8; margin-bottom: 12px; }
+    .otp-container { display: flex; justify-content: center; gap: 8px; margin-bottom: 8px; }
+    .otp-digit { width: 52px; height: 64px; border: 2px solid #BFDBFE; border-radius: 12px; background: #F8FAFF; display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 900; color: #1A3C6E; font-family: 'Courier New', monospace; }
+    .otp-code-fallback { text-align: center; margin-top: 8px; font-size: 13px; color: #64748B; }
+    .otp-code-fallback strong { font-family: 'Courier New', monospace; font-size: 22px; color: #1A3C6E; letter-spacing: 0.25em; font-weight: 900; }
+    .validity { background: #FFF7ED; border: 1px solid #FED7AA; border-radius: 10px; padding: 12px 16px; margin: 24px 0; display: flex; align-items: flex-start; gap: 10px; }
+    .validity-icon { font-size: 18px; flex-shrink: 0; }
+    .validity-text { font-size: 13px; color: #92400E; line-height: 1.5; }
+    .validity-text strong { font-weight: 800; }
+    .divider { border: none; border-top: 1px solid #E2E8F0; margin: 28px 0; }
+    .security-note { font-size: 12px; color: #94A3B8; line-height: 1.6; }
+    .footer { background: #F8FAFC; border-top: 1px solid #E2E8F0; padding: 24px 40px; text-align: center; }
+    .footer-name { font-size: 13px; font-weight: 800; color: #1A3C6E; }
+    .footer-detail { font-size: 11px; color: #94A3B8; margin-top: 4px; }
+    @media (max-width: 480px) {
+      .body { padding: 28px 24px; }
+      .otp-digit { width: 42px; height: 54px; font-size: 22px; }
+      .heading { font-size: 20px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="card">
+      <!-- Header -->
+      <div class="header">
+        <div class="header-logo">
+          <svg viewBox="0 0 24 24"><path d="M12 3L1 9l11 6 9-4.91V17h2V9L12 3zM5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z"/></svg>
+        </div>
+        <div class="header-title">CAMPUS CONNECT <span>HUB</span></div>
+        <div class="header-sub">GSFC University · Training &amp; Placement Cell</div>
+      </div>
+
+      <!-- Body -->
+      <div class="body">
+        <div class="badge">Student Verification</div>
+        <div class="heading">Registration Verification Code</div>
+        <div class="subheading">
+          {{#if name}}Hello <strong>{{name}}</strong>, use{{else}}Use{{/if}} the 6-digit verification code below to complete your Campus Connect Hub registration.
+        </div>
+
+        <div class="otp-label">Your One-Time Verification Code</div>
+        <div class="otp-container">
+          <div class="otp-digit">{{d1}}</div>
+          <div class="otp-digit">{{d2}}</div>
+          <div class="otp-digit">{{d3}}</div>
+          <div class="otp-digit">{{d4}}</div>
+          <div class="otp-digit">{{d5}}</div>
+          <div class="otp-digit">{{d6}}</div>
+        </div>
+        <div class="otp-code-fallback">
+          Or copy: <strong>{{otp}}</strong>
+        </div>
+
+        <div class="validity">
+          <span class="validity-icon">⏱️</span>
+          <div class="validity-text">
+            <strong>This verification code is valid for 10 minutes.</strong><br>
+            For security, do not share this code with anyone. Each code can only be used once.
+          </div>
+        </div>
+
+        <hr class="divider" />
+
+        <div class="security-note">
+          If you did not request this verification code, you can safely disregard this email. Your account will not be created without OTP verification.
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="footer">
+        <div class="footer-name">Campus Connect Hub</div>
+        <div class="footer-detail">GSFC University · Vadodara, Gujarat, India</div>
+        <div class="footer-detail" style="margin-top: 8px; font-size: 10px;">This is an automated message. Please do not reply to this email.</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
