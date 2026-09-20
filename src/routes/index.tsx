@@ -6,6 +6,7 @@ import {
   Building2,
   Calendar,
   CalendarDays,
+  ChevronDown,
   Flame,
   History,
   QrCode,
@@ -47,6 +48,12 @@ import { CampusEvent } from "@/lib/types";
 import { campusStore, CampusState } from "@/lib/campus-store";
 import { translations } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -123,6 +130,71 @@ function CampusConnectApp() {
         <main className="mt-6 flex-1 pb-24 md:pb-8">
           {state.currentRole === "student" && (
             <div className="flex flex-col gap-6">
+              {/* Mobile module switcher: keeps every desktop destination available on small screens. */}
+              <div className="flex items-center gap-2 md:hidden">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="h-11 flex-1 justify-between rounded-2xl border-[#1A3C6E]/20 bg-card/90 px-4 text-sm font-black text-[#1A3C6E] shadow-sm"
+                    >
+                      <span className="flex items-center gap-2">
+                        <span className="flex size-7 items-center justify-center rounded-xl bg-[#1A3C6E] text-[#F2A93B]">
+                          <CalendarDays className="size-4" />
+                        </span>
+                        {studentView === "home" ? "Student Modules" : "Open Module"}
+                      </span>
+                      <ChevronDown className="size-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-[calc(100vw-2rem)] max-w-md rounded-2xl p-2">
+                    <DropdownMenuItem onClick={() => setStudentView("home")} className="rounded-xl py-3 text-sm font-bold">
+                      <CalendarDays className="mr-2 size-4" /> Home
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setStudentView("events")} className="rounded-xl py-3 text-sm font-bold">
+                      <TicketCheck className="mr-2 size-4" /> My Events
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setStudentView("upcoming")} className="rounded-xl py-3 text-sm font-bold">
+                      <Calendar className="mr-2 size-4 text-[#F2A93B]" /> Upcoming Events
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setStudentView("past")} className="rounded-xl py-3 text-sm font-bold">
+                      <History className="mr-2 size-4" /> Past Events
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setStudentView("passport")} className="rounded-xl py-3 text-sm font-bold">
+                      <Award className="mr-2 size-4 text-[#F2A93B]" /> 360 Passport
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setStudentView("clubs")} className="rounded-xl py-3 text-sm font-bold">
+                      <Users className="mr-2 size-4" /> Clubs & Societies
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setStudentView("feed")} className="rounded-xl py-3 text-sm font-bold">
+                      <Radio className="mr-2 size-4" /> Campus Feed
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setStudentView("services")} className="rounded-xl py-3 text-sm font-bold">
+                      <Building2 className="mr-2 size-4" /> Services & TPC
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setStudentView("internships")} className="rounded-xl py-3 text-sm font-bold">
+                      <Briefcase className="mr-2 size-4 text-[#F2A93B]" /> Internships
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setStudentView("gamification")} className="rounded-xl py-3 text-sm font-bold">
+                      <Trophy className="mr-2 size-4 text-[#F2A93B]" /> {t.nav.gamification}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setStudentView("profile")} className="rounded-xl py-3 text-sm font-bold">
+                      <UserRound className="mr-2 size-4" /> {t.nav.profile}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setShowScanner(true)} className="rounded-xl py-3 text-sm font-bold">
+                      <ScanLine className="mr-2 size-4" /> Scan QR
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <Button
+                  onClick={() => setShowGateModal(true)}
+                  className="h-11 shrink-0 rounded-2xl bg-gradient-to-r from-emerald-600 to-[#1A3C6E] px-3 text-white shadow-sm"
+                  aria-label="Open multi-factor check-in"
+                >
+                  <ScanBarcode className="size-4 text-[#F2A93B]" />
+                </Button>
+              </div>
+
               {/* Desktop Sub-Nav Pill Bar */}
               <div className="hidden items-center justify-between gap-4 border-b border-border/70 pb-3 md:flex flex-wrap">
                 <div className="flex items-center gap-1.5 flex-wrap">
