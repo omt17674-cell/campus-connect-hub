@@ -1723,9 +1723,12 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
                   type="button"
                   onClick={async () => {
                     setStatusMessage(null);
+                    const redirectOrigin = window.location.hostname === "localhost"
+                      ? window.location.origin
+                      : "https://campus-connect-hub-indol.vercel.app";
                     const { error } = await supabase.auth.signInWithOAuth({
                       provider: "google",
-                      options: { redirectTo: window.location.origin },
+                      options: { redirectTo: redirectOrigin },
                     });
                     if (error) {
                       setStatusMessage({ text: error.message, type: "error" });
