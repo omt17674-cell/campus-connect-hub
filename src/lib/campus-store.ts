@@ -4714,32 +4714,7 @@ export const campusStore = {
     try {
       if (typeof window !== "undefined" && navigator.onLine) {
         const dbPayload = serializeInternshipApplicationForDb(newApplication);
-        const { error: dbErr } = await supabase.from("internship_applications").insert(dbPayload);
-        if (dbErr) {
-          // Check for unique constraint violation (student_id + internship_id)
-          if (
-            dbErr.code === "23505" ||
-            dbErr.message?.includes("unq_student_internship") ||
-            dbErr.message?.includes("duplicate key")
-          ) {
-            // Roll back optimistic local state
-            campusStore.setState((prev) => ({
-              internshipApplications: (prev.internshipApplications || []).filter(
-                (a) => a.id !== newId,
-              ),
-              internshipNotifications: (prev.internshipNotifications || []).filter(
-                (n) => n.id !== studentNotif.id,
-              ),
-            }));
-            return {
-              success: false,
-              message:
-                "You have already submitted an application for this internship. Multiple concurrent applications are prevented.",
-            };
-          }
-          console.debug("Supabase application insert note:", dbErr);
-        }
-        await supabase.from("internship_notifications").insert({
+        const notificationPayload = {
           id: studentNotif.id,
           student_id: studentNotif.studentId,
           application_id: studentNotif.applicationId,
@@ -4748,10 +4723,39 @@ export const campusStore = {
           message: studentNotif.message,
           is_read: false,
           created_at: studentNotif.createdAt,
+        };
+        const response = await fetch("/api/internships/applications", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ application: dbPayload, notification: notificationPayload }),
         });
+        const result = (await response.json()) as { success?: boolean; message?: string };
+        if (!response.ok || !result.success) {
+          campusStore.setState((prev) => ({
+            internshipApplications: (prev.internshipApplications || []).filter(
+              (a) => a.id !== newId,
+            ),
+            internshipNotifications: (prev.internshipNotifications || []).filter(
+              (n) => n.id !== studentNotif.id,
+            ),
+          }));
+          return {
+            success: false,
+            message: result.message || "Application could not be saved to the university database.",
+          };
+        }
       }
     } catch (err) {
-      console.debug("Supabase application insert note:", err);
+      campusStore.setState((prev) => ({
+        internshipApplications: (prev.internshipApplications || []).filter((a) => a.id !== newId),
+        internshipNotifications: (prev.internshipNotifications || []).filter(
+          (n) => n.id !== studentNotif.id,
+        ),
+      }));
+      return {
+        success: false,
+        message: "Application could not be saved. Check your connection and try again.",
+      };
     } finally {
       inFlightApplications.delete(lockKey);
     }

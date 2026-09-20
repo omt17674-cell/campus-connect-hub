@@ -934,6 +934,46 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
     );
   }
 
+  // Internship applications: persist through the server-side Supabase client.
+  if (path === "/api/internships/applications" && method === "POST") {
+    const body = await parseBody<{
+      application?: Record<string, unknown>;
+      notification?: Record<string, unknown>;
+    }>(request);
+
+    if (!body?.application?.id || !body.application.internship_id || !body.application.student_id) {
+      return jsonResponse(
+        { success: false, message: "Missing internship application identity fields." },
+        400,
+      );
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from("internship_applications")
+      .upsert(body.application, { onConflict: "id" })
+      .select("*")
+      .single();
+
+    if (error) {
+      console.error("[Internship Application] Supabase save failed:", error.message);
+      return jsonResponse(
+        { success: false, message: "Application could not be saved to the university database." },
+        500,
+      );
+    }
+
+    if (body.notification?.id) {
+      const { error: notificationError } = await supabaseAdmin
+        .from("internship_notifications")
+        .upsert(body.notification, { onConflict: "id" });
+      if (notificationError) {
+        console.warn("[Internship Application] Notification save failed:", notificationError.message);
+      }
+    }
+
+    return jsonResponse({ success: true, application: data });
+  }
+
   // 3. Authentication: Google Workspace SSO
   if (path === "/api/auth/google" && method === "POST") {
     const body = await parseBody<{ email?: string; name?: string; rollNo?: string }>(request);
