@@ -145,6 +145,22 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
   // Listen for Supabase Auth confirmation link clicks (e.g. from email "Confirm email address")
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === "SIGNED_IN" && session?.user && regStep !== "otp") {
+        const email = session.user.email || "";
+        const userMeta = session.user.user_metadata || {};
+        const result = await apiClient.loginWithGoogle(
+          email,
+          userMeta.full_name || userMeta.name || email.split("@")[0],
+          userMeta.roll_no,
+        );
+        if (result.success && result.account) {
+          campusStore.loginWithAccount(result.account);
+          setStatusMessage({ text: result.message || "Signed in with Google Workspace.", type: "success" });
+          onLoginSuccess?.();
+        } else {
+          setStatusMessage({ text: result.message || "Google account is not registered with GSFC University.", type: "error" });
+        }
+      }
       if ((event === "SIGNED_IN" || event === "USER_UPDATED") && session?.user && regStep === "otp") {
         const email = session.user.email || registeredEmail;
         const userMeta = session.user.user_metadata || {};
@@ -1705,11 +1721,14 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
               <div className="mt-4 space-y-2">
                 <button
                   type="button"
-                  onClick={() => {
-                    const res = campusStore.loginWithGoogle();
-                    setStatusMessage({ text: res.message, type: "success" });
-                    if (onLoginSuccess) {
-                      setTimeout(onLoginSuccess, 300);
+                  onClick={async () => {
+                    setStatusMessage(null);
+                    const { error } = await supabase.auth.signInWithOAuth({
+                      provider: "google",
+                      options: { redirectTo: window.location.origin },
+                    });
+                    if (error) {
+                      setStatusMessage({ text: error.message, type: "error" });
                     }
                   }}
                   className="flex h-9 w-full items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50 transition-colors"
