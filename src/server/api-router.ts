@@ -1700,7 +1700,7 @@ ${clubs.map((c) => `- ${c.name} (${c.category}): ${c.description || "Active stud
           .join("")
           .toUpperCase()
           .slice(0, 2),
-        is_verified: false,
+        is_verified: true,
       });
 
       if (!accountRes || !accountRes.success) {

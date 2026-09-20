@@ -21,6 +21,8 @@ export interface GeoapifyLocationDetails {
   latitude: number;
   longitude: number;
   confidence?: number;
+  distanceMeters?: number;
+  plusCode?: string;
 }
 
 /**
@@ -54,6 +56,8 @@ export async function reverseGeocodeWithGeoapify(
         latitude,
         longitude,
         confidence: prop.rank?.confidence,
+        distanceMeters: typeof prop.distance === "number" ? Math.round(prop.distance) : undefined,
+        plusCode: prop.plus_code,
       };
     }
   } catch (error) {

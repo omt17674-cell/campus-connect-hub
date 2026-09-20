@@ -101,8 +101,8 @@ export async function getLiveStudentLocation(): Promise<{ coords: Coordinates; a
       },
       {
         enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 30000,
+        timeout: 20000,
+        maximumAge: 0,
       }
     );
   });

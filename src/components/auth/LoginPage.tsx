@@ -145,7 +145,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
   // Listen for Supabase Auth confirmation link clicks (e.g. from email "Confirm email address")
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === "SIGNED_IN" && session?.user && regStep !== "otp") {
+      if (event === "SIGNED_IN" && session?.user && regStep !== "otp" && !regSubmitting) {
         const email = session.user.email || "";
         const userMeta = session.user.user_metadata || {};
         const result = await apiClient.loginWithGoogle(
@@ -171,7 +171,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
       }
     });
     return () => subscription.unsubscribe();
-  }, [regStep, regRollNo, registeredEmail, regPassword]);
+  }, [regStep, regRollNo, registeredEmail, regPassword, regSubmitting]);
 
   // Mask email for display e.g. o***r@gsfcuniversity.ac.in
   const maskEmail = (emailStr: string) => {
@@ -731,36 +731,13 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
         return;
       }
 
-      // 8. If Supabase auto-confirmed (e.g. dev mode without email confirmation enabled), verify directly
-      if (signUpData.session) {
-        await completeRegistrationAfterVerification(cleanRoll, cleanEmail, regPassword, signUpData.session?.access_token);
-        return;
-      }
-
-      // 9. Dispatch Registration Verification OTP via backend API (and SMS)
-      let deliveredOtp: string | null = null;
-      try {
-        const otpRes = await apiClient.sendRegistrationOtp(cleanEmail, regPhone.trim(), cleanRoll);
-        if (otpRes?.success && otpRes?.otp) {
-          deliveredOtp = otpRes.otp;
-          setRegOtpPreview(deliveredOtp);
-        }
-      } catch (err) {
-        console.warn("Failed to dispatch registration OTP:", err);
-      }
-
-      // 10. Move to OTP Verification Screen
-      setRegisteredEmail(cleanEmail);
-      setRegStep("otp");
-      setRegOtpTimer(60);
-      setRegEmailOtp("");
-      setRegSubmitting(false);
-      setStatusMessage({
-        text: deliveredOtp
-          ? `Verification OTP generated! Enter code below or click the link in your confirmation email.`
-          : `We sent verification instructions to ${maskEmail(cleanEmail)}.`,
-        type: "success",
-      });
+      // The server persists both records and confirms the Auth user atomically.
+      await completeRegistrationAfterVerification(
+        cleanRoll,
+        cleanEmail,
+        regPassword,
+        signUpData.session?.access_token,
+      );
     } catch (err: any) {
       console.warn("Registration initiation error:", err);
       setRegSubmitting(false);
@@ -2301,12 +2278,12 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
                       {regSubmitting ? (
                         <span className="flex items-center gap-2">
                           <Loader2 className="size-4 animate-spin text-[#F2A93B]" />
-                          Sending Verification OTP...
+                          Creating your student account...
                         </span>
                       ) : (
                         <span className="flex items-center gap-2">
                           <UserPlus className="size-4 text-[#F2A93B]" />
-                          Continue to Email Verification →
+                          Create Account & Open Dashboard →
                         </span>
                       )}
                     </Button>
