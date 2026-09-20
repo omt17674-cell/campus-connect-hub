@@ -64,26 +64,63 @@ export function EventDetailModal({
   );
 
   const handleDownloadCertificate = async () => {
+    if (!event) {
+      toast.error("Unable to generate certificate: Event details could not be found.");
+      return;
+    }
+
+    const missingItems: string[] = [];
+    if (!event.title) missingItems.push("event title");
+    if (!state.currentUser?.name) missingItems.push("student name");
+    if (!state.currentUser?.rollNo) missingItems.push("enrolment number");
+
+    if (missingItems.length > 0) {
+      toast.error(
+        `Unable to generate certificate: missing ${missingItems.join(", ")}. Please update your profile or contact the event coordinator.`
+      );
+      return;
+    }
+
+    const rollNoClean = (state.currentUser?.rollNo || "1001").replace(/[^a-zA-Z0-9]/g, "");
+    const rollSuffix = rollNoClean.length >= 4 ? rollNoClean.slice(-4) : (rollNoClean || "1001");
+    const eventIdClean = (event.id || "EVT").replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+
     const record: AttendanceRecord = attendanceRecord || {
       id: `att-gen-${Date.now()}`,
       eventId: event.id,
       eventTitle: event.title,
       userId: state.currentUser.id,
-      userName: state.currentUser.name,
-      userRollNo: state.currentUser.rollNo,
-      department: state.currentUser.department,
+      userName: state.currentUser.name || "GSFC Student",
+      userRollNo: state.currentUser.rollNo || "",
+      department: state.currentUser.department || "Computer Science",
       timestamp: new Date().toISOString(),
       verifiedMethod: "qr_scan",
       tokenUsed: "GSFC-VERIFIED",
       synced: true,
-      certificateId: `GSFC-CERT-${event.id.replace(/[^a-zA-Z0-9]/g, "").toUpperCase()}-${state.currentUser.rollNo.slice(-4)}-98A4`,
+      certificateId: `GSFC-CERT-${eventIdClean}-${rollSuffix}-98A4`,
     };
 
     setDownloadingCert(true);
     try {
       await generateCertificatePdf(record, event, state.currentUser);
-    } catch (err) {
+      toast.success("Certificate downloaded successfully!");
+    } catch (err: any) {
       console.error("Certificate download error", err);
+      const specificMissing: string[] = [];
+      if (!event.organizerName) specificMissing.push("organizer name");
+      if (!event.venue) specificMissing.push("venue");
+      if (!event.date) specificMissing.push("event date");
+      if (!state.currentUser.department) specificMissing.push("department");
+
+      if (specificMissing.length > 0) {
+        toast.error(
+          `Certificate generation failed: missing ${specificMissing.join(", ")}. Please contact the event coordinator.`
+        );
+      } else {
+        toast.error(
+          err?.message ? `Failed to download certificate: ${err.message}` : "Failed to download certificate. Please try again."
+        );
+      }
     } finally {
       setDownloadingCert(false);
     }

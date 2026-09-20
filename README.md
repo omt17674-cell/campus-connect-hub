@@ -1,19 +1,22 @@
-# Campus Connect Hub — GSFC University
-> **Official Event Management & Live Location Attendance Governance Platform**  
-> *Developed & Managed by OM THAKKAR*
+# Campus Connect Hub
+
+> **Integrated Campus Engagement, Events, Attendance, Internship & Digital Student Experience Platform**  
+> _Developed by Om P. Thakkar_
 
 ---
 
 ## 🏛️ About Campus Connect Hub
-**Campus Connect Hub** is GSFC University's enterprise platform for student engagement, university event governance, and cryptographically verified attendance tracking with live GPS geofencing.
 
-Designed for high reliability, multi-platform accessibility (Android, iOS, Web PWA), and seamless academic record compliance.
+**Campus Connect Hub** is an integrated campus management platform designed for student engagement, campus event administration, internship tracking, and verified attendance tracking with live GPS geofencing (tested with GSFC University campus contexts).
+
+Designed for high reliability, multi-platform accessibility (Android, iOS, Web PWA), and seamless academic record workflows.
 
 ---
 
 ## ✨ Key Capabilities
 
 ### 🎓 1. Student Portal
+
 - **Campus Event Directory**: Browse, search, filter by department and tags, and register for technical hackathons, cultural conclaves, and sports tournaments.
 - **Team & Solo Registration**: Register full rosters with verified university roll numbers.
 - **Live Location Geofenced Attendance**: Time-bound rotating QR code check-in enforced with GPS perimeter validation against GSFC University campus venues.
@@ -23,11 +26,13 @@ Designed for high reliability, multi-platform accessibility (Android, iOS, Web P
 - **Calendar Integration**: Export to Apple Calendar / Outlook via `.ics` and direct Google Calendar synchronization.
 
 ### 💼 2. TPC Admin & Faculty Organizer Portal
+
 - **Event Lifecycle Governance**: Create, edit, publish, and manage capacities and waitlists.
 - **Live Attendance Screen**: Large projector mode with rotating time-limited dynamic QR code and live check-in ticker.
 - **Attendee Management & Export**: Real-time roll list, manual attendance overrides, and one-click CSV export.
 
 ### 🏛️ 3. University Administration Portal
+
 - **Cross-Department Analytics**: Interactive Recharts graphs tracking department attendance, active student engagement, and capacity utilization.
 - **Dean Event Approval Queue**: Review and approve newly created events before publication.
 - **Automated Low-Attendance Alerts**: Smart detection and alerts for students falling below the 75% attendance threshold.
@@ -38,6 +43,7 @@ Designed for high reliability, multi-platform accessibility (Android, iOS, Web P
 ## 🔑 Authentication Portals
 
 All users must register or sign in using their official GSFC University credentials or Google Workspace SSO:
+
 - 🎓 **Student Portal**: Sign in using your official enrollment number or university email.
 - 🏛️ **Administration Portal**: Restricted to authorized academic deans and university officers.
 - 💼 **TPC & Faculty Organizer Portal**: Accessible to Training & Placement cell coordinators and verified event leads.
@@ -94,6 +100,5 @@ This project is licensed under the MIT License — see the [LICENSE](LICENSE) fi
 
 ---
 
-**All Rights Reserved © 2026 GSFC University, Vadodara**  
-*Developed & Managed by OM THAKKAR*
-
+**Copyright © 2026 Om P. Thakkar**  
+_Integrated Campus Engagement, Events, Attendance, Internship & Digital Student Experience Platform_

@@ -3,9 +3,20 @@ import { CampusEvent, Registration, AttendanceRecord } from "./types";
 
 export function generateEventAttendanceRosterPdf(
   event: CampusEvent,
-  registrations: Registration[],
-  attendanceRecords: AttendanceRecord[]
+  registrations: Registration[] = [],
+  attendanceRecords: AttendanceRecord[] = []
 ): void {
+  // Safe fallbacks for all event fields
+  const safeTitle = (event?.title || "").trim() || "Campus Event";
+  const safeCategory = (event?.category || "").trim() || "General";
+  const safeDepartment = (event?.department || "").trim() || "All Departments";
+  const safeStatus = ((event?.status || "").trim() || "COMPLETED").toUpperCase();
+  const safeDate = (event?.date || "").trim() || "N/A";
+  const safeTime = (event?.time || "").trim() || "N/A";
+  const safeVenue = (event?.venue || "").trim() || "GSFC University Campus";
+  const safeOrganizer = (event?.organizerName || "").trim() || "Event Coordinator";
+  const safeOrganizerEmail = (event?.organizerEmail || "").trim() || "faculty@gsfcuni.edu";
+
   const doc = new jsPDF({
     orientation: "portrait",
     unit: "mm",
@@ -59,22 +70,24 @@ export function generateEventAttendanceRosterPdf(
   doc.setTextColor(26, 60, 110);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(13);
-  doc.text(event.title, margin + 4, y + 7);
+  doc.text(safeTitle, margin + 4, y + 7);
 
   doc.setFontSize(8.5);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(71, 85, 105);
-  doc.text(`Category: ${event.category}  |  Department: ${event.department}  |  Status: ${event.status.toUpperCase()}`, margin + 4, y + 13);
-  doc.text(`Date & Time: ${event.date} (${event.time})  |  Venue: ${event.venue}`, margin + 4, y + 19);
-  doc.text(`Faculty Coordinator: ${event.organizerName} (${event.organizerEmail || "faculty@gsfcuni.edu"})`, margin + 4, y + 25);
+  doc.text(`Category: ${safeCategory}  |  Department: ${safeDepartment}  |  Status: ${safeStatus}`, margin + 4, y + 13);
+  doc.text(`Date & Time: ${safeDate} (${safeTime})  |  Venue: ${safeVenue}`, margin + 4, y + 19);
+  doc.text(`Faculty Coordinator: ${safeOrganizer} (${safeOrganizerEmail})`, margin + 4, y + 25);
 
   // Stats Summary
-  const totalRegistered = registrations.length;
-  const punchedInCount = registrations.filter(
-    (r) => r.status === "punched_in" || r.status === "attended" || Boolean(r.punchInTime)
+  const safeRegistrations = Array.isArray(registrations) ? registrations : [];
+  const safeAttendance = Array.isArray(attendanceRecords) ? attendanceRecords : [];
+  const totalRegistered = safeRegistrations.length;
+  const punchedInCount = safeRegistrations.filter(
+    (r) => r && (r.status === "punched_in" || r.status === "attended" || Boolean(r.punchInTime))
   ).length;
-  const completedCount = registrations.filter(
-    (r) => r.status === "attended" || Boolean(r.punchOutTime)
+  const completedCount = safeRegistrations.filter(
+    (r) => r && (r.status === "attended" || Boolean(r.punchOutTime))
   ).length;
   const turnoutRate = totalRegistered > 0 ? Math.round((punchedInCount / totalRegistered) * 100) : 0;
 
@@ -121,7 +134,7 @@ export function generateEventAttendanceRosterPdf(
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7.5);
 
-  registrations.forEach((reg, index) => {
+  safeRegistrations.forEach((reg, index) => {
     if (y > pageHeight - 35) {
       doc.addPage();
       y = 20;
@@ -142,7 +155,7 @@ export function generateEventAttendanceRosterPdf(
       y += 7;
     }
 
-    const att = attendanceRecords.find((a) => a.userId === reg.userId);
+    const att = safeAttendance.find((a) => a && a.userId === reg?.userId);
     const isEven = index % 2 === 0;
 
     if (isEven) {
@@ -150,29 +163,37 @@ export function generateEventAttendanceRosterPdf(
       doc.rect(margin, y, pageWidth - margin * 2, 6.5, "F");
     }
 
+    const safeRoll = (reg?.userRollNo || "N/A").trim() || "N/A";
+    const safeUserName = (reg?.userName || "Student").trim() || "Student";
+    const safeUserDept = (reg?.department || "N/A").trim() || "N/A";
+
     doc.setTextColor(71, 85, 105);
     doc.text(String(index + 1), margin + 2, y + 4.5);
-    doc.text(reg.userRollNo, margin + 12, y + 4.5);
+    doc.text(safeRoll, margin + 12, y + 4.5);
 
     doc.setTextColor(26, 60, 110);
     doc.setFont("helvetica", "bold");
-    doc.text(reg.userName.slice(0, 24), margin + 48, y + 4.5);
+    doc.text(safeUserName.slice(0, 24), margin + 48, y + 4.5);
 
     doc.setFont("helvetica", "normal");
     doc.setTextColor(100, 116, 139);
-    doc.text(reg.department.slice(0, 18), margin + 100, y + 4.5);
+    doc.text(safeUserDept.slice(0, 18), margin + 100, y + 4.5);
 
-    const punchInStr = reg.punchInTime ? reg.punchInTime.slice(11, 16) : att?.timestamp ? att.timestamp.slice(11, 16) : "—";
-    doc.text(punchInStr, margin + 138, y + 4.5);
+    const punchInStr = reg?.punchInTime
+      ? reg.punchInTime.slice(11, 16)
+      : att?.timestamp
+      ? att.timestamp.slice(11, 16)
+      : "—";
+    doc.text(punchInStr || "—", margin + 138, y + 4.5);
 
-    const punchOutStr = reg.punchOutTime ? reg.punchOutTime.slice(11, 16) : "—";
-    doc.text(punchOutStr, margin + 158, y + 4.5);
+    const punchOutStr = reg?.punchOutTime ? reg.punchOutTime.slice(11, 16) : "—";
+    doc.text(punchOutStr || "—", margin + 158, y + 4.5);
 
-    const isAttended = reg.status === "attended" || Boolean(reg.punchOutTime);
+    const isAttended = reg?.status === "attended" || Boolean(reg?.punchOutTime);
     if (isAttended) {
       doc.setTextColor(16, 185, 129);
       doc.text("Verified", margin + 176, y + 4.5);
-    } else if (reg.status === "punched_in" || Boolean(reg.punchInTime)) {
+    } else if (reg?.status === "punched_in" || Boolean(reg?.punchInTime)) {
       doc.setTextColor(217, 119, 6);
       doc.text("In Session", margin + 176, y + 4.5);
     } else {
@@ -193,7 +214,7 @@ export function generateEventAttendanceRosterPdf(
   doc.setFontSize(7.5);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(26, 60, 110);
-  doc.text(event.organizerName, margin + 25, sigY + 4, { align: "center" });
+  doc.text(safeOrganizer, margin + 25, sigY + 4, { align: "center" });
   doc.setFont("helvetica", "normal");
   doc.setTextColor(100, 116, 139);
   doc.text("Faculty Event Coordinator", margin + 25, sigY + 8, { align: "center" });
@@ -210,6 +231,7 @@ export function generateEventAttendanceRosterPdf(
   doc.text("Authenticated via Campus Connect Hub · GSFC University Vadodara", pageWidth / 2, pageHeight - 4, { align: "center" });
 
   // Save the PDF
-  const filename = `GSFC_Attendance_Roster_${event.title.replace(/[^a-zA-Z0-9]/g, "_")}.pdf`;
+  const safeFileTitle = safeTitle.replace(/[^a-zA-Z0-9]/g, "_") || "Event";
+  const filename = `GSFC_Attendance_Roster_${safeFileTitle}.pdf`;
   doc.save(filename);
 }

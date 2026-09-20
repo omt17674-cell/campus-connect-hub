@@ -13,6 +13,7 @@ import {
   Calendar,
 } from "lucide-react";
 import { campusStore } from "@/lib/campus-store";
+import { apiClient } from "@/lib/api-client";
 import { AssistantMessage } from "@/lib/types";
 
 interface CampusAssistantModalProps {
@@ -58,7 +59,7 @@ export const CampusAssistantModal: React.FC<CampusAssistantModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleSendMessage = (textToSend?: string) => {
+  const handleSendMessage = async (textToSend?: string) => {
     const text = (textToSend || inputText).trim();
     if (!text) return;
 
@@ -73,12 +74,34 @@ export const CampusAssistantModal: React.FC<CampusAssistantModalProps> = ({
     setInputText("");
     setIsTyping(true);
 
-    // Simulate snappy AI reasoning
-    setTimeout(() => {
-      const response = campusStore.queryCampusAssistant(text);
-      setMessages((prev) => [...prev, response]);
-      setIsTyping(false);
-    }, 400);
+    try {
+      const aiResponse = await apiClient.queryAiAssistant(text, user.role, user.id);
+      if (aiResponse && aiResponse.text) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: aiResponse.id || `msg-ai-${Date.now()}`,
+            sender: "assistant",
+            text: aiResponse.text,
+            timestamp: aiResponse.timestamp || new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+            suggestedActions: [
+              "What events are happening this week?",
+              "Show technical workshops for CSE",
+              "Show my registered events",
+              "What is my attendance percentage?",
+            ],
+          },
+        ]);
+        setIsTyping(false);
+        return;
+      }
+    } catch {
+      // Fall through to offline store response
+    }
+
+    const response = campusStore.queryCampusAssistant(text);
+    setMessages((prev) => [...prev, response]);
+    setIsTyping(false);
   };
 
   const handleClear = () => {

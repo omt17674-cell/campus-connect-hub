@@ -1,4 +1,13 @@
-export type UserRole = "student" | "organizer" | "admin";
+export type UserRole =
+  | "student"
+  | "faculty"
+  | "organizer"
+  | "tpc"
+  | "admin"
+  | "dean"
+  | "security"
+  | "super_admin";
+
 
 export type Language = "en" | "gu" | "hi";
 

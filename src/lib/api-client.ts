@@ -62,7 +62,12 @@ export const apiClient = {
     }
   },
 
-  async verifyOtp(mobileNumber: string, code: string, purpose: "login" | "attendance" = "login", role?: string) {
+  async verifyOtp(
+    mobileNumber: string,
+    code: string,
+    purpose: "login" | "attendance" = "login",
+    role?: string,
+  ) {
     try {
       const res = await fetch("/api/auth/otp/verify", {
         method: "POST",
@@ -139,7 +144,12 @@ export const apiClient = {
     userName: string;
     department: string;
     token: string;
-    locationData?: { latitude: number; longitude: number; distanceMeters: number; verified: boolean };
+    locationData?: {
+      latitude: number;
+      longitude: number;
+      distanceMeters: number;
+      verified: boolean;
+    };
   }) {
     try {
       const res = await fetch("/api/attendance/check-in", {
@@ -192,7 +202,9 @@ export const apiClient = {
 
   async getEventRegistrations(eventId?: string) {
     try {
-      const url = eventId ? `/api/events/${encodeURIComponent(eventId)}/registrations` : "/api/registrations";
+      const url = eventId
+        ? `/api/events/${encodeURIComponent(eventId)}/registrations`
+        : "/api/registrations";
       const res = await fetch(url);
       return await res.json();
     } catch (e) {
@@ -240,5 +252,31 @@ export const apiClient = {
       return null;
     }
   },
-};
 
+  async getPaginatedStudentRegistry(params?: {
+    page?: number;
+    pageSize?: number;
+    search?: string;
+    department?: string;
+    status?: string;
+  }) {
+    try {
+      const q = new URLSearchParams();
+      if (params?.page) q.set("page", params.page.toString());
+      if (params?.pageSize) q.set("pageSize", params.pageSize.toString());
+      if (params?.search) q.set("search", params.search);
+      if (params?.department) q.set("department", params.department);
+      if (params?.status) q.set("status", params.status);
+
+      const res = await fetch(`/api/students/registry?${q.toString()}`);
+      return await res.json();
+    } catch (e) {
+      return {
+        success: false,
+        students: [],
+        total: 0,
+        message: "Network error loading student registry.",
+      };
+    }
+  },
+};

@@ -111,7 +111,7 @@ export async function generateDeanNocPdf(params: NocLetterParams): Promise<void>
 
   currentY += 5;
   doc.setFont("helvetica", "bold");
-  doc.text(companyName, margin, currentY);
+  doc.text(companyName || "Industrial Partner", margin, currentY);
 
   currentY += 5;
   doc.setFont("helvetica", "normal");
@@ -138,7 +138,7 @@ export async function generateDeanNocPdf(params: NocLetterParams): Promise<void>
 
   // Paragraph 1: Student Certification
   currentY += 7;
-  const studentName = student.name.toUpperCase();
+  const studentName = (student?.name || "GSFC Student").toUpperCase();
   const rollNo = student.rollNo || matchingStudent?.rollNo || "STU-2024-001";
   const department = student.department || matchingStudent?.department || "Computer Science & Engineering";
   const course = student.degree || matchingStudent?.degree || "B.Tech";

@@ -31,6 +31,7 @@ import {
   GeoapifyLocationDetails,
 } from "@/lib/geoapify";
 import { GeoapifyLiveMapCard } from "@/components/common/GeoapifyLiveMapCard";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 interface PunchAttendanceModalProps {
@@ -192,24 +193,29 @@ export function PunchAttendanceModal({
 
   // Download certificate helper
   const handleDownloadCertificate = async () => {
-    if (!attendance) return;
-    await generateCertificatePdf({
-      studentName: state.currentUser.name,
-      studentRollNo: state.currentUser.rollNo,
-      department: state.currentUser.department,
-      eventTitle: event.title,
-      eventCategory: event.category,
-      eventDate: event.date,
-      venue: event.venue,
-      certificateId: attendance.certificateId,
-      issueDate: new Date().toLocaleDateString("en-GB", {
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-      }),
-      organizerName: event.organizerName,
-      locationDistanceMeters: currentDistanceMeters,
-    });
+    if (!attendance) {
+      toast.error("Attendance verification required to generate certificate.");
+      return;
+    }
+    try {
+      await generateCertificatePdf(attendance, event, state.currentUser);
+      toast.success("Certificate downloaded successfully!");
+    } catch (err: any) {
+      console.error("Certificate download error", err);
+      const specificMissing: string[] = [];
+      if (!event.organizerName) specificMissing.push("organizer name");
+      if (!event.venue) specificMissing.push("venue");
+      if (!event.date) specificMissing.push("event date");
+      if (!state.currentUser.department) specificMissing.push("department");
+
+      if (specificMissing.length > 0) {
+        toast.error(
+          `Certificate generation failed: missing ${specificMissing.join(", ")}. Please contact the event coordinator.`
+        );
+      } else {
+        toast.error(`Certificate download error: ${err?.message || "Failed to generate PDF"}`);
+      }
+    }
   };
 
   return (

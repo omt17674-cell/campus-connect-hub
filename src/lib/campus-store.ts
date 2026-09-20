@@ -50,7 +50,6 @@ import {
   logSupabaseError,
 } from "./supabase-mappers";
 
-
 export interface CampusAccount {
   role: UserRole;
   roleTitle: string;
@@ -89,8 +88,8 @@ export const STUDENT_ACCOUNT: CampusAccount = {
 
 export const ADMIN_ACCOUNT: CampusAccount = {
   role: "admin",
-  roleTitle: "Administration (Dean & Academic Governance)",
-  roleBadge: "Super Admin",
+  roleTitle: "TPC Admin (Dean & Academic Governance)",
+  roleBadge: "TPC Admin",
   name: "Dr. Ananya Sharma (Dean)",
   idOrRoll: "ADM-DEAN-001",
   email: "admin.dean@gsfcuniversity.ac.in",
@@ -114,8 +113,8 @@ export const ADMIN_ACCOUNT: CampusAccount = {
 
 export const TPC_ADMIN_ACCOUNT: CampusAccount = {
   role: "organizer",
-  roleTitle: "TPC Admin (Training & Placement / Faculty Organizer)",
-  roleBadge: "TPC Admin",
+  roleTitle: "Placement Faculty Coordinator (Training & Placement / Faculty Organizer)",
+  roleBadge: "Placement Faculty Coordinator",
   name: "Prof. Rajiv Mehta (TPC Head)",
   idOrRoll: "TPC-ADMIN-108",
   email: "tpc.admin@gsfcuniversity.ac.in",
@@ -249,7 +248,6 @@ const INITIAL_AUDIT_LOGS: AuditLogEntry[] = [];
 
 const INITIAL_BROADCASTS: EventBroadcast[] = [];
 
-
 const INITIAL_DIGITAL_ID: DigitalStudentIdCard = {
   rollNo: "",
   name: "GSFC Student",
@@ -270,8 +268,10 @@ const INITIAL_CLUBS: Club[] = [
     name: "GSFC Coding & Robotics Club",
     category: "Technical",
     department: "Computer Science & Engineering",
-    description: "The premier developer & robotics community at GSFC University. Organizing national hackathons, open-source cohorts, AI bootcamps, and competitive programming meetups.",
-    bannerImage: "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=1200&q=80",
+    description:
+      "The premier developer & robotics community at GSFC University. Organizing national hackathons, open-source cohorts, AI bootcamps, and competitive programming meetups.",
+    bannerImage:
+      "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=1200&q=80",
     logo: "💻",
     facultyCoordinator: {
       name: "Dr. Suresh Rao",
@@ -294,8 +294,10 @@ const INITIAL_CLUBS: Club[] = [
     name: "Chrysalis Cultural & Arts Guild",
     category: "Cultural",
     department: "All Departments",
-    description: "Fostering creative expression, theatre, music, classical dance, painting, and literature across all faculties of GSFC University.",
-    bannerImage: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=1200&q=80",
+    description:
+      "Fostering creative expression, theatre, music, classical dance, painting, and literature across all faculties of GSFC University.",
+    bannerImage:
+      "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=1200&q=80",
     logo: "🎭",
     facultyCoordinator: {
       name: "Prof. Meera Joshi",
@@ -318,8 +320,10 @@ const INITIAL_CLUBS: Club[] = [
     name: "GSFC E-Cell & Innovation Hub",
     category: "Entrepreneurship",
     department: "Management & Engineering",
-    description: "Nurturing student startup founders, seed pitching, venture incubation, patent filings, and industry mentorship circles.",
-    bannerImage: "https://images.unsplash.com/photo-1559136555-9303baea8ebd?auto=format&fit=crop&w=1200&q=80",
+    description:
+      "Nurturing student startup founders, seed pitching, venture incubation, patent filings, and industry mentorship circles.",
+    bannerImage:
+      "https://images.unsplash.com/photo-1559136555-9303baea8ebd?auto=format&fit=crop&w=1200&q=80",
     logo: "🚀",
     facultyCoordinator: {
       name: "Prof. Rajiv Mehta (TPC Head)",
@@ -342,8 +346,10 @@ const INITIAL_CLUBS: Club[] = [
     name: "University Sports & Athletics Council",
     category: "Sports",
     department: "Physical Education",
-    description: "Coordinating inter-university leagues in football, cricket, basketball, volleyball, athletics, and chess with professional coaching.",
-    bannerImage: "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&w=1200&q=80",
+    description:
+      "Coordinating inter-university leagues in football, cricket, basketball, volleyball, athletics, and chess with professional coaching.",
+    bannerImage:
+      "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&w=1200&q=80",
     logo: "🏆",
     facultyCoordinator: {
       name: "Coach Vikram Gohil",
@@ -366,8 +372,10 @@ const INITIAL_CLUBS: Club[] = [
     name: "Rotaract & Social Action Cell (NSS)",
     category: "Social & NSS",
     department: "Student Affairs",
-    description: "Driving community impact, blood donation drives, environmental tree plantations, rural digital literacy, and NGO partnerships.",
-    bannerImage: "https://images.unsplash.com/photo-1593113598332-cd288d649433?auto=format&fit=crop&w=1200&q=80",
+    description:
+      "Driving community impact, blood donation drives, environmental tree plantations, rural digital literacy, and NGO partnerships.",
+    bannerImage:
+      "https://images.unsplash.com/photo-1593113598332-cd288d649433?auto=format&fit=crop&w=1200&q=80",
     logo: "🤝",
     facultyCoordinator: {
       name: "Dr. Neha Trivedi",
@@ -398,7 +406,8 @@ const INITIAL_CLUB_ACTIVITIES: ClubActivity[] = [
     date: "2026-06-20",
     time: "03:00 PM - 06:00 PM",
     venue: "Computer Center, Lab 4",
-    description: "Deep dive into real-time robotics programming with ROS2 and ESP32 hardware interfacing.",
+    description:
+      "Deep dive into real-time robotics programming with ROS2 and ESP32 hardware interfacing.",
     isPublicEvent: true,
     attendanceCount: 0,
   },
@@ -422,7 +431,8 @@ const INITIAL_ANNOUNCEMENTS: CampusAnnouncement[] = [
   {
     id: "ann-1",
     title: "Official Notice: End-Semester Exam Schedule & Hall Tickets",
-    content: "The examination schedule for Semester 4, 6, and 8 has been finalized by Academic Governance. Hall tickets with verified attendance eligibility are accessible in the student portal.",
+    content:
+      "The examination schedule for Semester 4, 6, and 8 has been finalized by Academic Governance. Hall tickets with verified attendance eligibility are accessible in the student portal.",
     category: "university",
     authorName: "Dr. Ananya Sharma",
     authorRole: "Dean, Academic Governance",
@@ -434,7 +444,8 @@ const INITIAL_ANNOUNCEMENTS: CampusAnnouncement[] = [
   {
     id: "ann-2",
     title: "TPC Placement Alert: L&T Infotech & TCS Campus Drives Open",
-    content: "Online registration for L&T Infotech and TCS campus recruitment drives is now active. B.Tech (CSE/Chemical/Mechanical) students with >= 75% attendance are eligible to apply.",
+    content:
+      "Online registration for L&T Infotech and TCS campus recruitment drives is now active. B.Tech (CSE/Chemical/Mechanical) students with >= 75% attendance are eligible to apply.",
     category: "placement",
     authorName: "Prof. Rajiv Mehta",
     authorRole: "Head, Training & Placement Cell (TPC)",
@@ -446,7 +457,8 @@ const INITIAL_ANNOUNCEMENTS: CampusAnnouncement[] = [
   {
     id: "ann-3",
     title: "Campus Security Circular: South Gate Maintenance Access",
-    content: "Please note that the South Student Gate will undergo sensor calibration between 02:00 PM and 04:00 PM today. Please use Main Campus Security Gate #1 for entry & vehicle parking.",
+    content:
+      "Please note that the South Student Gate will undergo sensor calibration between 02:00 PM and 04:00 PM today. Please use Main Campus Security Gate #1 for entry & vehicle parking.",
     category: "emergency",
     authorName: "Chief Security Officer",
     authorRole: "GSFC Campus Security Command",
@@ -458,7 +470,8 @@ const INITIAL_ANNOUNCEMENTS: CampusAnnouncement[] = [
   {
     id: "ann-4",
     title: "Coding Club Meetup: Microcontroller Hardware Kit Allocation",
-    content: "Hardware kits, Arduino Nano, and ESP32 boards for the upcoming IoT hackathon can be collected from Computer Center Lab 4 today between 04:00 PM and 06:00 PM.",
+    content:
+      "Hardware kits, Arduino Nano, and ESP32 boards for the upcoming IoT hackathon can be collected from Computer Center Lab 4 today between 04:00 PM and 06:00 PM.",
     category: "club",
     authorName: "Dr. Suresh Rao",
     authorRole: "Faculty Coordinator, Coding Club",
@@ -481,7 +494,8 @@ const INITIAL_SERVICES: CampusService[] = [
     headPerson: "Prof. Rajiv Mehta",
     contactEmail: "tpc.admin@gsfcuniversity.ac.in",
     contactPhone: "+91 265 309 3751",
-    description: "Corporate recruitment drives, industry internships, resume reviews, mock interviews, and company liaison.",
+    description:
+      "Corporate recruitment drives, industry internships, resume reviews, mock interviews, and company liaison.",
     iconName: "Briefcase",
   },
   {
@@ -495,7 +509,8 @@ const INITIAL_SERVICES: CampusService[] = [
     headPerson: "Dr. Ananya Sharma",
     contactEmail: "admin.dean@gsfcuniversity.ac.in",
     contactPhone: "+91 265 309 3701",
-    description: "Academic regulations, curriculum governance, attendance exemption appeals, degree certificates, and student affairs.",
+    description:
+      "Academic regulations, curriculum governance, attendance exemption appeals, degree certificates, and student affairs.",
     iconName: "GraduationCap",
   },
   {
@@ -509,7 +524,8 @@ const INITIAL_SERVICES: CampusService[] = [
     headPerson: "Dr. R. K. Patel (Chief Librarian)",
     contactEmail: "library@gsfcuni.edu",
     contactPhone: "+91 265 309 3820",
-    description: "50,000+ technical volumes, IEEE/ACM digital access, quiet study pods, high-speed WiFi, and journal archives.",
+    description:
+      "50,000+ technical volumes, IEEE/ACM digital access, quiet study pods, high-speed WiFi, and journal archives.",
     iconName: "BookOpen",
   },
   {
@@ -523,7 +539,8 @@ const INITIAL_SERVICES: CampusService[] = [
     headPerson: "Dr. Suresh Rao (HOD CSE)",
     contactEmail: "suresh.rao@gsfcuni.edu",
     contactPhone: "+91 265 309 3765",
-    description: "GPU compute workstations, 3D printers, ROS robotics hardware testbeds, and hackathon project facilities.",
+    description:
+      "GPU compute workstations, 3D printers, ROS robotics hardware testbeds, and hackathon project facilities.",
     iconName: "Cpu",
   },
   {
@@ -537,7 +554,8 @@ const INITIAL_SERVICES: CampusService[] = [
     headPerson: "Dr. J. M. Mehta (Campus Physician)",
     contactEmail: "health.center@gsfcuni.edu",
     contactPhone: "+91 265 309 3999",
-    description: "First aid, emergency patient care, ambulance dispatch, routine medical checkups, and mental health counseling.",
+    description:
+      "First aid, emergency patient care, ambulance dispatch, routine medical checkups, and mental health counseling.",
     iconName: "HeartPulse",
   },
   {
@@ -551,7 +569,8 @@ const INITIAL_SERVICES: CampusService[] = [
     headPerson: "Security Control Officer",
     contactEmail: "security@gsfcuni.edu",
     contactPhone: "+91 265 309 3911",
-    description: "Visitor gate passes, parking allocation, lost & found counter, CCTV surveillance, and campus vehicle tracking.",
+    description:
+      "Visitor gate passes, parking allocation, lost & found counter, CCTV surveillance, and campus vehicle tracking.",
     iconName: "ShieldCheck",
   },
 ];
@@ -563,7 +582,8 @@ export const INITIAL_INTERNSHIPS: Internship[] = [
     id: "int-gsfc-01",
     title: "Industrial Process Automation & IoT Intern",
     companyName: "Gujarat State Fertilizers & Chemicals (GSFC) Ltd.",
-    description: "Work with the Central Instrumentation & IoT Department at GSFC Fertilizernagar complex. Build SCADA integration scripts, telemetry ingestion pipelines, and live predictive maintenance dashboards.",
+    description:
+      "Work with the Central Instrumentation & IoT Department at GSFC Fertilizernagar complex. Build SCADA integration scripts, telemetry ingestion pipelines, and live predictive maintenance dashboards.",
     department: "Computer Science / Chemical / Mechanical",
     skillsRequired: ["Python", "Industrial IoT", "MQTT", "React", "PostgreSQL"],
     eligibility: "Min CGPA: 7.0, Semester 4 or 6, No active backlogs",
@@ -586,7 +606,8 @@ export const INITIAL_INTERNSHIPS: Internship[] = [
     id: "int-tcs-02",
     title: "Full-Stack Cloud & AI Systems Intern",
     companyName: "Tata Consultancy Services (TCS)",
-    description: "Participate in enterprise cloud modernization, fine-tuning retrieval-augmented generation (RAG) models, and containerized deployment with Kubernetes and Docker.",
+    description:
+      "Participate in enterprise cloud modernization, fine-tuning retrieval-augmented generation (RAG) models, and containerized deployment with Kubernetes and Docker.",
     department: "Computer Science & Engineering / IT",
     skillsRequired: ["TypeScript", "Next.js", "Python", "Docker", "AWS / Azure"],
     eligibility: "Min CGPA: 7.5, Semester 6 or 8",
@@ -609,7 +630,8 @@ export const INITIAL_INTERNSHIPS: Internship[] = [
     id: "int-ltts-03",
     title: "Smart Mobility & Embedded Edge Intern",
     companyName: "L&T Technology Services",
-    description: "Design hardware-in-the-loop embedded software, CAN bus diagnostic telemetry, and real-time firmware verification for electric vehicle control units.",
+    description:
+      "Design hardware-in-the-loop embedded software, CAN bus diagnostic telemetry, and real-time firmware verification for electric vehicle control units.",
     department: "Electrical / Electronics / Computer Science",
     skillsRequired: ["Embedded C/C++", "RTOS", "CAN Bus", "Microcontrollers"],
     eligibility: "Min CGPA: 6.8, Semester 6 or 8",
@@ -632,7 +654,8 @@ export const INITIAL_INTERNSHIPS: Internship[] = [
     id: "int-vmc-04",
     title: "Urban Geospatial & Citizen Data Analytics Intern",
     companyName: "Vadodara Smart City Development Ltd.",
-    description: "Analyze municipal GPS transit patterns, environmental sensors, and optimize smart traffic signal timings using GIS spatial data and dashboards.",
+    description:
+      "Analyze municipal GPS transit patterns, environmental sensors, and optimize smart traffic signal timings using GIS spatial data and dashboards.",
     department: "All Departments (Engineering & Sciences)",
     skillsRequired: ["Data Analytics", "GIS / Geoapify", "Python", "SQL"],
     eligibility: "Min CGPA: 6.5, Semester 4, 6 or 8",
@@ -680,17 +703,22 @@ export const INITIAL_INTERNSHIP_APPLICATIONS: InternshipApplication[] = [
     skills: ["Python", "IoT Systems", "React", "PostgreSQL", "MQTT"],
     projects: "Campus Connect Hub Geofencing Engine, SCADA Sensor Dashboard",
     experience: "Technical Committee Member at Coding & AI Club",
-    whyInternship: "GSFC Ltd offers an outstanding industrial proving ground to deploy predictive maintenance models on live chemical plant telemetry.",
-    careerObjective: "To specialize in intelligent industrial automation and high-reliability edge systems.",
-    coverLetter: "Dear Hiring Team, I am thrilled to apply for the Industrial IoT Internship at GSFC Ltd...",
+    whyInternship:
+      "GSFC Ltd offers an outstanding industrial proving ground to deploy predictive maintenance models on live chemical plant telemetry.",
+    careerObjective:
+      "To specialize in intelligent industrial automation and high-reliability edge systems.",
+    coverLetter:
+      "Dear Hiring Team, I am thrilled to apply for the Industrial IoT Internship at GSFC Ltd...",
     declarationAccepted: true,
     status: "APPROVED",
     adminReviewedBy: "Prof. Rajiv Mehta (TPC Head)",
     adminReviewedAt: "2026-09-02T11:00:00Z",
-    adminComment: "Verified eligibility (8.9 CGPA, 0 backlogs). Academic track record is exceptional. Recommended for Dean approval.",
+    adminComment:
+      "Verified eligibility (8.9 CGPA, 0 backlogs). Academic track record is exceptional. Recommended for Dean approval.",
     deanReviewedBy: "Dr. Ananya Sharma (Dean)",
     deanReviewedAt: "2026-09-03T14:30:00Z",
-    deanComment: "Formally approved and sanctioned. Student is officially registered for GSFC Ltd industrial internship and granted attendance punch access.",
+    deanComment:
+      "Formally approved and sanctioned. Student is officially registered for GSFC Ltd industrial internship and granted attendance punch access.",
     approvedAt: "2026-09-03T14:30:00Z",
     createdAt: "2026-09-01T10:00:00Z",
     updatedAt: "2026-09-03T14:30:00Z",
@@ -799,7 +827,8 @@ export const INITIAL_INTERNSHIP_NOTIFICATIONS: InternshipNotification[] = [
     applicationId: "app-int-001",
     type: "active",
     title: "Internship Approved & Activated!",
-    message: "Your application INT-2026-000001 for GSFC Ltd has been fully approved by Dean Dr. Ananya Sharma. You are now authorized to log GPS attendance.",
+    message:
+      "Your application INT-2026-000001 for GSFC Ltd has been fully approved by Dean Dr. Ananya Sharma. You are now authorized to log GPS attendance.",
     isRead: false,
     createdAt: "2026-09-03T14:31:00Z",
   },
@@ -807,7 +836,6 @@ export const INITIAL_INTERNSHIP_NOTIFICATIONS: InternshipNotification[] = [
 
 const STORAGE_KEY = "gsfc_campus_connect_state_v6";
 const ACCOUNTS_STORAGE_KEY = "gsfc_campus_accounts_v5";
-
 
 export function getStoredAccounts(): CampusAccount[] {
   const defaultAccounts = [STUDENT_ACCOUNT, ADMIN_ACCOUNT, TPC_ADMIN_ACCOUNT];
@@ -818,7 +846,13 @@ export function getStoredAccounts(): CampusAccount[] {
       const parsed: CampusAccount[] = JSON.parse(raw);
       const merged = [...parsed];
       for (const def of defaultAccounts) {
-        if (!merged.some((a) => a.email.toLowerCase() === def.email.toLowerCase() || a.idOrRoll.toLowerCase() === def.idOrRoll.toLowerCase())) {
+        if (
+          !merged.some(
+            (a) =>
+              a.email.toLowerCase() === def.email.toLowerCase() ||
+              a.idOrRoll.toLowerCase() === def.idOrRoll.toLowerCase(),
+          )
+        ) {
           merged.push(def);
         }
       }
@@ -895,28 +929,48 @@ function loadSavedState(): CampusState {
 
       // Clean legacy dummy test records for fresh manual testing
       const existingRegs: Registration[] = Array.isArray(parsed.registrations)
-        ? parsed.registrations.filter((r: Registration) => !["reg-1", "reg-2", "reg-3", "reg-4"].includes(r.id))
+        ? parsed.registrations.filter(
+            (r: Registration) => !["reg-1", "reg-2", "reg-3", "reg-4"].includes(r.id),
+          )
         : [];
       const mergedRegs = [...existingRegs];
       for (const defReg of INITIAL_REGISTRATIONS) {
-        if (!mergedRegs.some((r) => r.id === defReg.id || (r.eventId === defReg.eventId && (r.userId === defReg.userId || r.userRollNo === defReg.userRollNo)))) {
+        if (
+          !mergedRegs.some(
+            (r) =>
+              r.id === defReg.id ||
+              (r.eventId === defReg.eventId &&
+                (r.userId === defReg.userId || r.userRollNo === defReg.userRollNo)),
+          )
+        ) {
           mergedRegs.push(defReg);
         }
       }
 
       // Clean legacy dummy attendance records
       const existingAtt: AttendanceRecord[] = Array.isArray(parsed.attendanceRecords)
-        ? parsed.attendanceRecords.filter((a: AttendanceRecord) => !["att-1", "att-2"].includes(a.id))
+        ? parsed.attendanceRecords.filter(
+            (a: AttendanceRecord) => !["att-1", "att-2"].includes(a.id),
+          )
         : [];
       const mergedAtt = [...existingAtt];
       for (const defAtt of INITIAL_ATTENDANCE) {
-        if (!mergedAtt.some((a) => a.id === defAtt.id || (a.eventId === defAtt.eventId && (a.userId === defAtt.userId || a.userRollNo === defAtt.userRollNo)))) {
+        if (
+          !mergedAtt.some(
+            (a) =>
+              a.id === defAtt.id ||
+              (a.eventId === defAtt.eventId &&
+                (a.userId === defAtt.userId || a.userRollNo === defAtt.userRollNo)),
+          )
+        ) {
           mergedAtt.push(defAtt);
         }
       }
 
       // Merge visitor records
-      const existingVisitors: VisitorRecord[] = Array.isArray(parsed.visitorRecords) ? parsed.visitorRecords : [];
+      const existingVisitors: VisitorRecord[] = Array.isArray(parsed.visitorRecords)
+        ? parsed.visitorRecords
+        : [];
       const mergedVisitors = [...existingVisitors];
       for (const defVis of INITIAL_VISITORS) {
         if (!mergedVisitors.some((v) => v.id === defVis.id)) {
@@ -925,10 +979,16 @@ function loadSavedState(): CampusState {
       }
 
       // Merge vehicle records
-      const existingVehicles: VehicleRecord[] = Array.isArray(parsed.vehicleRecords) ? parsed.vehicleRecords : [];
+      const existingVehicles: VehicleRecord[] = Array.isArray(parsed.vehicleRecords)
+        ? parsed.vehicleRecords
+        : [];
       const mergedVehicles = [...existingVehicles];
       for (const defVeh of INITIAL_VEHICLES) {
-        if (!mergedVehicles.some((v) => v.id === defVeh.id || v.vehicleNumber === defVeh.vehicleNumber)) {
+        if (
+          !mergedVehicles.some(
+            (v) => v.id === defVeh.id || v.vehicleNumber === defVeh.vehicleNumber,
+          )
+        ) {
           mergedVehicles.push(defVeh);
         }
       }
@@ -948,13 +1008,20 @@ function loadSavedState(): CampusState {
         : [];
       const mergedClubMembers = [...existingClubMembers];
       for (const defCm of INITIAL_CLUB_MEMBERS) {
-        if (!mergedClubMembers.some((cm) => cm.id === defCm.id || (cm.clubId === defCm.clubId && cm.userId === defCm.userId))) {
+        if (
+          !mergedClubMembers.some(
+            (cm) =>
+              cm.id === defCm.id || (cm.clubId === defCm.clubId && cm.userId === defCm.userId),
+          )
+        ) {
           mergedClubMembers.push(defCm);
         }
       }
 
       // Merge club activities
-      const existingActivities: ClubActivity[] = Array.isArray(parsed.clubActivities) ? parsed.clubActivities : [];
+      const existingActivities: ClubActivity[] = Array.isArray(parsed.clubActivities)
+        ? parsed.clubActivities
+        : [];
       const mergedActivities = [...existingActivities];
       for (const defAct of INITIAL_CLUB_ACTIVITIES) {
         if (!mergedActivities.some((a) => a.id === defAct.id)) {
@@ -964,7 +1031,9 @@ function loadSavedState(): CampusState {
 
       // Merge achievements (clean dummy records)
       const existingAchievements: VerifiedAchievement[] = Array.isArray(parsed.achievements)
-        ? parsed.achievements.filter((a: VerifiedAchievement) => !["ach-1", "ach-2", "ach-3"].includes(a.id))
+        ? parsed.achievements.filter(
+            (a: VerifiedAchievement) => !["ach-1", "ach-2", "ach-3"].includes(a.id),
+          )
         : [];
       const mergedAchievements = [...existingAchievements];
       for (const defAch of INITIAL_ACHIEVEMENTS) {
@@ -974,7 +1043,9 @@ function loadSavedState(): CampusState {
       }
 
       // Merge announcements
-      const existingAnnouncements: CampusAnnouncement[] = Array.isArray(parsed.announcements) ? parsed.announcements : [];
+      const existingAnnouncements: CampusAnnouncement[] = Array.isArray(parsed.announcements)
+        ? parsed.announcements
+        : [];
       const mergedAnnouncements = [...existingAnnouncements];
       for (const defAnn of INITIAL_ANNOUNCEMENTS) {
         if (!mergedAnnouncements.some((a) => a.id === defAnn.id)) {
@@ -983,7 +1054,9 @@ function loadSavedState(): CampusState {
       }
 
       // Merge services
-      const existingServices: CampusService[] = Array.isArray(parsed.services) ? parsed.services : [];
+      const existingServices: CampusService[] = Array.isArray(parsed.services)
+        ? parsed.services
+        : [];
       const mergedServices = [...existingServices];
       for (const defSrv of INITIAL_SERVICES) {
         if (!mergedServices.some((s) => s.id === defSrv.id)) {
@@ -992,7 +1065,9 @@ function loadSavedState(): CampusState {
       }
 
       // Merge new registered students
-      const existingStudents: NewRegisteredStudent[] = Array.isArray(parsed.newRegisteredStudents) ? parsed.newRegisteredStudents : [];
+      const existingStudents: NewRegisteredStudent[] = Array.isArray(parsed.newRegisteredStudents)
+        ? parsed.newRegisteredStudents
+        : [];
       const mergedStudents = [...existingStudents];
       for (const defStu of INITIAL_NEW_STUDENTS) {
         if (!mergedStudents.some((s) => s.rollNo.toUpperCase() === defStu.rollNo.toUpperCase())) {
@@ -1001,7 +1076,9 @@ function loadSavedState(): CampusState {
       }
 
       // Merge internships
-      const existingInternships: Internship[] = Array.isArray(parsed.internships) ? parsed.internships : [];
+      const existingInternships: Internship[] = Array.isArray(parsed.internships)
+        ? parsed.internships
+        : [];
       const mergedInternships = [...existingInternships];
       for (const defInt of INITIAL_INTERNSHIPS) {
         if (!mergedInternships.some((i) => i.id === defInt.id)) {
@@ -1010,7 +1087,9 @@ function loadSavedState(): CampusState {
       }
 
       // Merge internship applications
-      const existingApps: InternshipApplication[] = Array.isArray(parsed.internshipApplications) ? parsed.internshipApplications : [];
+      const existingApps: InternshipApplication[] = Array.isArray(parsed.internshipApplications)
+        ? parsed.internshipApplications
+        : [];
       const mergedApps = [...existingApps];
       for (const defApp of INITIAL_INTERNSHIP_APPLICATIONS) {
         if (!mergedApps.some((a) => a.id === defApp.id)) {
@@ -1019,7 +1098,11 @@ function loadSavedState(): CampusState {
       }
 
       // Merge internship attendance
-      const existingIntAtt: InternshipAttendanceRecord[] = Array.isArray(parsed.internshipAttendance) ? parsed.internshipAttendance : [];
+      const existingIntAtt: InternshipAttendanceRecord[] = Array.isArray(
+        parsed.internshipAttendance,
+      )
+        ? parsed.internshipAttendance
+        : [];
       const mergedIntAtt = [...existingIntAtt];
       for (const defAtt of INITIAL_INTERNSHIP_ATTENDANCE) {
         if (!mergedIntAtt.some((a) => a.id === defAtt.id)) {
@@ -1028,7 +1111,9 @@ function loadSavedState(): CampusState {
       }
 
       // Merge internship approvals
-      const existingApprv: InternshipApprovalRecord[] = Array.isArray(parsed.internshipApprovals) ? parsed.internshipApprovals : [];
+      const existingApprv: InternshipApprovalRecord[] = Array.isArray(parsed.internshipApprovals)
+        ? parsed.internshipApprovals
+        : [];
       const mergedApprv = [...existingApprv];
       for (const defAp of INITIAL_INTERNSHIP_APPROVALS) {
         if (!mergedApprv.some((a) => a.id === defAp.id)) {
@@ -1037,7 +1122,11 @@ function loadSavedState(): CampusState {
       }
 
       // Merge internship notifications
-      const existingIntNotif: InternshipNotification[] = Array.isArray(parsed.internshipNotifications) ? parsed.internshipNotifications : [];
+      const existingIntNotif: InternshipNotification[] = Array.isArray(
+        parsed.internshipNotifications,
+      )
+        ? parsed.internshipNotifications
+        : [];
       const mergedIntNotif = [...existingIntNotif];
       for (const defNot of INITIAL_INTERNSHIP_NOTIFICATIONS) {
         if (!mergedIntNotif.some((n) => n.id === defNot.id)) {
@@ -1114,7 +1203,8 @@ function loadSavedState(): CampusState {
     internshipApprovals: INITIAL_INTERNSHIP_APPROVALS,
     internshipNotifications: INITIAL_INTERNSHIP_NOTIFICATIONS,
   };
-}let realtimeChannelInitialized = false;
+}
+let realtimeChannelInitialized = false;
 
 // Concurrency locks to prevent double-submissions under 100+ concurrent user spikes
 const inFlightApplications = new Set<string>();
@@ -1133,7 +1223,10 @@ export function initSupabaseRealtimeSync() {
  * Subscribes strictly to notifications and application updates where student_id matches.
  * Returns an unsubscribe cleanup function.
  */
-export function subscribeStudentInternshipRealtime(studentId: string, onUpdate?: () => void): () => void {
+export function subscribeStudentInternshipRealtime(
+  studentId: string,
+  onUpdate?: () => void,
+): () => void {
   if (typeof window === "undefined" || !studentId) return () => {};
   try {
     const channelName = `student-int-${studentId.replace(/[^a-zA-Z0-9_-]/g, "_")}`;
@@ -1149,7 +1242,7 @@ export function subscribeStudentInternshipRealtime(studentId: string, onUpdate?:
         },
         () => {
           if (onUpdate) onUpdate();
-        }
+        },
       )
       .on(
         "postgres_changes",
@@ -1161,7 +1254,7 @@ export function subscribeStudentInternshipRealtime(studentId: string, onUpdate?:
         },
         () => {
           if (onUpdate) onUpdate();
-        }
+        },
       )
       .subscribe();
 
@@ -1192,7 +1285,7 @@ export function subscribeAdminInternshipRealtime(onUpdate?: () => void): () => v
         },
         () => {
           if (onUpdate) onUpdate();
-        }
+        },
       )
       .subscribe();
 
@@ -1235,12 +1328,19 @@ export async function syncStateToSupabase(state: CampusState): Promise<void> {
     // 5. Sync newly registered students
     if (state.newRegisteredStudents && state.newRegisteredStudents.length > 0) {
       const mappedStudents = state.newRegisteredStudents.map(serializeStudentForDb);
-      const { error: stuErr } = await supabase.from("new_registered_students").upsert(mappedStudents, { onConflict: "roll_no" });
+      const { error: stuErr } = await supabase
+        .from("new_registered_students")
+        .upsert(mappedStudents, { onConflict: "roll_no" });
       if (stuErr) logSupabaseError("upsert", "new_registered_students", stuErr);
     }
 
     // 6. Sync current active student to accounts & new_registered_students
-    if (state.isAuthenticated && state.currentUser && state.currentUser.rollNo && state.currentRole === "student") {
+    if (
+      state.isAuthenticated &&
+      state.currentUser &&
+      state.currentUser.rollNo &&
+      state.currentRole === "student"
+    ) {
       const u = state.currentUser;
       const dbAcc = {
         id: `u-${u.rollNo.toLowerCase()}`,
@@ -1305,22 +1405,27 @@ export const campusStore = {
     listeners.forEach((l) => l(globalState));
   },
 
-  async registerNewStudent(student: NewRegisteredStudent): Promise<{ success: boolean; message?: string }> {
+  async registerNewStudent(
+    student: NewRegisteredStudent,
+  ): Promise<{ success: boolean; message?: string }> {
     if (typeof window !== "undefined" && navigator.onLine) {
       try {
         const dbStudent = serializeStudentForDb(student);
-        const { error: stuErr } = await supabase.from("new_registered_students").upsert(dbStudent, { onConflict: "roll_no" });
+        const { error: stuErr } = await supabase
+          .from("new_registered_students")
+          .upsert(dbStudent, { onConflict: "roll_no" });
         if (stuErr) {
           logSupabaseError("upsert", "new_registered_students", stuErr);
           return { success: false, message: stuErr.message };
         }
 
-        const initials = student.fullName
-          .split(" ")
-          .map((n) => n[0])
-          .join("")
-          .toUpperCase()
-          .slice(0, 2) || "ST";
+        const initials =
+          student.fullName
+            .split(" ")
+            .map((n) => n[0])
+            .join("")
+            .toUpperCase()
+            .slice(0, 2) || "ST";
 
         const dbAccount = {
           id: `u-${student.rollNo.toLowerCase()}`,
@@ -1339,14 +1444,16 @@ export const campusStore = {
           mobile_number: student.mobileNumber,
           created_at: new Date().toISOString(),
         };
-        const { error: accErr } = await supabase.from("accounts").upsert(dbAccount, { onConflict: "roll_no" });
+        const { error: accErr } = await supabase
+          .from("accounts")
+          .upsert(dbAccount, { onConflict: "roll_no" });
         if (accErr) {
           logSupabaseError("upsert", "accounts", accErr);
         }
 
         campusStore.setState((prev) => {
           const filtered = (prev.newRegisteredStudents || []).filter(
-            (s) => s.rollNo.toUpperCase() !== student.rollNo.toUpperCase()
+            (s) => s.rollNo.toUpperCase() !== student.rollNo.toUpperCase(),
           );
           return { newRegisteredStudents: [student, ...filtered] };
         });
@@ -1365,10 +1472,38 @@ export const campusStore = {
       const updatedList = (prev.newRegisteredStudents || []).map((s) =>
         s.id === student.id || s.rollNo.toUpperCase() === student.rollNo.toUpperCase()
           ? { ...s, ...student }
-          : s
+          : s,
       );
       return { newRegisteredStudents: updatedList };
     });
+  },
+
+  /**
+   * Dedicated, un-debounced Student Registry refresh querying server-side endpoint.
+   * Ensures instant refresh on realtime events and manual admin triggers.
+   */
+  async refreshStudentRegistry(
+    force = true,
+  ): Promise<{ success: boolean; count: number; error?: string }> {
+    if (typeof window === "undefined")
+      return { success: false, count: 0, error: "Window undefined" };
+    try {
+      const res = await fetch("/api/students/registry?page=1&pageSize=100");
+      if (!res.ok) {
+        throw new Error(`Server returned status ${res.status}`);
+      }
+      const data = await res.json();
+      if (data && data.success && Array.isArray(data.students)) {
+        campusStore.setState(() => ({
+          newRegisteredStudents: data.students,
+        }));
+        return { success: true, count: data.total || data.students.length };
+      }
+      return { success: false, count: 0, error: data?.message || "Invalid response format" };
+    } catch (err: any) {
+      console.warn("[campusStore] refreshStudentRegistry error:", err);
+      return { success: false, count: 0, error: err.message || "Failed to load registry" };
+    }
   },
 
   async loadFromSupabase(force = false): Promise<void> {
@@ -1389,42 +1524,77 @@ export const campusStore = {
     activeSyncPromise = (async () => {
       isSyncingFromRemote = true;
       try {
-        // Run all 5 remote table queries in parallel with a 4500ms timeout cap
+        // Run remote table queries in parallel with a 6000ms timeout cap
         const timeoutPromise = new Promise<{ isTimeout: true }>((resolve) =>
-          setTimeout(() => resolve({ isTimeout: true }), 4500)
+          setTimeout(() => resolve({ isTimeout: true }), 6000),
         );
 
         const fetchBatch = Promise.allSettled([
-          // 1. Events (bounded limit to prevent unbounded memory usage)
-          supabase.from("events").select("*").limit(50).order("date", { ascending: true }),
+          // 1. Events (scalable university limit)
+          supabase.from("events").select("*").limit(250).order("date", { ascending: true }),
           // 2. Registrations
-          supabase.from("registrations").select("*").limit(50).order("registered_at", { ascending: false }),
+          supabase
+            .from("registrations")
+            .select("*")
+            .limit(500)
+            .order("registered_at", { ascending: false }),
           // 3. Attendance
-          supabase.from("attendance").select("*").limit(50).order("timestamp", { ascending: false }),
+          supabase
+            .from("attendance")
+            .select("*")
+            .limit(500)
+            .order("timestamp", { ascending: false }),
           // 4. Students & Accounts
           Promise.allSettled([
-            supabase.from("new_registered_students").select("*").limit(50).order("created_at", { ascending: false }),
-            supabase.from("accounts").select("*").eq("role", "student").limit(50),
+            supabase
+              .from("new_registered_students")
+              .select("*")
+              .limit(500)
+              .order("created_at", { ascending: false }),
+            supabase.from("accounts").select("*").limit(500),
           ]),
           // 5. Announcements
-          supabase.from("announcements").select("*").limit(50).order("created_at", { ascending: false }),
+          supabase
+            .from("announcements")
+            .select("*")
+            .limit(100)
+            .order("created_at", { ascending: false }),
           // 6. Internships
-          supabase.from("internships").select("*").limit(50).order("created_at", { ascending: false }),
+          supabase
+            .from("internships")
+            .select("*")
+            .limit(200)
+            .order("created_at", { ascending: false }),
           // 7. Internship Applications
-          supabase.from("internship_applications").select("*").limit(50).order("created_at", { ascending: false }),
+          supabase
+            .from("internship_applications")
+            .select("*")
+            .limit(500)
+            .order("created_at", { ascending: false }),
           // 8. Internship Attendance
-          supabase.from("internship_attendance").select("*").limit(50).order("punch_in_time", { ascending: false }),
+          supabase
+            .from("internship_attendance")
+            .select("*")
+            .limit(500)
+            .order("punch_in_time", { ascending: false }),
           // 9. Internship Notifications
-          supabase.from("internship_notifications").select("*").limit(50).order("created_at", { ascending: false }),
+          supabase
+            .from("internship_notifications")
+            .select("*")
+            .limit(200)
+            .order("created_at", { ascending: false }),
         ]);
 
         const outcome = await Promise.race([fetchBatch, timeoutPromise]);
         if ("isTimeout" in outcome) {
-          console.warn("Supabase initial load timed out after 4500ms; continuing with cached data.");
+          console.warn(
+            "Supabase initial load timed out after 6000ms; continuing with cached data.",
+          );
           return;
         }
 
-        const [evRes, regRes, attRes, stuGroupRes, annRes, intRes, appRes, intAttRes, intNotifRes] = outcome;
+        const [evRes, regRes, attRes, stuGroupRes, annRes, intRes, appRes, intAttRes, intNotifRes] =
+          outcome;
 
         // 1. Process Events
         if (evRes.status === "fulfilled" && !evRes.value.error && Array.isArray(evRes.value.data)) {
@@ -1461,7 +1631,11 @@ export const campusStore = {
         }
 
         // 2. Process Registrations
-        if (regRes.status === "fulfilled" && !regRes.value.error && Array.isArray(regRes.value.data)) {
+        if (
+          regRes.status === "fulfilled" &&
+          !regRes.value.error &&
+          Array.isArray(regRes.value.data)
+        ) {
           const regsList: Registration[] = (regRes.value.data as any[]).map((r) => ({
             id: r.id,
             eventId: r.event_id || r.eventId,
@@ -1479,7 +1653,11 @@ export const campusStore = {
         }
 
         // 3. Process Attendance
-        if (attRes.status === "fulfilled" && !attRes.value.error && Array.isArray(attRes.value.data)) {
+        if (
+          attRes.status === "fulfilled" &&
+          !attRes.value.error &&
+          Array.isArray(attRes.value.data)
+        ) {
           const attList: AttendanceRecord[] = (attRes.value.data as any[]).map((a) => ({
             id: a.id,
             eventId: a.event_id || a.eventId,
@@ -1506,8 +1684,14 @@ export const campusStore = {
         // 4. Process New Registered Students & Accounts
         if (stuGroupRes.status === "fulfilled") {
           const [studentsRes, accountsRes] = stuGroupRes.value;
-          const supaStudents = studentsRes.status === "fulfilled" && !studentsRes.value.error ? studentsRes.value.data : null;
-          const supaAccounts = accountsRes.status === "fulfilled" && !accountsRes.value.error ? accountsRes.value.data : null;
+          const supaStudents =
+            studentsRes.status === "fulfilled" && !studentsRes.value.error
+              ? studentsRes.value.data
+              : null;
+          const supaAccounts =
+            accountsRes.status === "fulfilled" && !accountsRes.value.error
+              ? accountsRes.value.data
+              : null;
 
           const studentMap = new Map<string, NewRegisteredStudent>();
 
@@ -1524,11 +1708,14 @@ export const campusStore = {
                 degree: d.degree || "B.Tech",
                 semester: d.semester || 4,
                 residenceType: d.residence_type || d.residenceType || "hostel",
-                hostelBlockOrBusRoute: d.hostel_block_or_bus_route || d.hostelBlockOrBusRoute || "Campus Resident",
+                hostelBlockOrBusRoute:
+                  d.hostel_block_or_bus_route || d.hostelBlockOrBusRoute || "Campus Resident",
                 clubsInterested: d.clubs_interested || d.clubsInterested || [],
-                idCardUploaded: Boolean(d.id_card_uploaded ?? d.idCardUploaded ?? true),
+                idCardUploaded: Boolean(d.id_card_uploaded ?? d.idCardUploaded ?? false),
                 isLocked: true,
-                verifiedByUniversity: Boolean(d.verified_by_university ?? d.verifiedByUniversity ?? true),
+                verifiedByUniversity: Boolean(
+                  d.verified_by_university ?? d.verifiedByUniversity ?? false,
+                ),
                 createdAt: d.created_at || d.createdAt || new Date().toISOString(),
               };
               if (s.rollNo && s.rollNo !== "N/A") {
@@ -1554,9 +1741,9 @@ export const campusStore = {
                   residenceType: "hostel",
                   hostelBlockOrBusRoute: "Campus Resident",
                   clubsInterested: ["Coding & AI Club"],
-                  idCardUploaded: true,
+                  idCardUploaded: false,
                   isLocked: true,
-                  verifiedByUniversity: true,
+                  verifiedByUniversity: Boolean(acc.is_verified ?? false),
                   createdAt: acc.created_at || new Date().toISOString(),
                 });
               }
@@ -1572,15 +1759,19 @@ export const campusStore = {
                 updatedCurrentUser = {
                   ...prev.currentUser,
                   name: myRecord.fullName || prev.currentUser.name,
-                  mobileNumber: (myRecord.mobileNumber && myRecord.mobileNumber !== "N/A" && myRecord.mobileNumber !== "Not provided")
-                    ? myRecord.mobileNumber
-                    : prev.currentUser.mobileNumber,
+                  mobileNumber:
+                    myRecord.mobileNumber &&
+                    myRecord.mobileNumber !== "N/A" &&
+                    myRecord.mobileNumber !== "Not provided"
+                      ? myRecord.mobileNumber
+                      : prev.currentUser.mobileNumber,
                   school: myRecord.school || prev.currentUser.school,
                   degree: myRecord.degree || prev.currentUser.degree,
                   department: myRecord.department || prev.currentUser.department,
                   semester: myRecord.semester || prev.currentUser.semester,
                   residenceType: myRecord.residenceType || prev.currentUser.residenceType,
-                  hostelBlockOrBusRoute: myRecord.hostelBlockOrBusRoute || prev.currentUser.hostelBlockOrBusRoute,
+                  hostelBlockOrBusRoute:
+                    myRecord.hostelBlockOrBusRoute || prev.currentUser.hostelBlockOrBusRoute,
                   clubsInterested: myRecord.clubsInterested || prev.currentUser.clubsInterested,
                 };
               }
@@ -1593,7 +1784,12 @@ export const campusStore = {
         }
 
         // 5. Process Announcements
-        if (annRes.status === "fulfilled" && !annRes.value.error && Array.isArray(annRes.value.data) && annRes.value.data.length > 0) {
+        if (
+          annRes.status === "fulfilled" &&
+          !annRes.value.error &&
+          Array.isArray(annRes.value.data) &&
+          annRes.value.data.length > 0
+        ) {
           campusStore.setState((prev) => {
             const map = new Map<string, CampusAnnouncement>();
             prev.announcements.forEach((a) => map.set(a.id, a));
@@ -1616,7 +1812,12 @@ export const campusStore = {
         }
 
         // 6. Process Internships
-        if (intRes.status === "fulfilled" && !intRes.value.error && Array.isArray(intRes.value.data) && intRes.value.data.length > 0) {
+        if (
+          intRes.status === "fulfilled" &&
+          !intRes.value.error &&
+          Array.isArray(intRes.value.data) &&
+          intRes.value.data.length > 0
+        ) {
           const remoteInternships = (intRes.value.data as any[]).map(deserializeInternshipFromDb);
           campusStore.setState((prev) => {
             const remoteIds = new Set(remoteInternships.map((i: any) => i.id));
@@ -1626,18 +1827,34 @@ export const campusStore = {
         }
 
         // 7. Process Internship Applications
-        if (appRes.status === "fulfilled" && !appRes.value.error && Array.isArray(appRes.value.data) && appRes.value.data.length > 0) {
-          const remoteApps = (appRes.value.data as any[]).map(deserializeInternshipApplicationFromDb);
+        if (
+          appRes.status === "fulfilled" &&
+          !appRes.value.error &&
+          Array.isArray(appRes.value.data) &&
+          appRes.value.data.length > 0
+        ) {
+          const remoteApps = (appRes.value.data as any[]).map(
+            deserializeInternshipApplicationFromDb,
+          );
           campusStore.setState((prev) => {
             const remoteIds = new Set(remoteApps.map((a: any) => a.id));
-            const localOnly = (prev.internshipApplications || []).filter((a) => !remoteIds.has(a.id));
+            const localOnly = (prev.internshipApplications || []).filter(
+              (a) => !remoteIds.has(a.id),
+            );
             return { internshipApplications: [...remoteApps, ...localOnly] };
           });
         }
 
         // 8. Process Internship Attendance
-        if (intAttRes.status === "fulfilled" && !intAttRes.value.error && Array.isArray(intAttRes.value.data) && intAttRes.value.data.length > 0) {
-          const remoteAtt = (intAttRes.value.data as any[]).map(deserializeInternshipAttendanceFromDb);
+        if (
+          intAttRes.status === "fulfilled" &&
+          !intAttRes.value.error &&
+          Array.isArray(intAttRes.value.data) &&
+          intAttRes.value.data.length > 0
+        ) {
+          const remoteAtt = (intAttRes.value.data as any[]).map(
+            deserializeInternshipAttendanceFromDb,
+          );
           campusStore.setState((prev) => {
             const remoteIds = new Set(remoteAtt.map((a: any) => a.id));
             const localOnly = (prev.internshipAttendance || []).filter((a) => !remoteIds.has(a.id));
@@ -1646,7 +1863,12 @@ export const campusStore = {
         }
 
         // 9. Process Internship Notifications
-        if (intNotifRes.status === "fulfilled" && !intNotifRes.value.error && Array.isArray(intNotifRes.value.data) && intNotifRes.value.data.length > 0) {
+        if (
+          intNotifRes.status === "fulfilled" &&
+          !intNotifRes.value.error &&
+          Array.isArray(intNotifRes.value.data) &&
+          intNotifRes.value.data.length > 0
+        ) {
           const remoteNotifs = (intNotifRes.value.data as any[]).map((n: any) => ({
             id: n.id,
             studentId: n.student_id,
@@ -1659,7 +1881,9 @@ export const campusStore = {
           }));
           campusStore.setState((prev) => {
             const remoteIds = new Set(remoteNotifs.map((n: any) => n.id));
-            const localOnly = (prev.internshipNotifications || []).filter((n) => !remoteIds.has(n.id));
+            const localOnly = (prev.internshipNotifications || []).filter(
+              (n) => !remoteIds.has(n.id),
+            );
             return { internshipNotifications: [...remoteNotifs, ...localOnly] };
           });
         }
@@ -1675,13 +1899,12 @@ export const campusStore = {
     return activeSyncPromise;
   },
 
-
   registerNewAccount(account: CampusAccount) {
     const current = getStoredAccounts();
     const filtered = current.filter(
       (a) =>
         a.email.toLowerCase() !== account.email.toLowerCase() &&
-        a.idOrRoll.toLowerCase() !== account.idOrRoll.toLowerCase()
+        a.idOrRoll.toLowerCase() !== account.idOrRoll.toLowerCase(),
     );
     const updated = [account, ...filtered];
     saveStoredAccounts(updated);
@@ -1696,20 +1919,23 @@ export const campusStore = {
     const matchedStudent = currentState.newRegisteredStudents?.find(
       (s) =>
         (cleanRoll && s.rollNo?.toUpperCase() === cleanRoll) ||
-        (cleanEmail && s.email?.toLowerCase() === cleanEmail)
+        (cleanEmail && s.email?.toLowerCase() === cleanEmail),
     );
 
     const mergedProfile: UserProfile = {
       ...account.profile,
       mobileNumber:
         account.profile?.mobileNumber ||
-        (matchedStudent?.mobileNumber && matchedStudent.mobileNumber !== "N/A" && matchedStudent.mobileNumber !== "Not provided"
+        (matchedStudent?.mobileNumber &&
+        matchedStudent.mobileNumber !== "N/A" &&
+        matchedStudent.mobileNumber !== "Not provided"
           ? matchedStudent.mobileNumber
           : undefined),
       school: matchedStudent?.school || account.profile?.school,
       degree: matchedStudent?.degree || account.profile?.degree,
       residenceType: matchedStudent?.residenceType || account.profile?.residenceType,
-      hostelBlockOrBusRoute: matchedStudent?.hostelBlockOrBusRoute || account.profile?.hostelBlockOrBusRoute,
+      hostelBlockOrBusRoute:
+        matchedStudent?.hostelBlockOrBusRoute || account.profile?.hostelBlockOrBusRoute,
       clubsInterested: matchedStudent?.clubsInterested || account.profile?.clubsInterested,
     };
 
@@ -1743,7 +1969,10 @@ export const campusStore = {
     }
   },
 
-  loginWithCredentials(identifier: string, role: UserRole): { success: boolean; message: string; account?: CampusAccount } {
+  loginWithCredentials(
+    identifier: string,
+    role: UserRole,
+  ): { success: boolean; message: string; account?: CampusAccount } {
     const cleanId = identifier.trim().toLowerCase();
     const allAccounts = getStoredAccounts();
 
@@ -1753,7 +1982,7 @@ export const campusStore = {
         (acc.email.toLowerCase() === cleanId ||
           acc.idOrRoll.toLowerCase() === cleanId ||
           cleanId.includes(acc.idOrRoll.toLowerCase()) ||
-          cleanId.includes(acc.email.split("@")[0].toLowerCase()))
+          cleanId.includes(acc.email.split("@")[0].toLowerCase())),
     );
 
     if (account) {
@@ -1798,7 +2027,7 @@ export const campusStore = {
     eventId: string,
     isTeam = false,
     teamName?: string,
-    teamMembers?: Array<{ name: string; rollNo: string; email: string }>
+    teamMembers?: Array<{ name: string; rollNo: string; email: string }>,
   ): Promise<{ success: boolean; message: string; waitlisted?: boolean }> {
     const state = campusStore.getState();
     const event = state.events.find((e) => e.id === eventId);
@@ -1808,7 +2037,7 @@ export const campusStore = {
     }
 
     const existing = state.registrations.find(
-      (r) => r.eventId === eventId && r.userId === state.currentUser.id
+      (r) => r.eventId === eventId && r.userId === state.currentUser.id,
     );
     if (existing) {
       toast.info(`Already registered as ${existing.status}`);
@@ -1816,7 +2045,11 @@ export const campusStore = {
     }
 
     const isFull = event.registeredCount >= event.capacity;
-    const regStatus = isFull ? "waitlisted" : event.approvalRequired ? "pending_approval" : "confirmed";
+    const regStatus = isFull
+      ? "waitlisted"
+      : event.approvalRequired
+        ? "pending_approval"
+        : "confirmed";
 
     const newRegistration: Registration = {
       id: `reg-${Date.now()}`,
@@ -1834,7 +2067,8 @@ export const campusStore = {
 
     const targetEv: CampusEvent = {
       ...event,
-      registeredCount: !isFull && regStatus === "confirmed" ? event.registeredCount + 1 : event.registeredCount,
+      registeredCount:
+        !isFull && regStatus === "confirmed" ? event.registeredCount + 1 : event.registeredCount,
       waitlistCount: isFull ? event.waitlistCount + 1 : event.waitlistCount,
     };
 
@@ -1842,7 +2076,9 @@ export const campusStore = {
 
     const newNotification: NotificationItem = {
       id: `notif-${Date.now()}`,
-      title: isFull ? `Added to Waitlist: ${event.title}` : `Registration Confirmed: ${event.title}`,
+      title: isFull
+        ? `Added to Waitlist: ${event.title}`
+        : `Registration Confirmed: ${event.title}`,
       message: isFull
         ? `You are on the waitlist (#${event.waitlistCount + 1}). We'll notify you if a seat opens.`
         : `Your seat has been reserved for ${event.title} on ${event.date}.`,
@@ -1884,7 +2120,10 @@ export const campusStore = {
       const { error: evError } = await supabase.from("events").upsert(serializedEv);
 
       if (evError) {
-        console.error("[Supabase Error] Event capacity upsert failed:", evError, { targetEv, serializedEv });
+        console.error("[Supabase Error] Event capacity upsert failed:", evError, {
+          targetEv,
+          serializedEv,
+        });
         logSupabaseError("upsert", "events", evError, { targetEv, serializedEv });
         // Rollback optimistic update
         campusStore.setState(() => previousState);
@@ -1898,7 +2137,10 @@ export const campusStore = {
       const { error: regError } = await supabase.from("registrations").upsert(serializedReg);
 
       if (regError) {
-        console.error("[Supabase Error] Registration upsert failed:", regError, { newRegistration, serializedReg });
+        console.error("[Supabase Error] Registration upsert failed:", regError, {
+          newRegistration,
+          serializedReg,
+        });
         logSupabaseError("upsert", "registrations", regError, { newRegistration, serializedReg });
         // Rollback optimistic update
         campusStore.setState(() => previousState);
@@ -1926,7 +2168,7 @@ export const campusStore = {
       toast.success(
         isFull
           ? `Added to waitlist for ${event.title}`
-          : `🎉 Successfully registered for ${event.title}!`
+          : `🎉 Successfully registered for ${event.title}!`,
       );
 
       return {
@@ -1948,7 +2190,12 @@ export const campusStore = {
     eventId: string,
     token: string,
     forcedOffline = false,
-    locationData?: { latitude: number; longitude: number; distanceMeters: number; verified: boolean }
+    locationData?: {
+      latitude: number;
+      longitude: number;
+      distanceMeters: number;
+      verified: boolean;
+    },
   ): { success: boolean; offlineQueued: boolean; message: string; record?: AttendanceRecord } {
     const state = campusStore.getState();
     const event = state.events.find((e) => e.id === eventId);
@@ -1956,13 +2203,18 @@ export const campusStore = {
 
     // Check if already checked in
     const existingCheckIn = state.attendanceRecords.find(
-      (a) => a.eventId === eventId && a.userId === state.currentUser.id
+      (a) => a.eventId === eventId && a.userId === state.currentUser.id,
     );
     if (existingCheckIn) {
-      return { success: false, offlineQueued: false, message: "Attendance already verified for this event!" };
+      return {
+        success: false,
+        offlineQueued: false,
+        message: "Attendance already verified for this event!",
+      };
     }
 
-    const isOffline = state.isOffline || forcedOffline || (typeof navigator !== "undefined" && !navigator.onLine);
+    const isOffline =
+      state.isOffline || forcedOffline || (typeof navigator !== "undefined" && !navigator.onLine);
 
     if (isOffline) {
       // Queue locally
@@ -1981,7 +2233,9 @@ export const campusStore = {
 
       // Also mark registration as attended locally for snappy optimistic UI
       const updatedRegs = state.registrations.map((r) =>
-        r.eventId === eventId && r.userId === state.currentUser.id ? { ...r, status: "attended" as const } : r
+        r.eventId === eventId && r.userId === state.currentUser.id
+          ? { ...r, status: "attended" as const }
+          : r,
       );
 
       campusStore.setState((prev) => ({
@@ -1992,7 +2246,8 @@ export const campusStore = {
       return {
         success: true,
         offlineQueued: true,
-        message: "Offline: Check-in saved securely on device with location metadata. Will auto-sync when online.",
+        message:
+          "Offline: Check-in saved securely on device with location metadata. Will auto-sync when online.",
       };
     }
 
@@ -2021,12 +2276,15 @@ export const campusStore = {
     // Immediate write-through to Supabase
     try {
       const mappedAtt = serializeAttendanceForDb(newRecord);
-      supabase.from("attendance").upsert(mappedAtt).then(({ error }) => {
-        if (error) {
-          logSupabaseError("upsert", "attendance", error, { newRecord, mappedAtt });
-          toast.error(`Check-in sync warning: ${error.message}`);
-        }
-      });
+      supabase
+        .from("attendance")
+        .upsert(mappedAtt)
+        .then(({ error }) => {
+          if (error) {
+            logSupabaseError("upsert", "attendance", error, { newRecord, mappedAtt });
+            toast.error(`Check-in sync warning: ${error.message}`);
+          }
+        });
     } catch (err) {
       logSupabaseError("recordCheckIn", "attendance", err);
     }
@@ -2044,9 +2302,10 @@ export const campusStore = {
     };
 
     const updatedRegs = state.registrations.map((r) =>
-      r.eventId === eventId && r.userId === state.currentUser.id ? { ...r, status: "attended" as const } : r
+      r.eventId === eventId && r.userId === state.currentUser.id
+        ? { ...r, status: "attended" as const }
+        : r,
     );
-
 
     const auditEntry: AuditLogEntry = {
       id: `aud-${Date.now()}`,
@@ -2085,7 +2344,13 @@ export const campusStore = {
 
   punchIn(
     eventId: string,
-    locationData?: { latitude: number; longitude: number; distanceMeters: number; verified: boolean; address?: string }
+    locationData?: {
+      latitude: number;
+      longitude: number;
+      distanceMeters: number;
+      verified: boolean;
+      address?: string;
+    },
   ): { success: boolean; message: string; record?: AttendanceRecord } {
     const state = campusStore.getState();
     const event = state.events.find((e) => e.id === eventId);
@@ -2096,7 +2361,7 @@ export const campusStore = {
 
     // Check if an attendance record already exists
     let existingRecord = state.attendanceRecords.find(
-      (a) => a.eventId === eventId && a.userId === state.currentUser.id
+      (a) => a.eventId === eventId && a.userId === state.currentUser.id,
     );
 
     let updatedAttendance = [...state.attendanceRecords];
@@ -2135,7 +2400,7 @@ export const campusStore = {
               distanceFromVenueMeters: locationData?.distanceMeters ?? a.distanceFromVenueMeters,
               locationAddress: locationData?.address ?? a.locationAddress,
             }
-          : a
+          : a,
       );
     }
 
@@ -2148,7 +2413,7 @@ export const campusStore = {
             punchInTime: now,
             punchInLocation: locationData,
           }
-        : r
+        : r,
     );
 
     const auditEntry: AuditLogEntry = {
@@ -2192,7 +2457,13 @@ export const campusStore = {
 
   punchOut(
     eventId: string,
-    locationData?: { latitude: number; longitude: number; distanceMeters: number; verified: boolean; address?: string }
+    locationData?: {
+      latitude: number;
+      longitude: number;
+      distanceMeters: number;
+      verified: boolean;
+      address?: string;
+    },
   ): { success: boolean; message: string; record?: AttendanceRecord } {
     const state = campusStore.getState();
     const event = state.events.find((e) => e.id === eventId);
@@ -2200,7 +2471,7 @@ export const campusStore = {
 
     const now = new Date().toISOString();
     const existingRecord = state.attendanceRecords.find(
-      (a) => a.eventId === eventId && a.userId === state.currentUser.id
+      (a) => a.eventId === eventId && a.userId === state.currentUser.id,
     );
 
     if (!existingRecord) {
@@ -2215,7 +2486,7 @@ export const campusStore = {
             locationVerified: locationData?.verified ?? a.locationVerified,
             locationAddress: locationData?.address ?? a.locationAddress,
           }
-        : a
+        : a,
     );
 
     const updatedRegs = state.registrations.map((r) =>
@@ -2226,7 +2497,7 @@ export const campusStore = {
             punchOutTime: now,
             punchOutLocation: locationData,
           }
-        : r
+        : r,
     );
 
     const earnedVolHours = event.volunteerHoursReward || 3;
@@ -2331,10 +2602,16 @@ export const campusStore = {
     return { syncedCount };
   },
 
-  async createEvent(eventData: Omit<CampusEvent, "id" | "registeredCount" | "waitlistCount" | "status">): Promise<{ success: boolean; event: CampusEvent; error?: string }> {
+  async createEvent(
+    eventData: Omit<CampusEvent, "id" | "registeredCount" | "waitlistCount" | "status">,
+  ): Promise<{ success: boolean; event: CampusEvent; error?: string }> {
     const state = campusStore.getState();
     const isDeanAdmin = state.currentRole === "admin";
-    const status: CampusEvent["status"] = isDeanAdmin ? "upcoming" : eventData.approvalRequired ? "pending_approval" : "upcoming";
+    const status: CampusEvent["status"] = isDeanAdmin
+      ? "upcoming"
+      : eventData.approvalRequired
+        ? "pending_approval"
+        : "upcoming";
 
     const newEvent: CampusEvent = {
       ...eventData,
@@ -2364,9 +2641,7 @@ export const campusStore = {
     // Await database write to Supabase
     if (typeof window !== "undefined" && navigator.onLine) {
       try {
-        const { error } = await supabase
-          .from("events")
-          .upsert(serializeEventForDb(newEvent));
+        const { error } = await supabase.from("events").upsert(serializeEventForDb(newEvent));
 
         if (error) {
           logSupabaseError("upsert", "events", error);
@@ -2464,10 +2739,7 @@ export const campusStore = {
 
     if (typeof window !== "undefined" && navigator.onLine) {
       try {
-        const { error } = await supabase
-          .from("events")
-          .update({ status })
-          .eq("id", eventId);
+        const { error } = await supabase.from("events").update({ status }).eq("id", eventId);
 
         if (error) {
           logSupabaseError("update", "events", error);
@@ -2496,8 +2768,8 @@ export const campusStore = {
         status === "attended"
           ? targetReg.punchOutTime || now
           : status === "punched_in"
-          ? undefined
-          : targetReg.punchOutTime;
+            ? undefined
+            : targetReg.punchOutTime;
 
       const updatedRegs = prev.registrations.map((r) =>
         r.id === registrationId
@@ -2507,12 +2779,12 @@ export const campusStore = {
               punchInTime,
               punchOutTime,
             }
-          : r
+          : r,
       );
 
       // Also ensure attendanceRecords has an entry for this student & event
       const existingAtt = prev.attendanceRecords.find(
-        (a) => a.eventId === targetReg.eventId && a.userId === targetReg.userId
+        (a) => a.eventId === targetReg.eventId && a.userId === targetReg.userId,
       );
 
       let updatedAttRecords = prev.attendanceRecords;
@@ -2523,11 +2795,12 @@ export const campusStore = {
               ? {
                   ...a,
                   punchInTime: a.punchInTime || punchInTime,
-                  punchOutTime: status === "attended" ? a.punchOutTime || punchOutTime : a.punchOutTime,
+                  punchOutTime:
+                    status === "attended" ? a.punchOutTime || punchOutTime : a.punchOutTime,
                   verifiedMethod: a.verifiedMethod || "manual_override",
                   synced: true,
                 }
-              : a
+              : a,
           );
         } else {
           const newRecord: AttendanceRecord = {
@@ -2570,11 +2843,16 @@ export const campusStore = {
     };
 
     // Recalculate event rating
-    const currentFeedbacks = [...state.feedbackList.filter((f) => f.eventId === eventId), newFeedback];
+    const currentFeedbacks = [
+      ...state.feedbackList.filter((f) => f.eventId === eventId),
+      newFeedback,
+    ];
     const avg = currentFeedbacks.reduce((sum, f) => sum + f.rating, 0) / currentFeedbacks.length;
 
     const updatedEvents = state.events.map((e) =>
-      e.id === eventId ? { ...e, averageRating: Number(avg.toFixed(1)), reviewCount: currentFeedbacks.length } : e
+      e.id === eventId
+        ? { ...e, averageRating: Number(avg.toFixed(1)), reviewCount: currentFeedbacks.length }
+        : e,
     );
 
     // Award +20 XP for giving feedback
@@ -2595,7 +2873,8 @@ export const campusStore = {
     const notif: NotificationItem = {
       id: `notif-alert-${Date.now()}`,
       title: "Low Attendance Notice (<75%)",
-      message: "Urgent: 8 students have fallen below the mandatory 75% semester attendance threshold. Automated notices dispatched to academic mentors.",
+      message:
+        "Urgent: 8 students have fallen below the mandatory 75% semester attendance threshold. Automated notices dispatched to academic mentors.",
       type: "alert",
       timestamp: "Just now",
       read: false,
@@ -2617,7 +2896,11 @@ export const campusStore = {
     }));
   },
 
-  endAndConcludeEvent(eventId: string): { success: boolean; message: string; attendeesCount: number } {
+  endAndConcludeEvent(eventId: string): {
+    success: boolean;
+    message: string;
+    attendeesCount: number;
+  } {
     const state = campusStore.getState();
     const event = state.events.find((e) => e.id === eventId);
     if (!event) return { success: false, message: "Event not found", attendeesCount: 0 };
@@ -2641,7 +2924,9 @@ export const campusStore = {
         issuedCount++;
         const certId = `GSFC-CERT-${event.id.replace(/[^a-zA-Z0-9]/g, "").toUpperCase()}-${r.userRollNo.replace(/[^a-zA-Z0-9]/g, "").slice(-4)}-${Date.now().toString(36).toUpperCase()}`;
 
-        const existingAtt = updatedAttendance.find((a) => a.eventId === eventId && a.userId === r.userId);
+        const existingAtt = updatedAttendance.find(
+          (a) => a.eventId === eventId && a.userId === r.userId,
+        );
         if (!existingAtt) {
           updatedAttendance.push({
             id: `att-cert-${Date.now()}-${r.userId}`,
@@ -2682,7 +2967,7 @@ export const campusStore = {
             certificatesReleased: true,
             isLive: false,
           }
-        : e
+        : e,
     );
 
     const notif: NotificationItem = {
@@ -2706,7 +2991,9 @@ export const campusStore = {
 
     // If current logged-in user is an attendee, award XP and volunteer hours
     let updatedCurrentUser = state.currentUser;
-    const isCurrentUserAttendee = eventRegistrations.some((r) => r.userId === state.currentUser.id || r.userRollNo === state.currentUser.rollNo);
+    const isCurrentUserAttendee = eventRegistrations.some(
+      (r) => r.userId === state.currentUser.id || r.userRollNo === state.currentUser.rollNo,
+    );
     if (isCurrentUserAttendee) {
       updatedCurrentUser = {
         ...state.currentUser,
@@ -2720,30 +3007,39 @@ export const campusStore = {
     try {
       const concludedEv = updatedEvents.find((e) => e.id === eventId);
       if (concludedEv) {
-        supabase.from("events").upsert(serializeEventForDb(concludedEv)).then(({ error }) => {
-          if (error) {
-            logSupabaseError("upsert", "events", error);
-            toast.error(`Event conclude sync error: ${error.message}`);
-          }
-        });
+        supabase
+          .from("events")
+          .upsert(serializeEventForDb(concludedEv))
+          .then(({ error }) => {
+            if (error) {
+              logSupabaseError("upsert", "events", error);
+              toast.error(`Event conclude sync error: ${error.message}`);
+            }
+          });
       }
       const relevantAtt = updatedAttendance.filter((a) => a.eventId === eventId);
       if (relevantAtt.length > 0) {
-        supabase.from("attendance").upsert(relevantAtt.map(serializeAttendanceForDb)).then(({ error }) => {
-          if (error) {
-            logSupabaseError("upsert", "attendance", error);
-            toast.error(`Attendance finalize sync error: ${error.message}`);
-          }
-        });
+        supabase
+          .from("attendance")
+          .upsert(relevantAtt.map(serializeAttendanceForDb))
+          .then(({ error }) => {
+            if (error) {
+              logSupabaseError("upsert", "attendance", error);
+              toast.error(`Attendance finalize sync error: ${error.message}`);
+            }
+          });
       }
       const relevantRegs = updatedRegs.filter((r) => r.eventId === eventId);
       if (relevantRegs.length > 0) {
-        supabase.from("registrations").upsert(relevantRegs.map(serializeRegistrationForDb)).then(({ error }) => {
-          if (error) {
-            logSupabaseError("upsert", "registrations", error);
-            toast.error(`Registration finalize sync error: ${error.message}`);
-          }
-        });
+        supabase
+          .from("registrations")
+          .upsert(relevantRegs.map(serializeRegistrationForDb))
+          .then(({ error }) => {
+            if (error) {
+              logSupabaseError("upsert", "registrations", error);
+              toast.error(`Registration finalize sync error: ${error.message}`);
+            }
+          });
       }
     } catch (err) {
       logSupabaseError("concludeEvent", "multiple_tables", err);
@@ -2758,7 +3054,6 @@ export const campusStore = {
       currentUser: updatedCurrentUser,
     }));
 
-
     return {
       success: true,
       message: `Event concluded successfully! Certificates issued with official GSFC seal.`,
@@ -2766,7 +3061,10 @@ export const campusStore = {
     };
   },
 
-  toggleEventCertificateRelease(eventId: string, forceRelease?: boolean): { success: boolean; message: string; released: boolean } {
+  toggleEventCertificateRelease(
+    eventId: string,
+    forceRelease?: boolean,
+  ): { success: boolean; message: string; released: boolean } {
     const state = campusStore.getState();
     const event = state.events.find((e) => e.id === eventId);
     if (!event) return { success: false, message: "Event not found", released: false };
@@ -2775,20 +3073,22 @@ export const campusStore = {
     const now = new Date().toISOString();
 
     const updatedEvents = state.events.map((e) =>
-      e.id === eventId ? { ...e, certificatesReleased: nextReleased } : e
+      e.id === eventId ? { ...e, certificatesReleased: nextReleased } : e,
     );
 
     const updatedRegs = state.registrations.map((r) =>
-      r.eventId === eventId ? { ...r, certificateUnlocked: nextReleased } : r
+      r.eventId === eventId ? { ...r, certificateUnlocked: nextReleased } : r,
     );
 
     const updatedAtt = state.attendanceRecords.map((a) =>
-      a.eventId === eventId ? { ...a, certificateUnlocked: nextReleased } : a
+      a.eventId === eventId ? { ...a, certificateUnlocked: nextReleased } : a,
     );
 
     const notif: NotificationItem = {
       id: `notif-cert-rel-${Date.now()}`,
-      title: nextReleased ? `🎓 Certificate Access Granted: ${event.title}` : `🔒 Certificate Access Locked: ${event.title}`,
+      title: nextReleased
+        ? `🎓 Certificate Access Granted: ${event.title}`
+        : `🔒 Certificate Access Locked: ${event.title}`,
       message: nextReleased
         ? `The Administration has unlocked official participation certificates for ${event.title}. Download your PDF now from My Events.`
         : `Certificate download access for ${event.title} has been paused by the Administration.`,
@@ -2800,7 +3100,9 @@ export const campusStore = {
 
     const audit: AuditLogEntry = {
       id: `aud-cert-rel-${Date.now()}`,
-      action: nextReleased ? "Certificate Access Granted (Admin Release)" : "Certificate Access Locked (Admin)",
+      action: nextReleased
+        ? "Certificate Access Granted (Admin Release)"
+        : "Certificate Access Locked (Admin)",
       performedBy: `${state.currentUser.name} (${state.currentUser.role})`,
       target: event.title,
       timestamp: now.replace("T", " ").slice(0, 19),
@@ -2826,7 +3128,10 @@ export const campusStore = {
     };
   },
 
-  toggleStudentCertificateAccess(eventId: string, userId: string): { success: boolean; unlocked: boolean } {
+  toggleStudentCertificateAccess(
+    eventId: string,
+    userId: string,
+  ): { success: boolean; unlocked: boolean } {
     const state = campusStore.getState();
     const reg = state.registrations.find((r) => r.eventId === eventId && r.userId === userId);
     if (!reg) return { success: false, unlocked: false };
@@ -2836,16 +3141,22 @@ export const campusStore = {
     const now = new Date().toISOString();
 
     const updatedRegs = state.registrations.map((r) =>
-      r.eventId === eventId && r.userId === userId ? { ...r, certificateUnlocked: nextUnlocked } : r
+      r.eventId === eventId && r.userId === userId
+        ? { ...r, certificateUnlocked: nextUnlocked }
+        : r,
     );
 
     const updatedAtt = state.attendanceRecords.map((a) =>
-      a.eventId === eventId && a.userId === userId ? { ...a, certificateUnlocked: nextUnlocked } : a
+      a.eventId === eventId && a.userId === userId
+        ? { ...a, certificateUnlocked: nextUnlocked }
+        : a,
     );
 
     const audit: AuditLogEntry = {
       id: `aud-stu-cert-${Date.now()}`,
-      action: nextUnlocked ? "Student Certificate Access Granted" : "Student Certificate Access Revoked",
+      action: nextUnlocked
+        ? "Student Certificate Access Granted"
+        : "Student Certificate Access Revoked",
       performedBy: `${state.currentUser.name} (${state.currentUser.role})`,
       target: `${reg.userName} (${reg.userRollNo})`,
       timestamp: now.replace("T", " ").slice(0, 19),
@@ -2948,8 +3259,8 @@ export const campusStore = {
       otpVerified: true,
       otpVerifiedAt: now.replace("T", " ").slice(0, 19),
       locationVerified: data.locationVerified,
-      userLatitude: data.userLatitude || 22.3590,
-      userLongitude: data.userLongitude || 73.1670,
+      userLatitude: data.userLatitude || 22.359,
+      userLongitude: data.userLongitude || 73.167,
       distanceMeters: data.distanceMeters || 12,
       entryTime: now.replace("T", " ").slice(0, 19),
       status: "active",
@@ -2998,11 +3309,13 @@ export const campusStore = {
     if (!visitor) return;
 
     const updatedVisitors = state.visitorRecords.map((v) =>
-      v.id === visitorId ? { ...v, status: "exited" as const, exitTime: now } : v
+      v.id === visitorId ? { ...v, status: "exited" as const, exitTime: now } : v,
     );
 
     const updatedVehicles = state.vehicleRecords.map((veh) =>
-      veh.ownerRollOrVisitorId === visitorId ? { ...veh, status: "exited" as const, exitTime: now } : veh
+      veh.ownerRollOrVisitorId === visitorId
+        ? { ...veh, status: "exited" as const, exitTime: now }
+        : veh,
     );
 
     const audit: AuditLogEntry = {
@@ -3029,7 +3342,7 @@ export const campusStore = {
     if (!veh) return;
 
     const updatedVehicles = state.vehicleRecords.map((v) =>
-      v.id === vehicleId ? { ...v, status: "exited" as const, exitTime: now } : v
+      v.id === vehicleId ? { ...v, status: "exited" as const, exitTime: now } : v,
     );
 
     const audit: AuditLogEntry = {
@@ -3058,23 +3371,31 @@ export const campusStore = {
     vehicleNumber?: string;
     vehicleType?: VehicleType;
     parkingBay?: string;
-  }): { success: boolean; attendanceRecord: AttendanceRecord; vehicleRecord?: VehicleRecord; message: string } {
+  }): {
+    success: boolean;
+    attendanceRecord: AttendanceRecord;
+    vehicleRecord?: VehicleRecord;
+    message: string;
+  } {
     const state = campusStore.getState();
     const now = new Date().toISOString();
     const event = state.events.find((e) => e.id === data.eventId) || state.events[0];
 
     const matchedStudent = state.newRegisteredStudents?.find(
-      (s) => s.rollNo?.toUpperCase() === data.studentRollNo?.toUpperCase()
+      (s) => s.rollNo?.toUpperCase() === data.studentRollNo?.toUpperCase(),
     );
-    const studentName = state.currentUser.rollNo === data.studentRollNo
-      ? state.currentUser.name
-      : matchedStudent?.fullName || state.currentUser.name || "Student";
-    const studentDept = state.currentUser.rollNo === data.studentRollNo
-      ? state.currentUser.department
-      : matchedStudent?.department || state.currentUser.department || "School of Technology";
-    const userId = state.currentUser.rollNo === data.studentRollNo
-      ? state.currentUser.id
-      : `u-${data.studentRollNo.toLowerCase().replace(/[^a-z0-9]/g, "")}`;
+    const studentName =
+      state.currentUser.rollNo === data.studentRollNo
+        ? state.currentUser.name
+        : matchedStudent?.fullName || state.currentUser.name || "Student";
+    const studentDept =
+      state.currentUser.rollNo === data.studentRollNo
+        ? state.currentUser.department
+        : matchedStudent?.department || state.currentUser.department || "School of Technology";
+    const userId =
+      state.currentUser.rollNo === data.studentRollNo
+        ? state.currentUser.id
+        : `u-${data.studentRollNo.toLowerCase().replace(/[^a-z0-9]/g, "")}`;
 
     let vehicleRecord: VehicleRecord | undefined = undefined;
     if (data.hasVehicle && data.vehicleNumber) {
@@ -3122,7 +3443,9 @@ export const campusStore = {
       vehicleNumber: vehicleRecord?.vehicleNumber,
     };
 
-    const existingReg = state.registrations.find((r) => r.eventId === event.id && r.userId === userId);
+    const existingReg = state.registrations.find(
+      (r) => r.eventId === event.id && r.userId === userId,
+    );
     let updatedRegs = [...state.registrations];
     if (existingReg) {
       updatedRegs = updatedRegs.map((r) =>
@@ -3133,7 +3456,7 @@ export const campusStore = {
               punchInTime: now,
               punchInLocation: data.location,
             }
-          : r
+          : r,
       );
     } else {
       updatedRegs.push({
@@ -3171,7 +3494,10 @@ export const campusStore = {
     };
 
     campusStore.setState((prev) => ({
-      attendanceRecords: [attRecord, ...prev.attendanceRecords.filter((a) => !(a.eventId === event.id && a.userId === userId))],
+      attendanceRecords: [
+        attRecord,
+        ...prev.attendanceRecords.filter((a) => !(a.eventId === event.id && a.userId === userId)),
+      ],
       registrations: updatedRegs,
       vehicleRecords: vehicleRecord ? [vehicleRecord, ...prev.vehicleRecords] : prev.vehicleRecords,
       notifications: [notif, ...prev.notifications],
@@ -3191,7 +3517,8 @@ export const campusStore = {
     const state = campusStore.getState();
     const targetUserId = userId || state.currentUser.id;
     const userAttendance = state.attendanceRecords.filter((a) => a.userId === targetUserId);
-    const user = targetUserId === state.currentUser.id ? state.currentUser : STUDENT_ACCOUNT.profile;
+    const user =
+      targetUserId === state.currentUser.id ? state.currentUser : STUDENT_ACCOUNT.profile;
 
     let techPoints = 0;
     let culturalPoints = 0;
@@ -3224,10 +3551,34 @@ export const campusStore = {
     const totalEarned = cappedTech + cappedCultural + cappedSports + cappedSocial;
 
     return {
-      technical: { earned: cappedTech, max: 40, color: "#1A3C6E", label: "Technical & Workshops", iconName: "Code" },
-      cultural: { earned: cappedCultural, max: 20, color: "#F2A93B", label: "Cultural & Arts", iconName: "Palette" },
-      sports: { earned: cappedSports, max: 20, color: "#10B981", label: "Sports & Athletics", iconName: "Trophy" },
-      social: { earned: cappedSocial, max: 20, color: "#6366F1", label: "NSS & Social Responsibility", iconName: "HeartHandshake" },
+      technical: {
+        earned: cappedTech,
+        max: 40,
+        color: "#1A3C6E",
+        label: "Technical & Workshops",
+        iconName: "Code",
+      },
+      cultural: {
+        earned: cappedCultural,
+        max: 20,
+        color: "#F2A93B",
+        label: "Cultural & Arts",
+        iconName: "Palette",
+      },
+      sports: {
+        earned: cappedSports,
+        max: 20,
+        color: "#10B981",
+        label: "Sports & Athletics",
+        iconName: "Trophy",
+      },
+      social: {
+        earned: cappedSocial,
+        max: 20,
+        color: "#6366F1",
+        label: "NSS & Social Responsibility",
+        iconName: "HeartHandshake",
+      },
       totalEarned,
       totalMax: 100,
       percentage: Math.min(100, Math.round((totalEarned / 100) * 100)),
@@ -3242,7 +3593,7 @@ export const campusStore = {
   submitEventFeedback(
     eventId: string,
     rating: number,
-    comment: string
+    comment: string,
   ): { success: boolean; message: string } {
     const state = campusStore.getState();
     const event = state.events.find((e) => e.id === eventId);
@@ -3271,7 +3622,7 @@ export const campusStore = {
             averageRating: avgRating,
             reviewCount: (e.reviewCount || 0) + 1,
           }
-        : e
+        : e,
     );
 
     campusStore.setState({
@@ -3279,14 +3630,17 @@ export const campusStore = {
       events: updatedEvents,
     });
 
-    return { success: true, message: "Thank you! Your feedback has been submitted to the faculty coordinator." };
+    return {
+      success: true,
+      message: "Thank you! Your feedback has been submitted to the faculty coordinator.",
+    };
   },
 
   // --- Instant Event Broadcast Announcement ---
   sendEventBroadcast(
     eventId: string,
     message: string,
-    priority: "high" | "normal" | "urgent" = "normal"
+    priority: "high" | "normal" | "urgent" = "normal",
   ): { success: boolean; message: string } {
     const state = campusStore.getState();
     const event = state.events.find((e) => e.id === eventId);
@@ -3340,7 +3694,7 @@ export const campusStore = {
     if (!event) return { success: false, count: 0, message: "Event not found" };
 
     const updatedEvents = state.events.map((e) =>
-      e.id === eventId ? { ...e, certificatesReleased: true } : e
+      e.id === eventId ? { ...e, certificatesReleased: true } : e,
     );
 
     let count = 0;
@@ -3395,13 +3749,13 @@ export const campusStore = {
     const now = new Date().toISOString().replace("T", " ").slice(0, 19);
 
     const updatedVisitors = state.visitorRecords.map((v) =>
-      v.id === recordId ? { ...v, status: "exited" as const, exitTime: now } : v
+      v.id === recordId ? { ...v, status: "exited" as const, exitTime: now } : v,
     );
 
     const updatedVehicles = state.vehicleRecords.map((veh) =>
       veh.ownerRollOrVisitorId === recordId
         ? { ...veh, status: "exited" as const, exitTime: now }
-        : veh
+        : veh,
     );
 
     const audit: AuditLogEntry = {
@@ -3419,7 +3773,10 @@ export const campusStore = {
       auditLogs: [audit, ...prev.auditLogs],
     }));
 
-    return { success: true, message: `Departure recorded for ${visitor.fullName}. Parking space released.` };
+    return {
+      success: true,
+      message: `Departure recorded for ${visitor.fullName}. Parking space released.`,
+    };
   },
 
   // --- 1-Click Formatted Attendance CSV Export ---
@@ -3434,8 +3791,17 @@ export const campusStore = {
     const rows: string[][] = [
       ["GSFC UNIVERSITY, VADODARA - OFFICIAL ATTENDANCE ROSTER"],
       [`Event Title: ${event.title}`],
-      [`Venue: ${event.venue}`, `Date: ${event.date}`, `Time: ${event.time}`, `Category: ${event.category}`],
-      [`Coordinator: ${event.organizerName}`, `Total Registered: ${regs.length}`, `Verified Attendees: ${records.length}`],
+      [
+        `Venue: ${event.venue}`,
+        `Date: ${event.date}`,
+        `Time: ${event.time}`,
+        `Category: ${event.category}`,
+      ],
+      [
+        `Coordinator: ${event.organizerName}`,
+        `Total Registered: ${regs.length}`,
+        `Verified Attendees: ${records.length}`,
+      ],
       [],
       [
         "SR NO",
@@ -3451,17 +3817,20 @@ export const campusStore = {
       ],
     ];
 
-    const sourceData = records.length > 0 ? records : regs.map((r, i) => ({
-      userRollNo: r.userRollNo,
-      userName: r.userName,
-      department: r.department,
-      punchInTime: r.punchInTime || r.registeredAt,
-      punchOutTime: r.punchOutTime || "",
-      distanceFromVenueMeters: 18,
-      locationVerified: true,
-      verifiedMethod: "live_punch",
-      certificateId: `GSFC-CERT-${event.id.toUpperCase()}-${r.userRollNo.slice(-4)}`,
-    }));
+    const sourceData =
+      records.length > 0
+        ? records
+        : regs.map((r, i) => ({
+            userRollNo: r.userRollNo,
+            userName: r.userName,
+            department: r.department,
+            punchInTime: r.punchInTime || r.registeredAt,
+            punchOutTime: r.punchOutTime || "",
+            distanceFromVenueMeters: 18,
+            locationVerified: true,
+            verifiedMethod: "live_punch",
+            certificateId: `GSFC-CERT-${event.id.toUpperCase()}-${r.userRollNo.slice(-4)}`,
+          }));
 
     sourceData.forEach((rec, idx) => {
       rows.push([
@@ -3483,7 +3852,10 @@ export const campusStore = {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.setAttribute("download", `GSFC_Attendance_${event.title.replace(/[^a-zA-Z0-9]/g, "_")}.csv`);
+    link.setAttribute(
+      "download",
+      `GSFC_Attendance_${event.title.replace(/[^a-zA-Z0-9]/g, "_")}.csv`,
+    );
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -3491,14 +3863,22 @@ export const campusStore = {
   },
 
   // --- Clubs & Communities Methods ---
-  joinClub(clubId: string, role: "member" | "committee" = "member"): { success: boolean; message: string } {
+  joinClub(
+    clubId: string,
+    role: "member" | "committee" = "member",
+  ): { success: boolean; message: string } {
     const state = campusStore.getState();
     const club = state.clubs.find((c) => c.id === clubId);
     if (!club) return { success: false, message: "Club not found." };
 
-    const existingMember = state.clubMembers.find((m) => m.clubId === clubId && m.userId === state.currentUser.id);
+    const existingMember = state.clubMembers.find(
+      (m) => m.clubId === clubId && m.userId === state.currentUser.id,
+    );
     if (existingMember) {
-      return { success: false, message: `You are already registered with ${club.name} as ${existingMember.role}.` };
+      return {
+        success: false,
+        message: `You are already registered with ${club.name} as ${existingMember.role}.`,
+      };
     }
 
     const newMember: ClubMember = {
@@ -3515,7 +3895,7 @@ export const campusStore = {
     };
 
     const updatedClubs = state.clubs.map((c) =>
-      c.id === clubId ? { ...c, memberCount: c.memberCount + 1 } : c
+      c.id === clubId ? { ...c, memberCount: c.memberCount + 1 } : c,
     );
 
     const audit: AuditLogEntry = {
@@ -3549,12 +3929,16 @@ export const campusStore = {
   leaveClub(clubId: string): { success: boolean; message: string } {
     const state = campusStore.getState();
     const club = state.clubs.find((c) => c.id === clubId);
-    const existing = state.clubMembers.find((m) => m.clubId === clubId && m.userId === state.currentUser.id);
+    const existing = state.clubMembers.find(
+      (m) => m.clubId === clubId && m.userId === state.currentUser.id,
+    );
     if (!existing) return { success: false, message: "You are not a member of this club." };
 
-    const updatedMembers = state.clubMembers.filter((m) => !(m.clubId === clubId && m.userId === state.currentUser.id));
+    const updatedMembers = state.clubMembers.filter(
+      (m) => !(m.clubId === clubId && m.userId === state.currentUser.id),
+    );
     const updatedClubs = state.clubs.map((c) =>
-      c.id === clubId ? { ...c, memberCount: Math.max(0, c.memberCount - 1) } : c
+      c.id === clubId ? { ...c, memberCount: Math.max(0, c.memberCount - 1) } : c,
     );
 
     campusStore.setState((prev) => ({
@@ -3593,7 +3977,7 @@ export const campusStore = {
 
   // --- Verified Achievements & Digital Wallet ---
   issueAchievement(
-    data: Omit<VerifiedAchievement, "id" | "verificationHash" | "qrCodePayload">
+    data: Omit<VerifiedAchievement, "id" | "verificationHash" | "qrCodePayload">,
   ): VerifiedAchievement {
     const state = campusStore.getState();
     const hash = `SHA256:${Math.random().toString(36).substring(2, 10).toUpperCase()}${Date.now().toString(36).toUpperCase()}`;
@@ -3639,13 +4023,13 @@ export const campusStore = {
         a.id.toLowerCase() === clean ||
         a.verificationHash.toLowerCase() === clean ||
         a.certificateId?.toLowerCase() === clean ||
-        a.qrCodePayload.toLowerCase() === clean
+        a.qrCodePayload.toLowerCase() === clean,
     );
   },
 
   // --- Campus Announcements & Communication Feed ---
   postAnnouncement(
-    data: Omit<CampusAnnouncement, "id" | "createdAt" | "readBy">
+    data: Omit<CampusAnnouncement, "id" | "createdAt" | "readBy">,
   ): CampusAnnouncement {
     const newAnn: CampusAnnouncement = {
       ...data,
@@ -3711,7 +4095,11 @@ export const campusStore = {
       currentUser: updatedProfile,
       digitalId: {
         ...prev.digitalId,
-        photoUrl: (photoUrl && (photoUrl.startsWith("http") || photoUrl.startsWith("data:") || photoUrl.startsWith("/"))) ? photoUrl : prev.digitalId.photoUrl,
+        photoUrl:
+          photoUrl &&
+          (photoUrl.startsWith("http") || photoUrl.startsWith("data:") || photoUrl.startsWith("/"))
+            ? photoUrl
+            : prev.digitalId.photoUrl,
       },
     }));
 
@@ -3752,22 +4140,31 @@ export const campusStore = {
       console.warn("Failed to sync avatar to Supabase:", e);
     }
   },
-  loginWithGoogle(userOverride?: { name?: string; email?: string; rollNo?: string; photo?: string }): { success: boolean; message: string } {
+  loginWithGoogle(userOverride?: {
+    name?: string;
+    email?: string;
+    rollNo?: string;
+    photo?: string;
+  }): { success: boolean; message: string } {
     const email = userOverride?.email || "student@gsfcuniversity.ac.in";
     const name = userOverride?.name || "GSFC Student";
     const rollNo = userOverride?.rollNo || "STUDENT";
 
     const allAccounts = getStoredAccounts();
     let matchedAccount = allAccounts.find(
-      (a) => a.email.toLowerCase() === email.toLowerCase() || a.idOrRoll.toLowerCase() === rollNo.toLowerCase()
+      (a) =>
+        a.email.toLowerCase() === email.toLowerCase() ||
+        a.idOrRoll.toLowerCase() === rollNo.toLowerCase(),
     );
 
     // Look up in registered students to fetch exact registered phone & details
-    const existingStudent = campusStore.getState().newRegisteredStudents?.find(
-      (s) =>
-        (s.email && s.email.toLowerCase() === email.toLowerCase()) ||
-        (s.rollNo && s.rollNo.toUpperCase() === rollNo.toUpperCase())
-    );
+    const existingStudent = campusStore
+      .getState()
+      .newRegisteredStudents?.find(
+        (s) =>
+          (s.email && s.email.toLowerCase() === email.toLowerCase()) ||
+          (s.rollNo && s.rollNo.toUpperCase() === rollNo.toUpperCase()),
+      );
 
     if (!matchedAccount) {
       // Create new verified GSFC student account
@@ -3792,9 +4189,12 @@ export const campusStore = {
           residenceType: existingStudent?.residenceType || "dayscholar",
           hostelBlockOrBusRoute: existingStudent?.hostelBlockOrBusRoute || "",
           clubsInterested: existingStudent?.clubsInterested || [],
-          mobileNumber: (existingStudent?.mobileNumber && existingStudent.mobileNumber !== "N/A" && existingStudent.mobileNumber !== "Not provided")
-            ? existingStudent.mobileNumber
-            : undefined,
+          mobileNumber:
+            existingStudent?.mobileNumber &&
+            existingStudent.mobileNumber !== "N/A" &&
+            existingStudent.mobileNumber !== "Not provided"
+              ? existingStudent.mobileNumber
+              : undefined,
           attendanceRate: 100,
           points: 0,
           streakDays: 0,
@@ -3807,9 +4207,12 @@ export const campusStore = {
     } else if (existingStudent) {
       matchedAccount.profile = {
         ...matchedAccount.profile,
-        mobileNumber: (existingStudent.mobileNumber && existingStudent.mobileNumber !== "N/A" && existingStudent.mobileNumber !== "Not provided")
-          ? existingStudent.mobileNumber
-          : matchedAccount.profile.mobileNumber,
+        mobileNumber:
+          existingStudent.mobileNumber &&
+          existingStudent.mobileNumber !== "N/A" &&
+          existingStudent.mobileNumber !== "Not provided"
+            ? existingStudent.mobileNumber
+            : matchedAccount.profile.mobileNumber,
         school: existingStudent.school || matchedAccount.profile.school,
         degree: existingStudent.degree || matchedAccount.profile.degree,
       };
@@ -3834,7 +4237,10 @@ export const campusStore = {
     return { success: true, message: `Welcome back via Google SSO, ${matchedAccount.name}!` };
   },
 
-  async updateStudentMobileNumber(rollNo: string, newMobile: string): Promise<{ success: boolean; message?: string }> {
+  async updateStudentMobileNumber(
+    rollNo: string,
+    newMobile: string,
+  ): Promise<{ success: boolean; message?: string }> {
     const cleanNumber = newMobile.trim();
     const digits = cleanNumber.replace(/[^0-9]/g, "");
     if (digits.length < 10) {
@@ -3877,7 +4283,7 @@ export const campusStore = {
     // 3. Update local state
     campusStore.setState((prev) => {
       const updatedStudents = prev.newRegisteredStudents.map((s) =>
-        s.rollNo.toUpperCase() === rollNo.toUpperCase() ? { ...s, mobileNumber: cleanNumber } : s
+        s.rollNo.toUpperCase() === rollNo.toUpperCase() ? { ...s, mobileNumber: cleanNumber } : s,
       );
       const isCurrent = prev.currentUser.rollNo.toUpperCase() === rollNo.toUpperCase();
       const updatedUser: UserProfile = isCurrent
@@ -3893,7 +4299,10 @@ export const campusStore = {
     // 4. Update stored accounts in localStorage
     const allAccounts = getStoredAccounts();
     const updatedAccounts = allAccounts.map((acc) => {
-      if (acc.idOrRoll.toUpperCase() === rollNo.toUpperCase() || acc.email.toLowerCase() === campusStore.getState().currentUser.email.toLowerCase()) {
+      if (
+        acc.idOrRoll.toUpperCase() === rollNo.toUpperCase() ||
+        acc.email.toLowerCase() === campusStore.getState().currentUser.email.toLowerCase()
+      ) {
         return {
           ...acc,
           profile: {
@@ -3925,88 +4334,221 @@ export const campusStore = {
     ];
 
     // Query 1: Events happening / discover
-    if (prompt.includes("event") || prompt.includes("happen") || prompt.includes("workshop") || prompt.includes("hackathon") || prompt.includes("calendar")) {
+    if (
+      prompt.includes("event") ||
+      prompt.includes("happen") ||
+      prompt.includes("workshop") ||
+      prompt.includes("hackathon") ||
+      prompt.includes("calendar")
+    ) {
       const liveEvents = state.events.filter((e) => e.status === "live");
       const upcomingEvents = state.events.filter((e) => e.status === "upcoming");
 
       if (prompt.includes("tech") || prompt.includes("cse") || prompt.includes("coding")) {
-        const techEvents = state.events.filter((e) => e.category === "Tech" || e.category === "Workshop" || e.department.toLowerCase().includes("comp"));
-        responseText = `### 💻 Technical & Engineering Events at GSFC University:\n\n` +
-          techEvents.map((e) => `• **${e.title}** (${e.date} · ${e.time})\n  📍 *${e.venue}* · Organized by ${e.organizerName}\n  Seats Left: ${e.capacity - e.registeredCount}/${e.capacity}`).join("\n\n");
-      } else if (prompt.includes("today") || prompt.includes("tomorrow") || prompt.includes("week")) {
-        responseText = `### 📅 Campus Events Schedule:\n\n` +
+        const techEvents = state.events.filter(
+          (e) =>
+            e.category === "Tech" ||
+            e.category === "Workshop" ||
+            e.department.toLowerCase().includes("comp"),
+        );
+        responseText =
+          `### 💻 Technical & Engineering Events at GSFC University:\n\n` +
+          techEvents
+            .map(
+              (e) =>
+                `• **${e.title}** (${e.date} · ${e.time})\n  📍 *${e.venue}* · Organized by ${e.organizerName}\n  Seats Left: ${e.capacity - e.registeredCount}/${e.capacity}`,
+            )
+            .join("\n\n");
+      } else if (
+        prompt.includes("today") ||
+        prompt.includes("tomorrow") ||
+        prompt.includes("week")
+      ) {
+        responseText =
+          `### 📅 Campus Events Schedule:\n\n` +
           `**Live Right Now:**\n` +
-          (liveEvents.length > 0 ? liveEvents.map((e) => `• 🔴 **${e.title}** at *${e.venue}* (${e.time})`).join("\n") : "_No events currently running._") +
+          (liveEvents.length > 0
+            ? liveEvents.map((e) => `• 🔴 **${e.title}** at *${e.venue}* (${e.time})`).join("\n")
+            : "_No events currently running._") +
           `\n\n**Upcoming Highlights:**\n` +
-          upcomingEvents.slice(0, 4).map((e) => `• 📌 **${e.title}** on **${e.date}** at *${e.venue}* (${e.capacity - e.registeredCount} seats left)`).join("\n");
+          upcomingEvents
+            .slice(0, 4)
+            .map(
+              (e) =>
+                `• 📌 **${e.title}** on **${e.date}** at *${e.venue}* (${e.capacity - e.registeredCount} seats left)`,
+            )
+            .join("\n");
       } else {
-        responseText = `### 🎓 Active & Upcoming Campus Events (${state.events.length} Total):\n\n` +
-          state.events.slice(0, 5).map((e) => `• **${e.title}** [${e.category}]\n  📅 ${e.date} · 📍 ${e.venue} · ${e.registeredCount}/${e.capacity} Registered`).join("\n\n") +
+        responseText =
+          `### 🎓 Active & Upcoming Campus Events (${state.events.length} Total):\n\n` +
+          state.events
+            .slice(0, 5)
+            .map(
+              (e) =>
+                `• **${e.title}** [${e.category}]\n  📅 ${e.date} · 📍 ${e.venue} · ${e.registeredCount}/${e.capacity} Registered`,
+            )
+            .join("\n\n") +
           `\n\n_Tip: You can tap on any event in the Events Hub to register or view real-time location directions._`;
       }
-      suggestions = ["Show my registered events", "How do I punch in for attendance?", "Which events have certificates?"];
+      suggestions = [
+        "Show my registered events",
+        "How do I punch in for attendance?",
+        "Which events have certificates?",
+      ];
     }
 
     // Query 2: My registrations / personal schedule (privacy-scoped to current student only)
-    else if (prompt.includes("register") || prompt.includes("my event") || prompt.includes("enrolled") || prompt.includes("ticket")) {
-      const myRegs = state.registrations.filter((r) => r.userId === user.id || r.userRollNo === user.rollNo);
+    else if (
+      prompt.includes("register") ||
+      prompt.includes("my event") ||
+      prompt.includes("enrolled") ||
+      prompt.includes("ticket")
+    ) {
+      const myRegs = state.registrations.filter(
+        (r) => r.userId === user.id || r.userRollNo === user.rollNo,
+      );
       if (myRegs.length === 0) {
         responseText = `You currently have **0 active registrations**.\n\nBrowse the Events Hub to find upcoming hackathons, workshops, and sports tournaments!`;
       } else {
-        responseText = `### 🎟️ Your Event Registrations (${myRegs.length}):\n\n` +
-          myRegs.map((r) => {
-            const ev = state.events.find((e) => e.id === r.eventId);
-            const statusBadge = r.status === "attended" ? "✅ Attended" : r.status === "punched_in" ? "🟢 In Session" : r.status === "waitlisted" ? "⏳ Waitlisted" : "📌 Confirmed";
-            return `• **${ev?.title || r.eventId}** — ${statusBadge}\n  📅 Date: ${ev?.date || "TBD"} · 📍 Venue: ${ev?.venue || "Campus"}${r.isTeam ? ` · Team: **${r.teamName}**` : ""}`;
-          }).join("\n\n");
+        responseText =
+          `### 🎟️ Your Event Registrations (${myRegs.length}):\n\n` +
+          myRegs
+            .map((r) => {
+              const ev = state.events.find((e) => e.id === r.eventId);
+              const statusBadge =
+                r.status === "attended"
+                  ? "✅ Attended"
+                  : r.status === "punched_in"
+                    ? "🟢 In Session"
+                    : r.status === "waitlisted"
+                      ? "⏳ Waitlisted"
+                      : "📌 Confirmed";
+              return `• **${ev?.title || r.eventId}** — ${statusBadge}\n  📅 Date: ${ev?.date || "TBD"} · 📍 Venue: ${ev?.venue || "Campus"}${r.isTeam ? ` · Team: **${r.teamName}**` : ""}`;
+            })
+            .join("\n\n");
       }
-      suggestions = ["What is my attendance percentage?", "What certificates have I earned?", "How do I download my ID card?"];
+      suggestions = [
+        "What is my attendance percentage?",
+        "What certificates have I earned?",
+        "How do I download my ID card?",
+      ];
     }
 
     // Query 3: Attendance & Punch-In / Punch-Out
-    else if (prompt.includes("attendance") || prompt.includes("punch") || prompt.includes("streak") || prompt.includes("points") || prompt.includes("xp")) {
-      const myAtt = state.attendanceRecords.filter((a) => a.userId === user.id || a.userRollNo === user.rollNo);
-      responseText = `### 📊 Your GSFC Academic & Event Engagement:\n\n` +
+    else if (
+      prompt.includes("attendance") ||
+      prompt.includes("punch") ||
+      prompt.includes("streak") ||
+      prompt.includes("points") ||
+      prompt.includes("xp")
+    ) {
+      const myAtt = state.attendanceRecords.filter(
+        (a) => a.userId === user.id || a.userRollNo === user.rollNo,
+      );
+      responseText =
+        `### 📊 Your GSFC Academic & Event Engagement:\n\n` +
         `• **Verified Attendance:** ${user.attendancePercentage}%\n` +
         `• **Events Attended:** ${myAtt.length} events\n` +
         `• **Activity Points / XP:** ${user.points} XP\n` +
         `• **Daily Streak:** 🔥 ${user.streakDays} Days\n` +
         `• **Volunteer Hours:** 🤝 ${user.volunteerHours} Hours\n\n` +
         `> **Attendance Policy Note:** GSFC University requires minimum 75% attendance for end-semester hall ticket clearance and campus placement drive eligibility.`;
-      suggestions = ["Show my certificates", "What achievements have I unlocked?", "How to join student clubs?"];
+      suggestions = [
+        "Show my certificates",
+        "What achievements have I unlocked?",
+        "How to join student clubs?",
+      ];
     }
 
     // Query 4: Certificates & Credentials
-    else if (prompt.includes("cert") || prompt.includes("wallet") || prompt.includes("download") || prompt.includes("credential")) {
-      const myAttWithCert = state.attendanceRecords.filter((a) => (a.userId === user.id || a.userRollNo === user.rollNo) && a.certificateId);
+    else if (
+      prompt.includes("cert") ||
+      prompt.includes("wallet") ||
+      prompt.includes("download") ||
+      prompt.includes("credential")
+    ) {
+      const myAttWithCert = state.attendanceRecords.filter(
+        (a) => (a.userId === user.id || a.userRollNo === user.rollNo) && a.certificateId,
+      );
       if (myAttWithCert.length === 0) {
         responseText = `You don't have any issued certificates yet. Attend upcoming workshops or hackathons to earn verified digital credentials with unique verification IDs.`;
       } else {
-        responseText = `### 📜 Your Verified Digital Certificates (${myAttWithCert.length}):\n\n` +
-          myAttWithCert.map((a) => `• **${a.eventTitle}**\n  🆔 Cert ID: \`${a.certificateId}\`\n  📅 Verified on: ${a.timestamp.slice(0, 10)} via ${a.verifiedMethod}`).join("\n\n") +
+        responseText =
+          `### 📜 Your Verified Digital Certificates (${myAttWithCert.length}):\n\n` +
+          myAttWithCert
+            .map(
+              (a) =>
+                `• **${a.eventTitle}**\n  🆔 Cert ID: \`${a.certificateId}\`\n  📅 Verified on: ${a.timestamp.slice(0, 10)} via ${a.verifiedMethod}`,
+            )
+            .join("\n\n") +
           `\n\nYou can view and download official GSFC PDF certificates in the **Passport & Wallet** tab.`;
       }
-      suggestions = ["Show my campus activity passport", "Show technical events", "What clubs can I join?"];
+      suggestions = [
+        "Show my campus activity passport",
+        "Show technical events",
+        "What clubs can I join?",
+      ];
     }
 
     // Query 5: Clubs & Communities
-    else if (prompt.includes("club") || prompt.includes("community") || prompt.includes("lead") || prompt.includes("committee")) {
-      responseText = `### 🏛️ GSFC University Recognized Student Clubs:\n\n` +
-        state.clubs.map((c) => `• **${c.logo} ${c.name}** [${c.category}]\n  Coordinator: ${c.facultyCoordinator.name} · Student Lead: ${c.studentLead.name}\n  Members: ${c.memberCount} · Schedule: ${c.meetingSchedule}`).join("\n\n") +
+    else if (
+      prompt.includes("club") ||
+      prompt.includes("community") ||
+      prompt.includes("lead") ||
+      prompt.includes("committee")
+    ) {
+      responseText =
+        `### 🏛️ GSFC University Recognized Student Clubs:\n\n` +
+        state.clubs
+          .map(
+            (c) =>
+              `• **${c.logo} ${c.name}** [${c.category}]\n  Coordinator: ${c.facultyCoordinator.name} · Student Lead: ${c.studentLead.name}\n  Members: ${c.memberCount} · Schedule: ${c.meetingSchedule}`,
+          )
+          .join("\n\n") +
         `\n\n_You can join or view club activities in the Clubs & Communities section._`;
-      suggestions = ["Show coding club activities", "How do I earn volunteer hours?", "What events are happening this week?"];
+      suggestions = [
+        "Show coding club activities",
+        "How do I earn volunteer hours?",
+        "What events are happening this week?",
+      ];
     }
 
     // Query 6: Campus Services / Directory / Placement / Dean
-    else if (prompt.includes("service") || prompt.includes("placement") || prompt.includes("tpc") || prompt.includes("dean") || prompt.includes("library") || prompt.includes("security") || prompt.includes("health") || prompt.includes("contact") || prompt.includes("where is")) {
-      responseText = `### 🏢 GSFC Campus Services Directory:\n\n` +
-        state.services.map((s) => `• **${s.name}**\n  📍 ${s.location} (${s.building})\n  ⏰ ${s.openingHours} · 📞 ${s.contactPhone}\n  ✉️ ${s.contactEmail}`).join("\n\n");
-      suggestions = ["Where is Training & Placement Cell?", "What events are happening this week?", "Show campus announcements"];
+    else if (
+      prompt.includes("service") ||
+      prompt.includes("placement") ||
+      prompt.includes("tpc") ||
+      prompt.includes("dean") ||
+      prompt.includes("library") ||
+      prompt.includes("security") ||
+      prompt.includes("health") ||
+      prompt.includes("contact") ||
+      prompt.includes("where is")
+    ) {
+      responseText =
+        `### 🏢 GSFC Campus Services Directory:\n\n` +
+        state.services
+          .map(
+            (s) =>
+              `• **${s.name}**\n  📍 ${s.location} (${s.building})\n  ⏰ ${s.openingHours} · 📞 ${s.contactPhone}\n  ✉️ ${s.contactEmail}`,
+          )
+          .join("\n\n");
+      suggestions = [
+        "Where is Training & Placement Cell?",
+        "What events are happening this week?",
+        "Show campus announcements",
+      ];
     }
 
     // Query 7: Digital Student ID Card
-    else if (prompt.includes("id") || prompt.includes("card") || prompt.includes("identity") || prompt.includes("roll")) {
-      responseText = `### 🪪 Digital Campus Identity Card:\n\n` +
+    else if (
+      prompt.includes("id") ||
+      prompt.includes("card") ||
+      prompt.includes("identity") ||
+      prompt.includes("roll")
+    ) {
+      responseText =
+        `### 🪪 Digital Campus Identity Card:\n\n` +
         `• **Student:** ${state.digitalId.name}\n` +
         `• **Roll No:** \`${state.digitalId.rollNo}\`\n` +
         `• **Program:** ${state.digitalId.program}\n` +
@@ -4015,12 +4557,17 @@ export const campusStore = {
         `• **Validity:** Till ${state.digitalId.validTill}\n` +
         `• **Status:** 🟢 ${state.digitalId.status.toUpperCase()}\n\n` +
         `Tap the **Digital ID** badge on the top right navigation bar to open your holographic smart card with barcode scanner.`;
-      suggestions = ["Show my registered events", "What is my attendance percentage?", "What events are happening this week?"];
+      suggestions = [
+        "Show my registered events",
+        "What is my attendance percentage?",
+        "What events are happening this week?",
+      ];
     }
 
     // Query 8: Fallback / General Assistant
     else {
-      responseText = `Hello **${user.name}**! I am your **GSFC Campus AI Assistant**.\n\nI can help you with:\n` +
+      responseText =
+        `Hello **${user.name}**! I am your **GSFC Campus AI Assistant**.\n\nI can help you with:\n` +
         `• 📅 **Event Discovery:** Find technical hackathons, cultural fests, workshops, and sports matches.\n` +
         `• 🎟️ **Registrations & Tickets:** Check your confirmed event seats and team statuses.\n` +
         `• 📊 **Attendance & Analytics:** View your punch-in history, semester attendance %, and streaks.\n` +
@@ -4076,12 +4623,14 @@ export const campusStore = {
     declarationAccepted: boolean;
   }): Promise<{ success: boolean; application?: InternshipApplication; message: string }> {
     const state = campusStore.getState();
-    const studentId = applicationData.studentId || state.currentUser.id || state.currentUser.rollNo || "u-student";
+    const studentId =
+      applicationData.studentId || state.currentUser.id || state.currentUser.rollNo || "u-student";
 
     const existing = (state.internshipApplications || []).find(
       (a) =>
         a.internshipId === applicationData.internshipId &&
-        (a.studentId === studentId || a.enrollmentNumber.toUpperCase() === applicationData.enrollmentNumber.toUpperCase())
+        (a.studentId === studentId ||
+          a.enrollmentNumber.toUpperCase() === applicationData.enrollmentNumber.toUpperCase()),
     );
     if (existing) {
       return {
@@ -4093,7 +4642,8 @@ export const campusStore = {
     if (!applicationData.declarationAccepted) {
       return {
         success: false,
-        message: "You must accept the declaration and attendance agreement before submitting your application.",
+        message:
+          "You must accept the declaration and attendance agreement before submitting your application.",
       };
     }
 
@@ -4101,7 +4651,8 @@ export const campusStore = {
     if (inFlightApplications.has(lockKey)) {
       return {
         success: false,
-        message: "An application submission is already currently processing for this internship. Please wait.",
+        message:
+          "An application submission is already currently processing for this internship. Please wait.",
       };
     }
     inFlightApplications.add(lockKey);
@@ -4166,15 +4717,24 @@ export const campusStore = {
         const { error: dbErr } = await supabase.from("internship_applications").insert(dbPayload);
         if (dbErr) {
           // Check for unique constraint violation (student_id + internship_id)
-          if (dbErr.code === "23505" || dbErr.message?.includes("unq_student_internship") || dbErr.message?.includes("duplicate key")) {
+          if (
+            dbErr.code === "23505" ||
+            dbErr.message?.includes("unq_student_internship") ||
+            dbErr.message?.includes("duplicate key")
+          ) {
             // Roll back optimistic local state
             campusStore.setState((prev) => ({
-              internshipApplications: (prev.internshipApplications || []).filter((a) => a.id !== newId),
-              internshipNotifications: (prev.internshipNotifications || []).filter((n) => n.id !== studentNotif.id),
+              internshipApplications: (prev.internshipApplications || []).filter(
+                (a) => a.id !== newId,
+              ),
+              internshipNotifications: (prev.internshipNotifications || []).filter(
+                (n) => n.id !== studentNotif.id,
+              ),
             }));
             return {
               success: false,
-              message: "You have already submitted an application for this internship. Multiple concurrent applications are prevented.",
+              message:
+                "You have already submitted an application for this internship. Multiple concurrent applications are prevented.",
             };
           }
           console.debug("Supabase application insert note:", dbErr);
@@ -4206,9 +4766,16 @@ export const campusStore = {
   async adminReviewApplication(
     applicationId: string,
     decision: "approve" | "reject" | "changes_requested",
-    comment: string
+    comment: string,
   ): Promise<{ success: boolean; message: string }> {
     const state = campusStore.getState();
+    if (!["admin", "dean", "super_admin", "tpc"].includes(state.currentUser.role)) {
+      return {
+        success: false,
+        message: "Unauthorized: Administrator or TPC role required to review applications.",
+      };
+    }
+
     const app = (state.internshipApplications || []).find((a) => a.id === applicationId);
     if (!app) {
       return { success: false, message: "Application not found." };
@@ -4250,7 +4817,12 @@ export const campusStore = {
       applicationId,
       approvalType: "ADMIN",
       approvedBy: reviewerName,
-      status: decision === "approve" ? "approved" : decision === "reject" ? "rejected" : "changes_requested",
+      status:
+        decision === "approve"
+          ? "approved"
+          : decision === "reject"
+            ? "rejected"
+            : "changes_requested",
       comment,
       approvedAt: nowIso,
       createdAt: nowIso,
@@ -4260,7 +4832,12 @@ export const campusStore = {
       id: `notif-${Date.now()}`,
       studentId: app.studentId,
       applicationId,
-      type: decision === "approve" ? "admin_approved" : decision === "reject" ? "rejected" : "changes_requested",
+      type:
+        decision === "approve"
+          ? "admin_approved"
+          : decision === "reject"
+            ? "rejected"
+            : "changes_requested",
       title: notifTitle,
       message: notifMessage,
       isRead: false,
@@ -4268,7 +4845,9 @@ export const campusStore = {
     };
 
     campusStore.setState((prev) => ({
-      internshipApplications: (prev.internshipApplications || []).map((a) => (a.id === applicationId ? updatedApp : a)),
+      internshipApplications: (prev.internshipApplications || []).map((a) =>
+        a.id === applicationId ? updatedApp : a,
+      ),
       internshipApprovals: [approvalLog, ...(prev.internshipApprovals || [])],
       internshipNotifications: [studentNotif, ...(prev.internshipNotifications || [])],
     }));
@@ -4300,17 +4879,21 @@ export const campusStore = {
         decision === "approve"
           ? `Application ${app.applicationNumber} approved by Administration and forwarded to Dean Review.`
           : decision === "reject"
-          ? `Application ${app.applicationNumber} rejected.`
-          : `Changes requested for ${app.applicationNumber}.`,
+            ? `Application ${app.applicationNumber} rejected.`
+            : `Changes requested for ${app.applicationNumber}.`,
     };
   },
 
   async deanReviewApplication(
     applicationId: string,
     decision: "approve" | "reject",
-    comment: string
+    comment: string,
   ): Promise<{ success: boolean; message: string }> {
     const state = campusStore.getState();
+    if (!["dean", "admin", "super_admin"].includes(state.currentUser.role)) {
+      return { success: false, message: "Unauthorized: Dean role required for final approval." };
+    }
+
     const app = (state.internshipApplications || []).find((a) => a.id === applicationId);
     if (!app) {
       return { success: false, message: "Application not found." };
@@ -4322,7 +4905,10 @@ export const campusStore = {
     const targetInternship = (state.internships || []).find((i) => i.id === app.internshipId);
     if (decision === "approve" && targetInternship && targetInternship.positions) {
       const alreadyApprovedCount = (state.internshipApplications || []).filter(
-        (a) => a.internshipId === app.internshipId && (a.status === "APPROVED" || a.status === "ACTIVE") && a.id !== applicationId
+        (a) =>
+          a.internshipId === app.internshipId &&
+          (a.status === "APPROVED" || a.status === "ACTIVE") &&
+          a.id !== applicationId,
       ).length;
       if (alreadyApprovedCount >= targetInternship.positions) {
         return {
@@ -4364,7 +4950,8 @@ export const campusStore = {
       studentId: app.studentId,
       applicationId,
       type: decision === "approve" ? "dean_approved" : "rejected",
-      title: decision === "approve" ? "Final Dean Approval Granted!" : "Application Rejected by Dean",
+      title:
+        decision === "approve" ? "Final Dean Approval Granted!" : "Application Rejected by Dean",
       message:
         decision === "approve"
           ? `Your internship application ${app.applicationNumber} has been officially approved by Dean ${reviewerName}. You can log attendance starting from ${startDateText}.`
@@ -4374,7 +4961,9 @@ export const campusStore = {
     };
 
     campusStore.setState((prev) => ({
-      internshipApplications: (prev.internshipApplications || []).map((a) => (a.id === applicationId ? updatedApp : a)),
+      internshipApplications: (prev.internshipApplications || []).map((a) =>
+        a.id === applicationId ? updatedApp : a,
+      ),
       internshipApprovals: [approvalLog, ...(prev.internshipApprovals || [])],
       internshipNotifications: [studentNotif, ...(prev.internshipNotifications || [])],
     }));
@@ -4411,7 +5000,7 @@ export const campusStore = {
 
   async punchInInternship(
     applicationId: string,
-    coords: { latitude: number; longitude: number; accuracy: number; address: string }
+    coords: { latitude: number; longitude: number; accuracy: number; address: string },
   ): Promise<{ success: boolean; record?: InternshipAttendanceRecord; message: string }> {
     const state = campusStore.getState();
     const app = (state.internshipApplications || []).find((a) => a.id === applicationId);
@@ -4422,7 +5011,8 @@ export const campusStore = {
     if (app.status !== "APPROVED" && app.status !== "ACTIVE") {
       return {
         success: false,
-        message: "Attendance punching is not available yet. Please wait until your internship is officially approved and activated by Administration and Dean.",
+        message:
+          "Attendance punching is not available yet. Please wait until your internship is officially approved and activated by Administration and Dean.",
       };
     }
 
@@ -4444,7 +5034,7 @@ export const campusStore = {
     }
 
     const existingPunches = (state.internshipAttendance || []).filter(
-      (a) => a.applicationId === applicationId && a.attendanceDate === todayStr
+      (a) => a.applicationId === applicationId && a.attendanceDate === todayStr,
     );
     const openPunch = existingPunches.find((p) => p.punchInTime && !p.punchOutTime);
     if (openPunch) {
@@ -4504,17 +5094,28 @@ export const campusStore = {
 
     try {
       if (typeof window !== "undefined" && navigator.onLine) {
-        const { error: dbErr } = await supabase.from("internship_attendance").insert(serializeInternshipAttendanceForDb(newRecord));
+        const { error: dbErr } = await supabase
+          .from("internship_attendance")
+          .insert(serializeInternshipAttendanceForDb(newRecord));
         if (dbErr) {
-          if (dbErr.code === "23505" || dbErr.message?.includes("unq_attendance_day") || dbErr.message?.includes("duplicate key")) {
+          if (
+            dbErr.code === "23505" ||
+            dbErr.message?.includes("unq_attendance_day") ||
+            dbErr.message?.includes("duplicate key")
+          ) {
             // Roll back optimistic state
             campusStore.setState((prev) => ({
-              internshipAttendance: (prev.internshipAttendance || []).filter((a) => a.id !== newRecord.id),
-              internshipNotifications: (prev.internshipNotifications || []).filter((n) => n.id !== notif.id),
+              internshipAttendance: (prev.internshipAttendance || []).filter(
+                (a) => a.id !== newRecord.id,
+              ),
+              internshipNotifications: (prev.internshipNotifications || []).filter(
+                (n) => n.id !== notif.id,
+              ),
             }));
             return {
               success: false,
-              message: "You have already logged your attendance for today. Duplicate punches are prevented.",
+              message:
+                "You have already logged your attendance for today. Duplicate punches are prevented.",
             };
           }
           console.debug("Supabase punch in note:", dbErr);
@@ -4535,7 +5136,7 @@ export const campusStore = {
 
   async punchOutInternship(
     attendanceId: string,
-    coords: { latitude: number; longitude: number; accuracy: number; address: string }
+    coords: { latitude: number; longitude: number; accuracy: number; address: string },
   ): Promise<{ success: boolean; record?: InternshipAttendanceRecord; message: string }> {
     const state = campusStore.getState();
     const record = (state.internshipAttendance || []).find((a) => a.id === attendanceId);
@@ -4580,7 +5181,9 @@ export const campusStore = {
     };
 
     campusStore.setState((prev) => ({
-      internshipAttendance: (prev.internshipAttendance || []).map((a) => (a.id === attendanceId ? updatedRecord : a)),
+      internshipAttendance: (prev.internshipAttendance || []).map((a) =>
+        a.id === attendanceId ? updatedRecord : a,
+      ),
       internshipNotifications: [notif, ...(prev.internshipNotifications || [])],
     }));
 
@@ -4602,7 +5205,10 @@ export const campusStore = {
     };
   },
 
-  createInternship(internshipData: Omit<Internship, "id" | "createdAt" | "updatedAt">): { success: boolean; internship: Internship } {
+  createInternship(internshipData: Omit<Internship, "id" | "createdAt" | "updatedAt">): {
+    success: boolean;
+    internship: Internship;
+  } {
     const newId = `int-${Date.now()}`;
     const newInternship: Internship = {
       ...internshipData,
@@ -4617,7 +5223,10 @@ export const campusStore = {
 
     try {
       if (typeof window !== "undefined" && navigator.onLine) {
-        supabase.from("internships").insert(serializeInternshipForDb(newInternship)).then(() => {});
+        supabase
+          .from("internships")
+          .insert(serializeInternshipForDb(newInternship))
+          .then(() => {});
       }
     } catch (e) {}
 
@@ -4627,13 +5236,17 @@ export const campusStore = {
   updateInternship(id: string, updates: Partial<Internship>): { success: boolean } {
     campusStore.setState((prev) => ({
       internships: (prev.internships || []).map((i) =>
-        i.id === id ? { ...i, ...updates, updatedAt: new Date().toISOString() } : i
+        i.id === id ? { ...i, ...updates, updatedAt: new Date().toISOString() } : i,
       ),
     }));
 
     try {
       if (typeof window !== "undefined" && navigator.onLine) {
-        supabase.from("internships").update(updates).eq("id", id).then(() => {});
+        supabase
+          .from("internships")
+          .update(updates)
+          .eq("id", id)
+          .then(() => {});
       }
     } catch (e) {}
 

@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS public.accounts (
   name TEXT NOT NULL,
   roll_no TEXT UNIQUE NOT NULL,
   email TEXT UNIQUE NOT NULL,
-  role TEXT NOT NULL DEFAULT 'student' CHECK (role IN ('student', 'admin', 'organizer')),
+  role TEXT NOT NULL DEFAULT 'student' CHECK (role IN ('student', 'faculty', 'organizer', 'tpc', 'admin', 'dean', 'security', 'super_admin')),
   department TEXT NOT NULL,
   semester INT DEFAULT 4,
   year INT DEFAULT 2,
@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS public.accounts (
   volunteer_hours INT DEFAULT 0,
   avatar TEXT,
   mobile_number TEXT,
-  is_verified BOOLEAN DEFAULT TRUE,
+  is_verified BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -42,10 +42,10 @@ CREATE TABLE IF NOT EXISTS public.new_registered_students (
   residence_type TEXT DEFAULT 'hostel' CHECK (residence_type IN ('hostel', 'dayscholar')),
   hostel_block_or_bus_route TEXT,
   clubs_interested TEXT[] DEFAULT ARRAY[]::TEXT[],
-  id_card_uploaded BOOLEAN DEFAULT TRUE,
+  id_card_uploaded BOOLEAN DEFAULT FALSE,
   is_locked BOOLEAN DEFAULT TRUE,
-  verified_by_university BOOLEAN DEFAULT TRUE,
-  is_verified BOOLEAN DEFAULT TRUE,
+  verified_by_university BOOLEAN DEFAULT FALSE,
+  is_verified BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -114,7 +114,8 @@ CREATE TABLE IF NOT EXISTS public.registrations (
   status TEXT NOT NULL DEFAULT 'confirmed' CHECK (status IN ('confirmed', 'waitlisted', 'cancelled', 'attended', 'pending_approval', 'punched_in')),
   is_team BOOLEAN DEFAULT FALSE,
   team_name TEXT,
-  team_members JSONB
+  team_members JSONB,
+  CONSTRAINT uq_registrations_user_event UNIQUE (user_id, event_id)
 );
 
 -- 5. ATTENDANCE & PUNCH RECORDS TABLE
@@ -136,7 +137,8 @@ CREATE TABLE IF NOT EXISTS public.attendance (
   user_longitude NUMERIC,
   distance_from_venue_meters INT,
   location_verified BOOLEAN DEFAULT TRUE,
-  synced BOOLEAN DEFAULT TRUE
+  synced BOOLEAN DEFAULT TRUE,
+  CONSTRAINT uq_attendance_user_event UNIQUE (user_id, event_id)
 );
 
 -- 6. VERIFIED ACHIEVEMENTS & DIGITAL PASSPORT
@@ -700,4 +702,21 @@ BEGIN
 EXCEPTION WHEN OTHERS THEN
   NULL;
 END $$;
+
+-- ==============================================================================
+-- 13. PERFORMANCE & INTEGRITY INDEXES (Requirement 23)
+-- ==============================================================================
+CREATE INDEX IF NOT EXISTS idx_accounts_email_role ON public.accounts(email, role);
+CREATE INDEX IF NOT EXISTS idx_accounts_roll_no ON public.accounts(roll_no);
+CREATE INDEX IF NOT EXISTS idx_students_roll_no ON public.new_registered_students(roll_no);
+CREATE INDEX IF NOT EXISTS idx_students_email ON public.new_registered_students(email);
+CREATE INDEX IF NOT EXISTS idx_students_department ON public.new_registered_students(department);
+CREATE INDEX IF NOT EXISTS idx_students_created_at ON public.new_registered_students(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_registrations_user_event ON public.registrations(user_id, event_id);
+CREATE INDEX IF NOT EXISTS idx_registrations_event_status ON public.registrations(event_id, status);
+CREATE INDEX IF NOT EXISTS idx_attendance_user_event ON public.attendance(user_id, event_id);
+CREATE INDEX IF NOT EXISTS idx_attendance_event_id ON public.attendance(event_id);
+CREATE INDEX IF NOT EXISTS idx_events_date_status ON public.events(date, status);
+CREATE INDEX IF NOT EXISTS idx_internship_apps_student ON public.internship_applications(student_id, status);
+
 

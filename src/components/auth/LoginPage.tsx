@@ -226,7 +226,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
       } else {
         setIsLoggingIn(false);
         setStatusMessage({
-          text: "Invalid password for TPC Administration. Hint: Password is Tpc@2026",
+          text: "Invalid password for Placement Faculty Coordinator. Hint: Password is Tpc@2026",
           type: "error",
         });
         return;
@@ -437,7 +437,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
 
       const foundAccount: CampusAccount = {
         role,
-        roleTitle: role === "admin" ? "Administration" : role === "organizer" ? "TPC Admin" : "GSFC Student",
+        roleTitle: role === "admin" ? "TPC Admin" : role === "organizer" ? "Placement Faculty Coordinator" : "GSFC Student",
         roleBadge: roll,
         name,
         idOrRoll: roll,
@@ -1087,8 +1087,8 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
                   className="w-full appearance-none rounded-xl border border-slate-300 bg-slate-50/50 px-4 py-2.5 pr-10 text-xs font-bold text-slate-800 shadow-sm focus:border-[#1A3C6E] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1A3C6E]/20"
                 >
                   <option value="student">🎓 GSFC Student (Campus Candidate)</option>
-                  <option value="admin">🏛️ Administration (Dean & Academic Affairs)</option>
-                  <option value="organizer">💼 TPC Admin (Training & Placement / Organizer)</option>
+                  <option value="admin">🏛️ TPC Admin (Dean & Academic Affairs)</option>
+                  <option value="organizer">💼 Placement Faculty Coordinator (Training & Placement / Organizer)</option>
                 </select>
                 <ChevronDown className="pointer-events-none absolute right-3.5 top-3 size-4 text-slate-400" />
               </div>

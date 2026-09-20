@@ -136,10 +136,23 @@ export function PastEventsView({ state, onSelectEvent }: PastEventsViewProps) {
         synced: true,
       };
 
-      await generateCertificatePdf(event, record, currentUser);
+      await generateCertificatePdf(record, event, currentUser);
       toast.success("Certificate generated and downloaded successfully!");
     } catch (err: any) {
-      toast.error(`Certificate download error: ${err.message || "Failed to generate PDF"}`);
+      console.error("Certificate download error", err);
+      const specificMissing: string[] = [];
+      if (!event.organizerName) specificMissing.push("organizer name");
+      if (!event.venue) specificMissing.push("venue");
+      if (!event.date) specificMissing.push("event date");
+      if (!currentUser.department) specificMissing.push("department");
+
+      if (specificMissing.length > 0) {
+        toast.error(
+          `Certificate generation failed: missing ${specificMissing.join(", ")}. Please contact the event coordinator.`
+        );
+      } else {
+        toast.error(`Certificate download error: ${err?.message || "Failed to generate PDF"}`);
+      }
     } finally {
       setDownloadingCertId(null);
     }

@@ -1,21 +1,19 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   GraduationCap,
   Lock,
   Search,
-  ShieldCheck,
-  Building2,
-  Mail,
   Phone,
   CheckCircle2,
+  Clock,
   Home,
   Bus,
-  FileCheck2,
   Download,
-  Filter,
   RefreshCw,
   Edit,
-  Radio,
+  AlertTriangle,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CampusState, campusStore } from "@/lib/campus-store";
@@ -36,84 +34,141 @@ export function StudentRegistryViewer({ state }: StudentRegistryViewerProps) {
   const [residenceFilter, setResidenceFilter] = useState<"all" | "hostel" | "dayscholar">("all");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [editingStudent, setEditingStudent] = useState<NewRegisteredStudent | null>(null);
 
+  // Server-side paginated state
+  const [students, setStudents] = useState<NewRegisteredStudent[]>([]);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+  const [totalCount, setTotalCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [lastSyncTime, setLastSyncTime] = useState<string>("");
+
+  const fetchRegistryData = useCallback(
+    async (targetPage = page, isManual = false) => {
+      setIsLoading(true);
+      if (isManual) {
+        setLoadError(null);
+      }
+      try {
+        const params = new URLSearchParams({
+          page: String(targetPage),
+          pageSize: String(pageSize),
+        });
+        if (searchQuery.trim()) params.set("search", searchQuery.trim());
+        if (departmentFilter !== "all") params.set("department", departmentFilter);
+
+        const res = await fetch(`/api/students/registry?${params.toString()}`);
+        if (!res.ok) {
+          throw new Error(`Server returned status ${res.status}: ${res.statusText}`);
+        }
+        const data = await res.json();
+        if (!data.success) {
+          throw new Error(data.message || "Failed to query student registry from database");
+        }
+
+        setStudents(data.students || []);
+        setTotalCount(data.total || 0);
+        setTotalPages(data.totalPages || 1);
+        setPage(data.page || targetPage);
+        setLoadError(null);
+        setLastSyncTime(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
+
+        if (isManual) {
+          toast.success(
+            `Synced with database: ${data.total} student record${data.total === 1 ? "" : "s"}.`,
+          );
+        }
+      } catch (err: any) {
+        console.error("[StudentRegistryViewer] Fetch error:", err);
+        // If server API route is unavailable or offline, check campusStore as fallback
+        const storeStudents = campusStore.getState().newRegisteredStudents;
+        if (storeStudents && storeStudents.length > 0) {
+          setStudents(storeStudents);
+          setTotalCount(storeStudents.length);
+          setTotalPages(Math.ceil(storeStudents.length / pageSize) || 1);
+          setLastSyncTime(
+            `${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} (Cache)`,
+          );
+          setLoadError(null);
+        } else {
+          setLoadError(err.message || "Unable to reach database gateway.");
+        }
+        if (isManual) {
+          toast.error(`Sync failed: ${err.message || "Could not retrieve records"}`);
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [page, pageSize, searchQuery, departmentFilter],
+  );
+
+  // Debounced search / filter trigger
   useEffect(() => {
-    campusStore.loadFromSupabase();
+    const timer = setTimeout(() => {
+      fetchRegistryData(1);
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [searchQuery, departmentFilter, pageSize]);
+
+  // Realtime subscription: immediate un-debounced sync on table mutations
+  useEffect(() => {
+    fetchRegistryData(1);
 
     const channel = supabase
-      .channel("admin-student-registry-sync")
+      .channel("admin-student-registry-live-sync")
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "new_registered_students" },
         () => {
-          campusStore.loadFromSupabase();
-        }
+          fetchRegistryData(page);
+          campusStore.refreshStudentRegistry(true);
+        },
       )
       .on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "new_registered_students" },
         () => {
-          campusStore.loadFromSupabase();
-        }
+          fetchRegistryData(page);
+          campusStore.refreshStudentRegistry(true);
+        },
       )
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "accounts" },
+        { event: "DELETE", schema: "public", table: "new_registered_students" },
         () => {
-          campusStore.loadFromSupabase();
-        }
+          fetchRegistryData(page);
+          campusStore.refreshStudentRegistry(true);
+        },
       )
+      .on("postgres_changes", { event: "*", schema: "public", table: "accounts" }, () => {
+        fetchRegistryData(page);
+        campusStore.refreshStudentRegistry(true);
+      })
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [page, fetchRegistryData]);
 
-  const handleManualSync = async () => {
-    setIsRefreshing(true);
-    try {
-      await campusStore.loadFromSupabase();
-      const count = campusStore.getState().newRegisteredStudents?.length || 0;
-      toast.success(`Synced with Supabase: ${count} student${count === 1 ? "" : "s"} in registry.`);
-    } catch (err: any) {
-      toast.error(`Supabase sync failed: ${err.message || "Network error"}`);
-    } finally {
-      setIsRefreshing(false);
-    }
-  };
-
-  const students: NewRegisteredStudent[] = state.newRegisteredStudents || [];
-
-  // Filter students based on search and dropdowns
-  const filteredStudents = students.filter((s) => {
-    const matchesSearch =
-      s.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      s.rollNo.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      s.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      s.mobileNumber.toLowerCase().includes(searchQuery.toLowerCase());
-
-    const matchesDept =
-      departmentFilter === "all" ||
-      s.department.toLowerCase().includes(departmentFilter.toLowerCase());
-
-    const matchesResidence =
-      residenceFilter === "all" || s.residenceType === residenceFilter;
-
+  // Client-side date and residence filtering on active page
+  const displayedStudents = students.filter((s) => {
+    const matchesResidence = residenceFilter === "all" || s.residenceType === residenceFilter;
     const matchesDate =
       (!startDate || (s.createdAt && s.createdAt.split("T")[0] >= startDate)) &&
       (!endDate || (s.createdAt && s.createdAt.split("T")[0] <= endDate));
-
-    return matchesSearch && matchesDept && matchesResidence && matchesDate;
+    return matchesResidence && matchesDate;
   });
 
   const handleExportCsv = () => {
     const rows = [
       ["GSFC University - Official Student Identity Registry (Locked Identity Records)"],
       ["Export Timestamp", new Date().toISOString()],
-      ["Total Registered Students", String(students.length)],
+      ["Total Registered Students", String(totalCount || students.length)],
       [],
       [
         "Roll Number",
@@ -128,7 +183,7 @@ export function StudentRegistryViewer({ state }: StudentRegistryViewerProps) {
         "Locked Status",
         "Registration Date",
       ],
-      ...filteredStudents.map((s) => [
+      ...displayedStudents.map((s) => [
         s.rollNo,
         s.fullName,
         s.mobileNumber,
@@ -136,7 +191,9 @@ export function StudentRegistryViewer({ state }: StudentRegistryViewerProps) {
         s.school,
         s.department,
         `${s.degree} - Sem ${s.semester}`,
-        s.residenceType === "hostel" ? s.hostelBlockOrBusRoute || "Hostel" : s.hostelBlockOrBusRoute || "Day Scholar Bus",
+        s.residenceType === "hostel"
+          ? s.hostelBlockOrBusRoute || "Hostel"
+          : s.hostelBlockOrBusRoute || "Day Scholar Bus",
         s.verifiedByUniversity ? "Verified" : "Pending",
         "LOCKED (Permanent)",
         s.createdAt || "N/A",
@@ -174,7 +231,13 @@ export function StudentRegistryViewer({ state }: StudentRegistryViewerProps) {
               </span>
             </div>
             <p className="text-xs text-slate-500">
-              Bona fide student candidate records. Name and Mobile Number cannot be altered post-registration.
+              Database-backed bona fide student records. Identity is verified and locked against
+              unauthorized modification.
+              {lastSyncTime && (
+                <span className="ml-2 font-medium text-slate-400">
+                  • Last synced: {lastSyncTime}
+                </span>
+              )}
             </p>
           </div>
         </div>
@@ -182,15 +245,18 @@ export function StudentRegistryViewer({ state }: StudentRegistryViewerProps) {
         <div className="flex items-center gap-2.5">
           <div className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-center shadow-xs">
             <p className="text-[10px] font-bold uppercase text-slate-400">Total Enrolled</p>
-            <p className="font-display text-lg font-black text-[#1A3C6E]">{students.length} Student{students.length === 1 ? "" : "s"}</p>
+            <p className="font-display text-lg font-black text-[#1A3C6E]">
+              {totalCount} Student{totalCount === 1 ? "" : "s"}
+            </p>
           </div>
           <Button
-            onClick={handleManualSync}
+            onClick={() => fetchRegistryData(page, true)}
+            disabled={isLoading}
             variant="outline"
             className="h-10 gap-2 rounded-2xl border-blue-200 bg-blue-50/50 text-xs font-bold text-[#1A3C6E] hover:bg-blue-100/60"
           >
-            <RefreshCw className={cn("size-3.5 text-[#F2A93B]", isRefreshing && "animate-spin")} />
-            Sync Supabase
+            <RefreshCw className={cn("size-3.5 text-[#F2A93B]", isLoading && "animate-spin")} />
+            Sync Database
           </Button>
           <Button
             onClick={handleExportCsv}
@@ -202,7 +268,6 @@ export function StudentRegistryViewer({ state }: StudentRegistryViewerProps) {
           </Button>
         </div>
       </div>
-
 
       {/* Search & Filter Bar */}
       <div className="flex flex-col sm:flex-row items-center gap-3 rounded-2xl border border-border/80 bg-card p-3 shadow-xs">
@@ -240,6 +305,18 @@ export function StudentRegistryViewer({ state }: StudentRegistryViewerProps) {
             <option value="hostel">Hostelites Only</option>
             <option value="dayscholar">Day Scholars Only</option>
           </select>
+
+          <select
+            value={pageSize}
+            onChange={(e) => setPageSize(Number(e.target.value))}
+            className="h-10 rounded-xl border border-input bg-background px-3 text-xs font-bold text-foreground focus:outline-none"
+            title="Rows per page"
+          >
+            <option value={10}>10 / page</option>
+            <option value={25}>25 / page</option>
+            <option value={50}>50 / page</option>
+            <option value={100}>100 / page</option>
+          </select>
         </div>
 
         <DateRangeFilter
@@ -252,6 +329,23 @@ export function StudentRegistryViewer({ state }: StudentRegistryViewerProps) {
           label="Registration Date"
         />
       </div>
+
+      {/* Error state if database is unreachable */}
+      {loadError && (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50/70 p-6 text-center text-rose-800 shadow-xs">
+          <AlertTriangle className="mx-auto size-8 text-rose-500 mb-2" />
+          <p className="font-bold text-sm">Unable to load student records from database.</p>
+          <p className="text-xs text-rose-600 mb-4">{loadError}</p>
+          <Button
+            onClick={() => fetchRegistryData(page, true)}
+            variant="outline"
+            className="h-9 gap-2 rounded-xl border-rose-300 bg-white text-xs font-bold text-rose-700 hover:bg-rose-100"
+          >
+            <RefreshCw className="size-3.5" />
+            Retry Connection
+          </Button>
+        </div>
+      )}
 
       {/* Students Table */}
       <div className="overflow-hidden rounded-3xl border border-border/80 bg-card shadow-sm">
@@ -270,15 +364,22 @@ export function StudentRegistryViewer({ state }: StudentRegistryViewerProps) {
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60 font-medium">
-              {filteredStudents.length === 0 ? (
+              {isLoading ? (
+                <tr>
+                  <td colSpan={8} className="py-12 text-center text-muted-foreground">
+                    <RefreshCw className="mx-auto size-6 animate-spin text-brand mb-2" />
+                    <p className="font-bold">Loading student records from Supabase database...</p>
+                  </td>
+                </tr>
+              ) : displayedStudents.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="py-12 text-center text-muted-foreground">
                     <GraduationCap className="mx-auto size-8 text-muted-foreground/40 mb-2" />
-                    <p className="font-bold">No registered students found matching search criteria.</p>
+                    <p className="font-bold">No registered students found matching criteria.</p>
                   </td>
                 </tr>
               ) : (
-                filteredStudents.map((stu) => (
+                displayedStudents.map((stu) => (
                   <tr key={stu.rollNo} className="transition-colors hover:bg-muted/20">
                     {/* Student & Roll No */}
                     <td className="py-3.5 pl-6 pr-4">
@@ -309,7 +410,10 @@ export function StudentRegistryViewer({ state }: StudentRegistryViewerProps) {
                       <div className="flex items-center gap-1 font-mono font-bold text-foreground">
                         <Phone className="size-3 text-muted-foreground" />
                         <span>{stu.mobileNumber}</span>
-                        <Lock className="size-3 text-amber-500" title="Locked by University Policy" />
+                        <Lock
+                          className="size-3 text-amber-500"
+                          title="Locked by University Policy"
+                        />
                       </div>
                     </td>
 
@@ -351,7 +455,9 @@ export function StudentRegistryViewer({ state }: StudentRegistryViewerProps) {
                           </div>
                         )}
                         <span className="text-[10px] text-muted-foreground">
-                          {stu.residenceType === "hostel" ? "Resident on GSFC Campus" : "Commutes to GSFC Campus"}
+                          {stu.residenceType === "hostel"
+                            ? "Resident on GSFC Campus"
+                            : "Commutes to GSFC Campus"}
                         </span>
                       </div>
                     </td>
@@ -364,17 +470,26 @@ export function StudentRegistryViewer({ state }: StudentRegistryViewerProps) {
                       </span>
                     </td>
 
-                    {/* Verification Status */}
+                    {/* Verification Status (Requirement 5) */}
                     <td className="px-4 py-3.5 text-center">
-                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-400">
-                        <CheckCircle2 className="size-3" />
-                        <span>Bona Fide</span>
-                      </span>
+                      {stu.verifiedByUniversity ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-400">
+                          <CheckCircle2 className="size-3" />
+                          <span>Verified Bona Fide</span>
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 border border-amber-500/30 px-2.5 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-400">
+                          <Clock className="size-3" />
+                          <span>Pending Verification</span>
+                        </span>
+                      )}
                     </td>
 
                     {/* Actions: Edit Student */}
                     <td className="py-3.5 pl-4 pr-6 text-right">
-                      {state.currentRole === "admin" || state.currentRole === "organizer" ? (
+                      {state.currentRole === "admin" ||
+                      state.currentRole === "dean" ||
+                      state.currentRole === "super_admin" ? (
                         <Button
                           size="sm"
                           variant="outline"
@@ -396,6 +511,47 @@ export function StudentRegistryViewer({ state }: StudentRegistryViewerProps) {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Bar */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-border/70 px-6 py-3.5 bg-muted/20">
+          <p className="text-xs text-muted-foreground font-medium">
+            Showing <span className="font-bold text-foreground">{displayedStudents.length}</span> of{" "}
+            <span className="font-bold text-foreground">{totalCount}</span> registered students
+            (Page {page} of {totalPages || 1})
+          </p>
+
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                if (page > 1) fetchRegistryData(page - 1);
+              }}
+              disabled={page <= 1 || isLoading}
+              className="h-8 gap-1 rounded-xl text-xs font-bold"
+            >
+              <ChevronLeft className="size-3.5" />
+              Previous
+            </Button>
+
+            <span className="px-2 text-xs font-bold text-muted-foreground">
+              {page} / {totalPages || 1}
+            </span>
+
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                if (page < totalPages) fetchRegistryData(page + 1);
+              }}
+              disabled={page >= totalPages || isLoading}
+              className="h-8 gap-1 rounded-xl text-xs font-bold"
+            >
+              Next
+              <ChevronRight className="size-3.5" />
+            </Button>
+          </div>
+        </div>
       </div>
 
       {/* Edit Student Modal */}
@@ -404,7 +560,8 @@ export function StudentRegistryViewer({ state }: StudentRegistryViewerProps) {
           student={editingStudent}
           onClose={() => setEditingStudent(null)}
           onSuccess={() => {
-            campusStore.loadFromSupabase();
+            fetchRegistryData(page);
+            campusStore.refreshStudentRegistry(true);
           }}
         />
       )}

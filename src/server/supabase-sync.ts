@@ -26,7 +26,10 @@ export const supabaseSync = {
   // 1. Events CRUD
   async getEvents(category?: string | null, status?: string | null): Promise<CampusEvent[]> {
     try {
-      let query = supabaseAdmin.from("events").select("*").order("created_at", { ascending: false });
+      let query = supabaseAdmin
+        .from("events")
+        .select("*")
+        .order("created_at", { ascending: false });
       if (category) query = query.ilike("category", category);
       if (status) query = query.eq("status", status);
 
@@ -66,7 +69,11 @@ export const supabaseSync = {
 
   async getEventById(eventId: string): Promise<CampusEvent | null> {
     try {
-      const { data, error } = await supabaseAdmin.from("events").select("*").eq("id", eventId).single();
+      const { data, error } = await supabaseAdmin
+        .from("events")
+        .select("*")
+        .eq("id", eventId)
+        .single();
       if (!error && data) {
         return {
           id: data.id,
@@ -136,7 +143,10 @@ export const supabaseSync = {
   // 2. Registrations CRUD
   async getRegistrations(eventId?: string): Promise<Registration[]> {
     try {
-      let query = supabaseAdmin.from("registrations").select("*").order("registered_at", { ascending: false });
+      let query = supabaseAdmin
+        .from("registrations")
+        .select("*")
+        .order("registered_at", { ascending: false });
       if (eventId) query = query.eq("event_id", eventId);
 
       const { data, error } = await query;
@@ -187,7 +197,10 @@ export const supabaseSync = {
   // 3. Attendance CRUD
   async getAttendance(eventId?: string): Promise<AttendanceRecord[]> {
     try {
-      let query = supabaseAdmin.from("attendance").select("*").order("timestamp", { ascending: false });
+      let query = supabaseAdmin
+        .from("attendance")
+        .select("*")
+        .order("timestamp", { ascending: false });
       if (eventId) query = query.eq("event_id", eventId);
 
       const { data, error } = await query;
@@ -301,7 +314,7 @@ export const supabaseSync = {
             a.email.toLowerCase() === clean ||
             a.roll_no.toLowerCase() === clean ||
             clean.includes(a.roll_no.toLowerCase()) ||
-            clean.includes(a.email.split("@")[0].toLowerCase())
+            clean.includes(a.email.split("@")[0].toLowerCase()),
         );
         return found || null;
       }
@@ -330,7 +343,9 @@ export const supabaseSync = {
         mobile_number: account.mobile_number || account.mobileNumber || null,
         updated_at: new Date().toISOString(),
       };
-      const { error } = await supabaseAdmin.from("accounts").upsert(payload, { onConflict: "roll_no" });
+      const { error } = await supabaseAdmin
+        .from("accounts")
+        .upsert(payload, { onConflict: "roll_no" });
       return !error;
     } catch (e) {
       console.warn("Supabase save account error:", e);
@@ -339,7 +354,9 @@ export const supabaseSync = {
   },
 
   // 5. Newly Registered Students (Locked Identity)
-  async saveNewStudent(student: NewRegisteredStudent): Promise<{ success: boolean; message?: string }> {
+  async saveNewStudent(
+    student: NewRegisteredStudent,
+  ): Promise<{ success: boolean; message?: string }> {
     try {
       const payload = {
         id: student.id,
@@ -356,12 +373,14 @@ export const supabaseSync = {
         clubs_interested: student.clubsInterested || [],
         id_card_uploaded: student.idCardUploaded,
         is_locked: true,
-        verified_by_university: student.verifiedByUniversity ?? true,
-        is_verified: student.isVerified ?? true,
+        verified_by_university: student.verifiedByUniversity ?? false,
+        is_verified: student.isVerified ?? false,
         created_at: student.createdAt || new Date().toISOString(),
       };
 
-      const { error } = await supabaseAdmin.from("new_registered_students").upsert(payload, { onConflict: "roll_no" });
+      const { error } = await supabaseAdmin
+        .from("new_registered_students")
+        .upsert(payload, { onConflict: "roll_no" });
       if (error) {
         return { success: false, message: error.message };
       }
@@ -370,6 +389,82 @@ export const supabaseSync = {
       console.warn("Supabase save new registered student error:", e);
       return { success: false, message: e.message || String(e) };
     }
+  },
+
+  async deleteStudent(rollNo: string): Promise<boolean> {
+    try {
+      const cleanRoll = rollNo.trim().toUpperCase();
+      await supabaseAdmin.from("new_registered_students").delete().eq("roll_no", cleanRoll);
+      await supabaseAdmin.from("accounts").delete().eq("roll_no", cleanRoll);
+      return true;
+    } catch (e) {
+      console.warn("Supabase delete student error:", e);
+      return false;
+    }
+  },
+
+  async getPaginatedStudents(params: {
+    page?: number;
+    pageSize?: number;
+    search?: string;
+    department?: string;
+    status?: string;
+  }): Promise<{ students: NewRegisteredStudent[]; total: number; page: number; pageSize: number }> {
+    const page = Math.max(1, params.page || 1);
+    const pageSize = Math.min(100, Math.max(1, params.pageSize || 50));
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+
+    try {
+      let query = supabaseAdmin
+        .from("new_registered_students")
+        .select("*", { count: "exact" })
+        .order("created_at", { ascending: false });
+
+      if (params.department && params.department !== "all") {
+        query = query.ilike("department", `%${params.department}%`);
+      }
+
+      if (params.search && params.search.trim()) {
+        const q = params.search.trim();
+        query = query.or(
+          `full_name.ilike.%${q}%,roll_no.ilike.%${q}%,email.ilike.%${q}%,mobile_number.ilike.%${q}%`,
+        );
+      }
+
+      const { data, count, error } = await query.range(from, to);
+
+      if (!error && data) {
+        const students = data.map((d: any) => ({
+          id: d.id,
+          fullName: d.full_name,
+          mobileNumber: d.mobile_number,
+          rollNo: d.roll_no,
+          email: d.email,
+          school: d.school,
+          department: d.department,
+          degree: d.degree,
+          semester: d.semester,
+          residenceType: d.residence_type,
+          hostelBlockOrBusRoute: d.hostel_block_or_bus_route,
+          clubsInterested: d.clubs_interested || [],
+          idCardUploaded: d.id_card_uploaded,
+          isLocked: d.is_locked,
+          verifiedByUniversity: Boolean(d.verified_by_university),
+          isVerified: Boolean(d.is_verified),
+          createdAt: d.created_at,
+        }));
+        return {
+          students,
+          total: count ?? students.length,
+          page,
+          pageSize,
+        };
+      }
+    } catch (e) {
+      console.warn("Supabase fetch paginated students error:", e);
+    }
+    return { students: [], total: 0, page, pageSize };
   },
 
   async getNewRegisteredStudents(): Promise<NewRegisteredStudent[]> {
@@ -395,8 +490,8 @@ export const supabaseSync = {
           clubsInterested: d.clubs_interested || [],
           idCardUploaded: d.id_card_uploaded,
           isLocked: d.is_locked,
-          verifiedByUniversity: d.verified_by_university,
-          isVerified: d.is_verified ?? true,
+          verifiedByUniversity: Boolean(d.verified_by_university),
+          isVerified: Boolean(d.is_verified),
           createdAt: d.created_at,
         }));
       }
@@ -406,10 +501,16 @@ export const supabaseSync = {
     return [];
   },
 
-  async getStudentByRollOrEmail(rollNo: string, email?: string): Promise<NewRegisteredStudent | null> {
+  async getStudentByRollOrEmail(
+    rollNo: string,
+    email?: string,
+  ): Promise<NewRegisteredStudent | null> {
     try {
       const cleanRoll = rollNo.trim().toUpperCase();
-      let query = supabaseAdmin.from("new_registered_students").select("*").eq("roll_no", cleanRoll);
+      const query = supabaseAdmin
+        .from("new_registered_students")
+        .select("*")
+        .eq("roll_no", cleanRoll);
       const { data, error } = await query;
       if (!error && data && data.length > 0) {
         const d = data[0];
@@ -483,7 +584,7 @@ export const supabaseSync = {
       hostelBlockOrBusRoute?: string;
       clubsInterested?: string[];
       verifiedByUniversity?: boolean;
-    }
+    },
   ): Promise<{ success: boolean; message?: string; student?: NewRegisteredStudent }> {
     try {
       const current = await this.getStudentByRollOrEmail(studentId);
@@ -503,9 +604,12 @@ export const supabaseSync = {
       if (updates.degree !== undefined) dbPayload.degree = updates.degree;
       if (updates.semester !== undefined) dbPayload.semester = updates.semester;
       if (updates.residenceType !== undefined) dbPayload.residence_type = updates.residenceType;
-      if (updates.hostelBlockOrBusRoute !== undefined) dbPayload.hostel_block_or_bus_route = updates.hostelBlockOrBusRoute;
-      if (updates.clubsInterested !== undefined) dbPayload.clubs_interested = updates.clubsInterested;
-      if (updates.verifiedByUniversity !== undefined) dbPayload.verified_by_university = updates.verifiedByUniversity;
+      if (updates.hostelBlockOrBusRoute !== undefined)
+        dbPayload.hostel_block_or_bus_route = updates.hostelBlockOrBusRoute;
+      if (updates.clubsInterested !== undefined)
+        dbPayload.clubs_interested = updates.clubsInterested;
+      if (updates.verifiedByUniversity !== undefined)
+        dbPayload.verified_by_university = updates.verifiedByUniversity;
 
       const { error } = await supabaseAdmin
         .from("new_registered_students")
@@ -525,10 +629,7 @@ export const supabaseSync = {
       if (updates.department !== undefined) accountUpdates.department = updates.department;
       if (updates.semester !== undefined) accountUpdates.semester = updates.semester;
       if (Object.keys(accountUpdates).length > 0) {
-        await supabaseAdmin
-          .from("accounts")
-          .update(accountUpdates)
-          .eq("roll_no", current.rollNo);
+        await supabaseAdmin.from("accounts").update(accountUpdates).eq("roll_no", current.rollNo);
       }
 
       const updatedStudent: NewRegisteredStudent = {
@@ -547,7 +648,11 @@ export const supabaseSync = {
         verifiedByUniversity: updates.verifiedByUniversity ?? current.verifiedByUniversity,
       };
 
-      return { success: true, message: "Student profile updated successfully in Supabase.", student: updatedStudent };
+      return {
+        success: true,
+        message: "Student profile updated successfully in Supabase.",
+        student: updatedStudent,
+      };
     } catch (e: any) {
       console.warn("Supabase update student profile error:", e);
       return { success: false, message: e.message || String(e) };
@@ -607,7 +712,10 @@ export const supabaseSync = {
   // 7. Announcements CRUD
   async getAnnouncements(): Promise<CampusAnnouncement[]> {
     try {
-      const { data, error } = await supabaseAdmin.from("announcements").select("*").order("created_at", { ascending: false });
+      const { data, error } = await supabaseAdmin
+        .from("announcements")
+        .select("*")
+        .order("created_at", { ascending: false });
       if (!error && data) {
         return data.map((d: any) => ({
           id: d.id,
@@ -650,4 +758,3 @@ export const supabaseSync = {
     }
   },
 };
-

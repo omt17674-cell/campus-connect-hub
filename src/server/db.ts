@@ -83,8 +83,8 @@ class ServerDatabase {
       },
       {
         role: "organizer",
-        roleTitle: "Faculty & TPC Convener",
-        roleBadge: "TPC Admin",
+        roleTitle: "Placement Faculty Coordinator",
+        roleBadge: "Placement Faculty Coordinator",
         name: "Prof. Rajiv Mehta",
         idOrRoll: "FAC-TPC-104",
         email: "tpc.admin@gsfcuniversity.ac.in",

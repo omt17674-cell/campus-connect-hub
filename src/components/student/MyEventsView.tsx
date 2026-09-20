@@ -21,6 +21,7 @@ import { generateCertificatePdf } from "@/lib/certificate-generator";
 import { getGoogleCalendarUrl, downloadIcsFile } from "@/lib/calendar-utils";
 import { ActivityPointsCard } from "./ActivityPointsCard";
 import { EventFeedbackModal } from "./EventFeedbackModal";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 interface MyEventsViewProps {
@@ -160,7 +161,23 @@ export function MyEventsView({ state, onSelectEvent, onOpenPunchModal }: MyEvent
   );
 
   const handleDownloadCertificate = async (event: CampusEvent) => {
-    if (!event) return;
+    if (!event) {
+      toast.error("Unable to generate certificate: Event details could not be found.");
+      return;
+    }
+
+    const missingItems: string[] = [];
+    if (!event.title) missingItems.push("event title");
+    if (!currentUser?.name) missingItems.push("student name");
+    if (!currentUser?.rollNo) missingItems.push("enrolment number");
+
+    if (missingItems.length > 0) {
+      toast.error(
+        `Unable to generate certificate: missing ${missingItems.join(", ")}. Please update your profile or contact the event coordinator.`
+      );
+      return;
+    }
+
     const record = attendanceRecords.find(
       (a) => a && a.eventId === event.id && a.userId === currentUser.id
     ) || {
@@ -181,8 +198,24 @@ export function MyEventsView({ state, onSelectEvent, onOpenPunchModal }: MyEvent
     setDownloadingCertId(event.id);
     try {
       await generateCertificatePdf(record, event, currentUser);
-    } catch (err) {
+      toast.success("Certificate downloaded successfully!");
+    } catch (err: any) {
       console.error("Certificate download error", err);
+      const specificMissing: string[] = [];
+      if (!event.organizerName) specificMissing.push("organizer name");
+      if (!event.venue) specificMissing.push("venue");
+      if (!event.date) specificMissing.push("event date");
+      if (!currentUser.department) specificMissing.push("department");
+
+      if (specificMissing.length > 0) {
+        toast.error(
+          `Certificate generation failed: missing ${specificMissing.join(", ")}. Please contact the event coordinator.`
+        );
+      } else {
+        toast.error(
+          err?.message ? `Failed to download certificate: ${err.message}` : "Failed to download certificate. Please try again."
+        );
+      }
     } finally {
       setDownloadingCertId(null);
     }

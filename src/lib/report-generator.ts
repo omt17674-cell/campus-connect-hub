@@ -5,15 +5,23 @@ interface EventReportData {
   event: CampusEvent;
   attendanceRecords: AttendanceRecord[];
   registrations: Registration[];
-  coordinatorName: string;
+  coordinatorName?: string;
 }
 
 export async function generateEventCompletionReportPdf({
   event,
-  attendanceRecords,
-  registrations,
+  attendanceRecords = [],
+  registrations = [],
   coordinatorName,
 }: EventReportData): Promise<void> {
+  const safeTitle = (event?.title || "").trim() || "Campus Event";
+  const safeCategory = (event?.category || "").trim() || "General";
+  const safeDate = (event?.date || "").trim() || "N/A";
+  const safeTime = (event?.time || "").trim() || "N/A";
+  const safeVenue = (event?.venue || "").trim() || "GSFC University Campus";
+  const safeOrganizer = (coordinatorName || event?.organizerName || "").trim() || "Event Coordinator";
+  const safeOrganizerEmail = (event?.organizerEmail || "").trim() || "events@gsfcuniversity.ac.in";
+
   const doc = new jsPDF({
     orientation: "portrait",
     unit: "mm",
@@ -67,40 +75,43 @@ export async function generateEventCompletionReportPdf({
   doc.text("EVENT TITLE:", margin + 4, yPos + 7);
   doc.setTextColor(15, 23, 42);
   doc.setFont("helvetica", "bold");
-  doc.text(event.title, margin + 35, yPos + 7);
+  doc.text(safeTitle, margin + 35, yPos + 7);
 
   doc.setTextColor(71, 85, 105);
   doc.setFont("helvetica", "bold");
   doc.text("CATEGORY:", margin + 4, yPos + 15);
   doc.setTextColor(26, 60, 110);
-  doc.text(event.category, margin + 35, yPos + 15);
+  doc.text(safeCategory, margin + 35, yPos + 15);
 
   doc.setTextColor(71, 85, 105);
+  doc.setFont("helvetica", "bold");
   doc.text("DATE & TIME:", margin + 85, yPos + 15);
   doc.setTextColor(15, 23, 42);
   doc.setFont("helvetica", "normal");
-  doc.text(`${event.date} · ${event.time}`, margin + 115, yPos + 15);
+  doc.text(`${safeDate} · ${safeTime}`, margin + 115, yPos + 15);
 
   doc.setTextColor(71, 85, 105);
   doc.setFont("helvetica", "bold");
   doc.text("VENUE:", margin + 4, yPos + 23);
   doc.setTextColor(15, 23, 42);
   doc.setFont("helvetica", "normal");
-  doc.text(event.venue, margin + 35, yPos + 23);
+  doc.text(safeVenue, margin + 35, yPos + 23);
 
   doc.setTextColor(71, 85, 105);
   doc.setFont("helvetica", "bold");
   doc.text("ORGANIZER:", margin + 4, yPos + 31);
   doc.setTextColor(15, 23, 42);
   doc.setFont("helvetica", "normal");
-  doc.text(`${event.organizerName} (${event.organizerEmail})`, margin + 35, yPos + 31);
+  doc.text(`${safeOrganizer} (${safeOrganizerEmail})`, margin + 35, yPos + 31);
 
   // Statistics Summary Cards
   yPos += 46;
-  const registeredCount = registrations.length || event.registeredCount;
-  const attendedCount = attendanceRecords.length;
+  const safeRegistrations = Array.isArray(registrations) ? registrations : [];
+  const safeAttendance = Array.isArray(attendanceRecords) ? attendanceRecords : [];
+  const registeredCount = safeRegistrations.length || event?.registeredCount || 0;
+  const attendedCount = safeAttendance.length;
   const attendanceRate = registeredCount > 0 ? Math.round((attendedCount / registeredCount) * 100) : 100;
-  const gpsVerifiedCount = attendanceRecords.filter((a) => a.locationVerified).length;
+  const gpsVerifiedCount = safeAttendance.filter((a) => a?.locationVerified).length;
 
   const cardWidth = (contentWidth - 9) / 4;
   const stats = [
@@ -151,21 +162,24 @@ export async function generateEventCompletionReportPdf({
   yPos += 7;
 
   // Table rows
-  const displayRecords = attendanceRecords.length > 0 ? attendanceRecords : registrations.map((r, i) => ({
-    id: `rec-${i}`,
-    eventId: event.id,
-    eventTitle: event.title,
-    userId: r.userId,
-    userName: r.userName,
-    userRollNo: r.userRollNo,
-    department: r.department,
-    timestamp: r.registeredAt,
-    punchInTime: r.punchInTime || r.registeredAt,
-    verifiedMethod: "live_punch" as const,
-    tokenUsed: "VERIFIED",
-    synced: true,
-    locationVerified: true,
-  }));
+  const displayRecords =
+    safeAttendance.length > 0
+      ? safeAttendance
+      : safeRegistrations.map((r, i) => ({
+          id: `rec-${i}`,
+          eventId: event?.id || "evt",
+          eventTitle: safeTitle,
+          userId: r?.userId || "",
+          userName: r?.userName || "Student",
+          userRollNo: r?.userRollNo || "N/A",
+          department: r?.department || "N/A",
+          timestamp: r?.registeredAt || new Date().toISOString(),
+          punchInTime: r?.punchInTime || r?.registeredAt,
+          verifiedMethod: "live_punch" as const,
+          tokenUsed: "VERIFIED",
+          synced: true,
+          locationVerified: true,
+        }));
 
   displayRecords.slice(0, 15).forEach((rec, idx) => {
     const isEven = idx % 2 === 0;
@@ -176,14 +190,19 @@ export async function generateEventCompletionReportPdf({
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7.5);
 
+    const safeRoll = (rec?.userRollNo || "N/A").trim() || "N/A";
+    const safeStudent = (rec?.userName || "Student").trim() || "Student";
+    const safeDept = (rec?.department || "N/A").trim() || "N/A";
+    const punchStr = ((rec?.punchInTime || rec?.timestamp || "").slice(11, 16)) || "10:15 AM";
+
     doc.text(`${idx + 1}`, margin + 3, yPos + 4.5);
     doc.setFont("helvetica", "bold");
-    doc.text(rec.userRollNo, margin + 12, yPos + 4.5);
+    doc.text(safeRoll, margin + 12, yPos + 4.5);
     doc.setFont("helvetica", "normal");
-    doc.text(rec.userName.slice(0, 24), margin + 42, yPos + 4.5);
-    doc.text(rec.department.slice(0, 22), margin + 95, yPos + 4.5);
-    doc.text((rec.punchInTime || rec.timestamp).slice(11, 16) || "10:15 AM", margin + 140, yPos + 4.5);
-    
+    doc.text(safeStudent.slice(0, 24), margin + 42, yPos + 4.5);
+    doc.text(safeDept.slice(0, 22), margin + 95, yPos + 4.5);
+    doc.text(punchStr, margin + 140, yPos + 4.5);
+
     doc.setTextColor(16, 185, 129);
     doc.setFont("helvetica", "bold");
     doc.text("VERIFIED", margin + 165, yPos + 4.5);
@@ -204,7 +223,7 @@ export async function generateEventCompletionReportPdf({
   doc.setFont("helvetica", "bold");
   doc.text("FACULTY COORDINATOR", margin, sigY + 5);
   doc.setFont("helvetica", "normal");
-  doc.text(coordinatorName || event.organizerName, margin, sigY + 9);
+  doc.text(safeOrganizer, margin, sigY + 9);
 
   doc.setFont("helvetica", "bold");
   doc.text("DEAN / HOD ACADEMICS", pageWidth - margin - 50, sigY + 5);
@@ -214,12 +233,14 @@ export async function generateEventCompletionReportPdf({
   // Footer
   doc.setFontSize(7);
   doc.setTextColor(148, 163, 184);
+  const safeId = ((event?.id || "REP").replace(/[^a-zA-Z0-9]/g, "")).toUpperCase();
   doc.text(
-    `Generated via Campus Connect Hub · GSFC University · Report ID: GSFC-REP-${event.id.toUpperCase()}-${Date.now().toString(36).toUpperCase()}`,
+    `Generated via Campus Connect Hub · GSFC University · Report ID: GSFC-REP-${safeId}-${Date.now().toString(36).toUpperCase()}`,
     margin,
     pageHeight - 10
   );
 
   // Trigger download
-  doc.save(`GSFC_Event_Report_${event.title.replace(/[^a-zA-Z0-9]/g, "_")}.pdf`);
+  const safeFileTitle = safeTitle.replace(/[^a-zA-Z0-9]/g, "_") || "Event";
+  doc.save(`GSFC_Event_Report_${safeFileTitle}.pdf`);
 }
