@@ -1843,6 +1843,33 @@ export const campusStore = {
             );
             return { internshipApplications: [...remoteApps, ...localOnly] };
           });
+
+          // Migrate this student's legacy local-only applications after the table is available.
+          const currentUser = campusStore.getState().currentUser;
+          const localStudentApplications = (campusStore.getState().internshipApplications || []).filter(
+            (application) =>
+              !remoteApps.some((remote) => remote.id === application.id) &&
+              (application.studentId === currentUser.id ||
+                application.enrollmentNumber.toUpperCase() === (currentUser.rollNo || "").toUpperCase()),
+          );
+          await Promise.all(
+            localStudentApplications.map(async (application) => {
+              try {
+                const response = await fetch("/api/internships/applications", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    application: serializeInternshipApplicationForDb(application),
+                  }),
+                });
+                if (!response.ok) {
+                  console.warn("Could not migrate local internship application", application.id);
+                }
+              } catch (error) {
+                console.warn("Local internship application migration deferred", error);
+              }
+            }),
+          );
         }
 
         // 8. Process Internship Attendance
