@@ -46,6 +46,7 @@ export function QRScannerModal({ onClose, onSuccess }: QRScannerModalProps) {
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const scanFrameRef = useRef<number | null>(null);
 
   // Live Location & Geofencing state
   const [userLocation, setUserLocation] = useState<Coordinates>({ latitude: 22.3688, longitude: 73.1893 });
@@ -93,6 +94,33 @@ export function QRScannerModal({ onClose, onSuccess }: QRScannerModalProps) {
       isMounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!hasCameraPermission || !videoRef.current || !("BarcodeDetector" in window)) return;
+
+    const detector = new (window as Window & { BarcodeDetector: new (options: { formats: string[] }) => { detect: (source: HTMLVideoElement) => Promise<Array<{ rawValue?: string }>> } }).BarcodeDetector({ formats: ["qr_code"] });
+    const scanFrame = async () => {
+      const video = videoRef.current;
+      if (video && video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && scanStatus === "ready") {
+        try {
+          const [result] = await detector.detect(video);
+          if (result?.rawValue) {
+            const parsed = JSON.parse(result.rawValue) as { eventId?: string };
+            handleProcessScan(result.rawValue, parsed.eventId || selectedSimEventId);
+            return;
+          }
+        } catch {
+          // Keep scanning until a complete QR payload is visible.
+        }
+      }
+      scanFrameRef.current = requestAnimationFrame(scanFrame);
+    };
+
+    scanFrameRef.current = requestAnimationFrame(scanFrame);
+    return () => {
+      if (scanFrameRef.current !== null) cancelAnimationFrame(scanFrameRef.current);
+    };
+  }, [hasCameraPermission, scanStatus, selectedSimEventId]);
 
   // Request actual camera stream if available on device
   useEffect(() => {

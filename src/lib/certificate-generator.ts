@@ -18,6 +18,18 @@ export interface CertificateOptions {
   userLongitude?: number;
 }
 
+async function loadImageDataUrl(path: string): Promise<string> {
+  const response = await fetch(path);
+  if (!response.ok) throw new Error(`Unable to load certificate asset: ${path}`);
+  const blob = await response.blob();
+  return await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(String(reader.result));
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
 export async function generateCertificatePdf(
   arg1?: AttendanceRecord | CampusEvent | CertificateOptions | any,
   arg2?: CampusEvent | AttendanceRecord | any,
@@ -115,30 +127,12 @@ export async function generateCertificatePdf(
   drawCorner(14, pageHeight - 20);
   drawCorner(pageWidth - 20, pageHeight - 20);
 
-  // GSFC University Official Logo Badge (Top Center)
-  const logoCenterX = pageWidth / 2;
-  const logoCenterY = 24;
-
-  // Draw GSFC Logo (Circular badge with tree icon)
-  // Outer Gold Circle
-  doc.setFillColor(242, 169, 59);
-  doc.circle(logoCenterX, logoCenterY, 10, "F");
-
-  // Inner Deep Blue Circle
-  doc.setFillColor(26, 60, 110);
-  doc.circle(logoCenterX, logoCenterY, 8.5, "F");
-
-  // GSFC Tree/Banyan Icon (Simplified representation)
-  doc.setFillColor(34, 139, 34); // Green for tree
-  doc.circle(logoCenterX, logoCenterY - 1, 3, "F");
-  doc.setFillColor(101, 67, 33); // Brown for trunk
-  doc.rect(logoCenterX - 0.5, logoCenterY + 1, 1, 2.5, "F");
-
-  // Logo Text "GSFC"
-  doc.setTextColor(255, 255, 255);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(7);
-  doc.text("GSFC", logoCenterX, logoCenterY + 5.5, { align: "center" });
+  try {
+    const logoDataUrl = await loadImageDataUrl("/images/gsfc-logo.jpg");
+    doc.addImage(logoDataUrl, "JPEG", 20, 17, 54, 20, undefined, "FAST");
+  } catch (error) {
+    console.warn("GSFC logo could not be embedded in certificate", error);
+  }
 
   // Header - GSFC University
   doc.setTextColor(26, 60, 110);
@@ -232,7 +226,8 @@ export async function generateCertificatePdf(
     `GSFC-CERT-${eventIdClean}${rollSuffix}${Date.now().toString(36).toUpperCase()}`;
   
   // Enhanced verification URL with proper encoding
-  const verifyUrl = `https://gsfc-verify.gsfcuniversity.ac.in/certificate/${certId}`;
+  const verifyOrigin = typeof window !== "undefined" ? window.location.origin : "https://campusconnect.gsfcuni.edu";
+  const verifyUrl = `${verifyOrigin}/api/certificates/verify?id=${encodeURIComponent(certId)}`;
 
   // Generate QR Code with better error correction and size
   try {

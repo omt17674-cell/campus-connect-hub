@@ -47,7 +47,7 @@ export function generateQrPayload(eventId: string, eventTitle: string): { payloa
 export function validateQrPayload(payloadString: string, expectedEventId?: string): { valid: boolean; reason?: string; payload?: QrPayload } {
   try {
     const payload = JSON.parse(payloadString) as QrPayload;
-    if (!payload.eventId || !payload.token || !payload.windowId) {
+    if (payload.version !== "1.0" || !payload.eventId || !payload.eventTitle || !payload.token || !Number.isInteger(payload.windowId)) {
       return { valid: false, reason: "Malformed QR code payload format" };
     }
 
@@ -59,6 +59,18 @@ export function validateQrPayload(payloadString: string, expectedEventId?: strin
     const currentWindow = Math.floor(Date.now() / (QR_ROTATION_INTERVAL_SECONDS * 1000));
     if (Math.abs(currentWindow - payload.windowId) > 1) {
       return { valid: false, reason: "QR code has expired. Please scan the newly rotated code." };
+    }
+
+    const seed = `${payload.eventId}-${payload.windowId}-GSFC-SECRET`;
+    let hash = 0;
+    for (let i = 0; i < seed.length; i++) {
+      hash = (hash << 5) - hash + seed.charCodeAt(i);
+      hash |= 0;
+    }
+    const expectedToken = `GSFC-${Math.abs(hash).toString(36).toUpperCase()}-${payload.windowId.toString(36)}`;
+    const expectedSignature = `VERIFIED-GSFC-${Math.abs(hash % 9999).toString().padStart(4, "0")}`;
+    if (payload.token !== expectedToken || payload.signature !== expectedSignature) {
+      return { valid: false, reason: "QR code authenticity could not be verified." };
     }
 
     return { valid: true, payload };
