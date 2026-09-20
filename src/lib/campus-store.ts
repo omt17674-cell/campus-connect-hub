@@ -4781,24 +4781,25 @@ export const campusStore = {
       return { success: false, message: "Application not found." };
     }
 
-    const reviewerName = state.currentUser.name || "University Administration";
+    const reviewerName = state.currentUser.name || "Faculty Coordinator";
     const nowIso = new Date().toISOString();
     let newStatus: InternshipApplicationStatus = "ADMIN_REVIEW";
     let notifTitle = "";
     let notifMessage = "";
 
     if (decision === "approve") {
-      newStatus = "DEAN_REVIEW";
-      notifTitle = "Administration Review Completed";
-      notifMessage = `Your application ${app.applicationNumber} has been approved by Administration (${reviewerName}) and is now awaiting Dean final approval.`;
+      // Direct approval - no dean review needed
+      newStatus = "APPROVED";
+      notifTitle = "Application Approved";
+      notifMessage = `Your application ${app.applicationNumber} has been approved by Faculty Coordinator (${reviewerName}). You can now start punching attendance!`;
     } else if (decision === "reject") {
       newStatus = "REJECTED";
-      notifTitle = "Application Rejected by Administration";
-      notifMessage = `Your application ${app.applicationNumber} was not approved by Administration. Reason: ${comment || "Requirements not met."}`;
+      notifTitle = "Application Rejected";
+      notifMessage = `Your application ${app.applicationNumber} was not approved. Reason: ${comment || "Requirements not met."}`;
     } else {
       newStatus = "CHANGES_REQUESTED";
-      notifTitle = "Changes Requested by Administration";
-      notifMessage = `Administration requested updates for application ${app.applicationNumber}: ${comment || "Please update your details."}`;
+      notifTitle = "Changes Requested";
+      notifMessage = `Faculty Coordinator requested updates for application ${app.applicationNumber}: ${comment || "Please update your details."}`;
     }
 
     const updatedApp: InternshipApplication = {
@@ -4807,6 +4808,7 @@ export const campusStore = {
       adminReviewedBy: reviewerName,
       adminReviewedAt: nowIso,
       adminComment: comment,
+      approvedAt: decision === "approve" ? nowIso : app.approvedAt,
       rejectedAt: decision === "reject" ? nowIso : app.rejectedAt,
       rejectionReason: decision === "reject" ? comment : app.rejectionReason,
       updatedAt: nowIso,
@@ -4877,7 +4879,7 @@ export const campusStore = {
       success: true,
       message:
         decision === "approve"
-          ? `Application ${app.applicationNumber} approved by Administration and forwarded to Dean Review.`
+          ? `Application ${app.applicationNumber} approved successfully! Student can now punch attendance.`
           : decision === "reject"
             ? `Application ${app.applicationNumber} rejected.`
             : `Changes requested for ${app.applicationNumber}.`,

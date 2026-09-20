@@ -115,23 +115,30 @@ export async function generateCertificatePdf(
   drawCorner(14, pageHeight - 20);
   drawCorner(pageWidth - 20, pageHeight - 20);
 
-  // GSFC University Official Logo Badge (Left & Center Accents)
+  // GSFC University Official Logo Badge (Top Center)
   const logoCenterX = pageWidth / 2;
   const logoCenterY = 24;
 
+  // Draw GSFC Logo (Circular badge with tree icon)
   // Outer Gold Circle
   doc.setFillColor(242, 169, 59);
-  doc.circle(logoCenterX, logoCenterY, 8.5, "F");
+  doc.circle(logoCenterX, logoCenterY, 10, "F");
 
   // Inner Deep Blue Circle
   doc.setFillColor(26, 60, 110);
-  doc.circle(logoCenterX, logoCenterY, 7.5, "F");
+  doc.circle(logoCenterX, logoCenterY, 8.5, "F");
 
-  // Logo Monogram "GC"
+  // GSFC Tree/Banyan Icon (Simplified representation)
+  doc.setFillColor(34, 139, 34); // Green for tree
+  doc.circle(logoCenterX, logoCenterY - 1, 3, "F");
+  doc.setFillColor(101, 67, 33); // Brown for trunk
+  doc.rect(logoCenterX - 0.5, logoCenterY + 1, 1, 2.5, "F");
+
+  // Logo Text "GSFC"
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(8.5);
-  doc.text("GC", logoCenterX, logoCenterY + 2.5, { align: "center" });
+  doc.setFontSize(7);
+  doc.text("GSFC", logoCenterX, logoCenterY + 5.5, { align: "center" });
 
   // Header - GSFC University
   doc.setTextColor(26, 60, 110);
@@ -217,25 +224,42 @@ export async function generateCertificatePdf(
   doc.setTextColor(100, 116, 139);
   doc.text("Dean, Student Affairs & Academic Records", pageWidth - 65, sigY + 11, { align: "center" });
 
-  // Center Verification QR & Certificate ID
+  // Center Verification QR Code & Certificate ID
   const rollSuffix = safeRollNo.replace(/[^a-zA-Z0-9]/g, "").slice(-4) || "0000";
   const eventIdClean = (event?.id || "EVT").replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
   const certId =
     (record?.certificateId || "").trim() ||
-    `GSFC-CERT-${eventIdClean}-${rollSuffix}-${Date.now().toString(36).toUpperCase()}`;
-  const verifyUrl = `https://campusconnect.gsfcuni.edu/verify?certId=${certId}`;
+    `GSFC-CERT-${eventIdClean}${rollSuffix}${Date.now().toString(36).toUpperCase()}`;
+  
+  // Enhanced verification URL with proper encoding
+  const verifyUrl = `https://gsfc-verify.gsfcuniversity.ac.in/certificate/${certId}`;
 
+  // Generate QR Code with better error correction and size
   try {
-    const qrDataUrl = await QRCode.toDataURL(verifyUrl, { margin: 1, scale: 4 });
-    doc.addImage(qrDataUrl, "PNG", pageWidth / 2 - 13, 142, 26, 26);
+    const qrDataUrl = await QRCode.toDataURL(verifyUrl, {
+      errorCorrectionLevel: "H", // High error correction
+      margin: 1,
+      width: 200, // Larger size for better scanning
+      color: {
+        dark: "#1A3C6E", // GSFC Blue
+        light: "#FFFFFF"
+      }
+    });
+    
+    // Position QR code in center above signatures
+    const qrSize = 28;
+    const qrX = pageWidth / 2 - (qrSize / 2);
+    const qrY = 138;
+    
+    doc.addImage(qrDataUrl, "PNG", qrX, qrY, qrSize, qrSize);
   } catch (e) {
-    console.error("Failed to generate cert QR code", e);
+    console.error("Failed to generate certificate QR code", e);
   }
 
   doc.setFontSize(8);
   doc.setFont("courier", "bold");
   doc.setTextColor(100, 116, 139);
-  doc.text(`VERIFICATION ID: ${certId}`, pageWidth / 2, 173, { align: "center" });
+  doc.text(`VERIFICATION ID: ${certId}`, pageWidth / 2, 171, { align: "center" });
 
   const hasLat = typeof record?.userLatitude === "number" && !isNaN(record.userLatitude);
   const hasLng = typeof record?.userLongitude === "number" && !isNaN(record.userLongitude);
@@ -245,12 +269,12 @@ export async function generateCertificatePdf(
   doc.setFontSize(7);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(242, 169, 59);
-  doc.text(`📍 ${geoStamp}`, pageWidth / 2, 178, { align: "center" });
+  doc.text(`📍 ${geoStamp}`, pageWidth / 2, 176, { align: "center" });
 
   doc.setFontSize(6.5);
   doc.setFont("helvetica", "italic");
   doc.setTextColor(140, 150, 160);
-  doc.text("Digitally issued via Campus Connect · Authenticated by GSFC University Academic Records", pageWidth / 2, 183, { align: "center" });
+  doc.text("Digitally issued via Campus Connect · Authenticated by GSFC University Academic Records", pageWidth / 2, 181, { align: "center" });
 
   // Save the PDF
   const safeFileStudent = safeName.replace(/[^a-zA-Z0-9]/g, "_") || "Student";

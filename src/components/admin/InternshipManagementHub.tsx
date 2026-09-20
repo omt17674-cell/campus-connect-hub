@@ -55,8 +55,7 @@ interface InternshipManagementHubProps {
 
 export type AdminInternshipTab =
   | "overview"
-  | "admin_queue"
-  | "dean_queue"
+  | "review_queue"
   | "attendance"
   | "post_new"
   | "reports";
@@ -69,7 +68,7 @@ export function InternshipManagementHub({ state }: InternshipManagementHubProps)
 
   // Review comment dialog
   const [reviewDialogMode, setReviewDialogMode] = useState<
-    "admin_approve" | "admin_reject" | "admin_changes" | "dean_approve" | "dean_reject" | null
+    "approve" | "reject" | "changes" | null
   >(null);
   const [reviewComment, setReviewComment] = useState("");
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
@@ -120,8 +119,7 @@ export function InternshipManagementHub({ state }: InternshipManagementHubProps)
   // Memoized Metrics for production performance (100+ concurrent records)
   const {
     totalApps,
-    pendingAdminApps,
-    pendingDeanApps,
+    pendingReviewApps,
     approvedActiveApps,
     rejectedApps,
     changesRequestedApps,
@@ -130,8 +128,7 @@ export function InternshipManagementHub({ state }: InternshipManagementHubProps)
     const todayStr = new Date().toISOString().slice(0, 10);
     return {
       totalApps: applications.length,
-      pendingAdminApps: applications.filter((a) => a.status === "ADMIN_REVIEW" || a.status === "SUBMITTED"),
-      pendingDeanApps: applications.filter((a) => a.status === "DEAN_REVIEW" || a.status === "ADMIN_APPROVED"),
+      pendingReviewApps: applications.filter((a) => a.status === "ADMIN_REVIEW" || a.status === "SUBMITTED"),
       approvedActiveApps: applications.filter((a) => a.status === "APPROVED" || a.status === "ACTIVE"),
       rejectedApps: applications.filter((a) => a.status === "REJECTED"),
       changesRequestedApps: applications.filter((a) => a.status === "CHANGES_REQUESTED"),
@@ -161,11 +158,8 @@ export function InternshipManagementHub({ state }: InternshipManagementHubProps)
 
   const queueFilteredApplications = useMemo(() => {
     return filteredApplications.filter((app) => {
-      if (activeTab === "admin_queue") {
+      if (activeTab === "review_queue") {
         return app.status === "ADMIN_REVIEW" || app.status === "SUBMITTED";
-      }
-      if (activeTab === "dean_queue") {
-        return app.status === "DEAN_REVIEW" || app.status === "ADMIN_APPROVED";
       }
       return true;
     });

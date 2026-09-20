@@ -61,22 +61,24 @@ export function DateRangeFilter({
 
       <div className="flex items-center gap-1.5">
         <div className="flex items-center gap-1">
-          <span className="text-[10px] text-muted-foreground font-semibold">From:</span>
+          <span className="text-[10px] text-muted-foreground font-semibold whitespace-nowrap">From:</span>
           <Input
             type="date"
             value={startDate}
             onChange={(e) => onDateChange(e.target.value, endDate)}
-            className="h-8 w-32 rounded-xl border-border/70 bg-background/80 px-2 py-1 text-[11px] font-medium"
+            placeholder="dd/mm/yyyy"
+            className="h-8 w-36 rounded-xl border-border/70 bg-background/80 px-2 py-1 text-[11px] font-medium"
           />
         </div>
 
         <div className="flex items-center gap-1">
-          <span className="text-[10px] text-muted-foreground font-semibold">To:</span>
+          <span className="text-[10px] text-muted-foreground font-semibold whitespace-nowrap">To:</span>
           <Input
             type="date"
             value={endDate}
             onChange={(e) => onDateChange(startDate, e.target.value)}
-            className="h-8 w-32 rounded-xl border-border/70 bg-background/80 px-2 py-1 text-[11px] font-medium"
+            placeholder="dd/mm/yyyy"
+            className="h-8 w-36 rounded-xl border-border/70 bg-background/80 px-2 py-1 text-[11px] font-medium"
           />
         </div>
       </div>

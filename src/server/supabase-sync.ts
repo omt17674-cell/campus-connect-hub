@@ -7,6 +7,9 @@ import {
   CampusAnnouncement,
   Club,
   ClubMember,
+  Internship,
+  InternshipApplication,
+  InternshipAttendanceRecord,
 } from "../lib/types";
 
 export const supabaseSync = {
@@ -754,6 +757,270 @@ export const supabaseSync = {
       return !error;
     } catch (e) {
       console.warn("Supabase save announcement error:", e);
+      return false;
+    }
+  },
+
+  // 8. Internships CRUD
+  async getInternships(): Promise<Internship[]> {
+    try {
+      const { data, error } = await supabaseAdmin
+        .from("internships")
+        .select("*")
+        .order("created_at", { ascending: false });
+      
+      if (!error && data) {
+        return data.map((d: any) => ({
+          id: d.id,
+          title: d.title,
+          companyName: d.company_name,
+          description: d.description,
+          department: d.department,
+          skillsRequired: d.skills_required || [],
+          eligibility: d.eligibility,
+          positions: d.positions,
+          location: d.location,
+          mode: d.mode,
+          startDate: d.start_date,
+          endDate: d.end_date,
+          duration: d.duration,
+          stipend: d.stipend,
+          workingHours: d.working_hours,
+          contactPerson: d.contact_person,
+          contactEmail: d.contact_email,
+          applicationDeadline: d.application_deadline,
+          requiredDocuments: d.required_documents || [],
+          status: d.status,
+          createdBy: d.created_by,
+          createdAt: d.created_at,
+          updatedAt: d.updated_at,
+        }));
+      }
+    } catch (e) {
+      console.warn("Supabase fetch internships error:", e);
+    }
+    return [];
+  },
+
+  async saveInternship(internship: Internship): Promise<boolean> {
+    try {
+      const payload = {
+        id: internship.id,
+        title: internship.title,
+        company_name: internship.companyName,
+        description: internship.description,
+        department: internship.department,
+        skills_required: internship.skillsRequired,
+        eligibility: internship.eligibility,
+        positions: internship.positions,
+        location: internship.location,
+        mode: internship.mode,
+        start_date: internship.startDate,
+        end_date: internship.endDate,
+        duration: internship.duration,
+        stipend: internship.stipend,
+        working_hours: internship.workingHours,
+        contact_person: internship.contactPerson,
+        contact_email: internship.contactEmail,
+        application_deadline: internship.applicationDeadline,
+        required_documents: internship.requiredDocuments,
+        status: internship.status,
+        created_by: internship.createdBy,
+        created_at: internship.createdAt || new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      const { error } = await supabaseAdmin.from("internships").upsert(payload);
+      return !error;
+    } catch (e) {
+      console.warn("Supabase save internship error:", e);
+      return false;
+    }
+  },
+
+  // 9. Internship Applications CRUD
+  async getInternshipApplications(): Promise<InternshipApplication[]> {
+    try {
+      const { data, error } = await supabaseAdmin
+        .from("internship_applications")
+        .select("*")
+        .order("created_at", { ascending: false });
+      
+      if (!error && data) {
+        return data.map((d: any) => ({
+          id: d.id,
+          applicationNumber: d.application_number,
+          internshipId: d.internship_id,
+          studentId: d.student_id,
+          fullName: d.full_name,
+          enrollmentNumber: d.enrollment_number,
+          email: d.email,
+          phone: d.phone,
+          course: d.course,
+          branch: d.branch,
+          semester: d.semester,
+          cgpa: d.cgpa,
+          tenthPercentage: d.tenth_percentage,
+          twelfthPercentage: d.twelfth_percentage,
+          backlogs: d.backlogs,
+          academicDetails: d.academic_details,
+          address: d.address,
+          skills: d.skills || [],
+          projects: d.projects,
+          experience: d.experience,
+          whyInternship: d.why_internship,
+          careerObjective: d.career_objective,
+          coverLetter: d.cover_letter,
+          resumeUrl: d.resume_url,
+          collegeIdUrl: d.college_id_url,
+          documents: d.documents,
+          declarationAccepted: d.declaration_accepted,
+          status: d.status,
+          adminReviewedBy: d.admin_reviewed_by,
+          adminReviewedAt: d.admin_reviewed_at,
+          adminComment: d.admin_comment,
+          deanReviewedBy: d.dean_reviewed_by,
+          deanReviewedAt: d.dean_reviewed_at,
+          deanComment: d.dean_comment,
+          approvedAt: d.approved_at,
+          rejectedAt: d.rejected_at,
+          rejectionReason: d.rejection_reason,
+          createdAt: d.created_at,
+          updatedAt: d.updated_at,
+        }));
+      }
+    } catch (e) {
+      console.warn("Supabase fetch internship applications error:", e);
+    }
+    return [];
+  },
+
+  async saveInternshipApplication(application: InternshipApplication): Promise<boolean> {
+    try {
+      const payload = {
+        id: application.id,
+        application_number: application.applicationNumber,
+        internship_id: application.internshipId,
+        student_id: application.studentId,
+        full_name: application.fullName,
+        enrollment_number: application.enrollmentNumber,
+        email: application.email,
+        phone: application.phone,
+        course: application.course,
+        branch: application.branch,
+        semester: application.semester,
+        cgpa: application.cgpa,
+        tenth_percentage: application.tenthPercentage,
+        twelfth_percentage: application.twelfthPercentage,
+        backlogs: application.backlogs,
+        academic_details: application.academicDetails,
+        address: application.address,
+        skills: application.skills,
+        projects: application.projects,
+        experience: application.experience,
+        why_internship: application.whyInternship,
+        career_objective: application.careerObjective,
+        cover_letter: application.coverLetter,
+        resume_url: application.resumeUrl,
+        college_id_url: application.collegeIdUrl,
+        documents: application.documents,
+        declaration_accepted: application.declarationAccepted,
+        status: application.status,
+        admin_reviewed_by: application.adminReviewedBy,
+        admin_reviewed_at: application.adminReviewedAt,
+        admin_comment: application.adminComment,
+        dean_reviewed_by: application.deanReviewedBy,
+        dean_reviewed_at: application.deanReviewedAt,
+        dean_comment: application.deanComment,
+        approved_at: application.approvedAt,
+        rejected_at: application.rejectedAt,
+        rejection_reason: application.rejectionReason,
+        created_at: application.createdAt || new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      const { error } = await supabaseAdmin.from("internship_applications").upsert(payload);
+      return !error;
+    } catch (e) {
+      console.warn("Supabase save internship application error:", e);
+      return false;
+    }
+  },
+
+  // 10. Internship Attendance CRUD
+  async getInternshipAttendance(): Promise<InternshipAttendanceRecord[]> {
+    try {
+      const { data, error } = await supabaseAdmin
+        .from("internship_attendance")
+        .select("*")
+        .order("punch_in_time", { ascending: false });
+      
+      if (!error && data) {
+        return data.map((d: any) => ({
+          id: d.id,
+          applicationId: d.application_id,
+          studentId: d.student_id,
+          internshipId: d.internship_id,
+          attendanceDate: d.attendance_date,
+          punchInTime: d.punch_in_time,
+          punchInLatitude: d.punch_in_latitude,
+          punchInLongitude: d.punch_in_longitude,
+          punchInAccuracy: d.punch_in_accuracy,
+          punchInAddress: d.punch_in_address,
+          punchOutTime: d.punch_out_time,
+          punchOutLatitude: d.punch_out_latitude,
+          punchOutLongitude: d.punch_out_longitude,
+          punchOutAccuracy: d.punch_out_accuracy,
+          punchOutAddress: d.punch_out_address,
+          workingHours: d.working_hours,
+          breakMinutes: d.break_minutes,
+          tasksSummary: d.tasks_summary,
+          notes: d.notes,
+          supervisorRating: d.supervisor_rating,
+          supervisorFeedback: d.supervisor_feedback,
+          isValidated: d.is_validated,
+          validatedBy: d.validated_by,
+          validatedAt: d.validated_at,
+          createdAt: d.created_at,
+        }));
+      }
+    } catch (e) {
+      console.warn("Supabase fetch internship attendance error:", e);
+    }
+    return [];
+  },
+
+  async saveInternshipAttendance(attendance: InternshipAttendanceRecord): Promise<boolean> {
+    try {
+      const payload = {
+        id: attendance.id,
+        application_id: attendance.applicationId,
+        student_id: attendance.studentId,
+        internship_id: attendance.internshipId,
+        attendance_date: attendance.attendanceDate,
+        punch_in_time: attendance.punchInTime,
+        punch_in_latitude: attendance.punchInLatitude,
+        punch_in_longitude: attendance.punchInLongitude,
+        punch_in_accuracy: attendance.punchInAccuracy,
+        punch_in_address: attendance.punchInAddress,
+        punch_out_time: attendance.punchOutTime,
+        punch_out_latitude: attendance.punchOutLatitude,
+        punch_out_longitude: attendance.punchOutLongitude,
+        punch_out_accuracy: attendance.punchOutAccuracy,
+        punch_out_address: attendance.punchOutAddress,
+        working_hours: attendance.workingHours,
+        break_minutes: attendance.breakMinutes,
+        tasks_summary: attendance.tasksSummary,
+        notes: attendance.notes,
+        supervisor_rating: attendance.supervisorRating,
+        supervisor_feedback: attendance.supervisorFeedback,
+        is_validated: attendance.isValidated,
+        validated_by: attendance.validatedBy,
+        validated_at: attendance.validatedAt,
+        created_at: attendance.createdAt || new Date().toISOString(),
+      };
+      const { error } = await supabaseAdmin.from("internship_attendance").upsert(payload);
+      return !error;
+    } catch (e) {
+      console.warn("Supabase save internship attendance error:", e);
       return false;
     }
   },

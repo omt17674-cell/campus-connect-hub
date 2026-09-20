@@ -422,8 +422,6 @@ export type InternshipApplicationStatus =
   | "DRAFT"
   | "SUBMITTED"
   | "ADMIN_REVIEW"
-  | "ADMIN_APPROVED"
-  | "DEAN_REVIEW"
   | "APPROVED"
   | "REJECTED"
   | "CHANGES_REQUESTED"

@@ -53,17 +53,10 @@ export function MyInternshipApplicationsView({
           bg: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30",
           icon: CheckCircle2,
         };
-      case "DEAN_REVIEW":
-      case "ADMIN_APPROVED":
-        return {
-          label: "Dean Review in Progress",
-          bg: "bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/30",
-          icon: ShieldCheck,
-        };
       case "ADMIN_REVIEW":
       case "SUBMITTED":
         return {
-          label: "Pending Administration Review",
+          label: "Pending Faculty Review",
           bg: "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30",
           icon: Clock,
         };
@@ -120,7 +113,7 @@ export function MyInternshipApplicationsView({
       <div>
         <h2 className="text-xl font-black text-foreground">My Internship Applications</h2>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          Track the multi-stage administrative and Dean governance review timeline for each submitted application.
+          Track Faculty Coordinator review and approval status for each submitted application.
         </p>
       </div>
 
@@ -131,7 +124,7 @@ export function MyInternshipApplicationsView({
           const BadgeIcon = badge.icon;
           const isApproved = app.status === "APPROVED" || app.status === "ACTIVE";
 
-          // Step index: 0=submitted, 1=admin, 2=dean, 3=approved, 4=active
+          // Step index: 0=submitted, 1=admin review, 2=approved, 3=active
           const steps = [
             {
               title: "Application Submitted",
@@ -140,18 +133,11 @@ export function MyInternshipApplicationsView({
               active: false,
             },
             {
-              title: "Administration Review",
-              subtitle: app.adminReviewedBy ? `By ${app.adminReviewedBy}` : "Pending Admin",
+              title: "Faculty Coordinator Review",
+              subtitle: app.adminReviewedBy ? `By ${app.adminReviewedBy}` : "Pending Review",
               done: Boolean(app.adminReviewedAt && app.status !== "REJECTED" && app.status !== "CHANGES_REQUESTED"),
               active: app.status === "ADMIN_REVIEW" || app.status === "SUBMITTED",
-              failed: app.status === "CHANGES_REQUESTED" || (app.status === "REJECTED" && !app.deanReviewedAt),
-            },
-            {
-              title: "Dean Final Review",
-              subtitle: app.deanReviewedBy ? `By ${app.deanReviewedBy}` : "Pending Dean",
-              done: Boolean(app.deanReviewedAt && app.status !== "REJECTED"),
-              active: app.status === "DEAN_REVIEW" || app.status === "ADMIN_APPROVED",
-              failed: app.status === "REJECTED" && Boolean(app.deanReviewedAt),
+              failed: app.status === "CHANGES_REQUESTED" || app.status === "REJECTED",
             },
             {
               title: "Final Approval & Sanction",
@@ -228,7 +214,7 @@ export function MyInternshipApplicationsView({
                       Attendance Access
                     </span>
                     <p className="text-xs font-extrabold text-amber-800 dark:text-amber-400">
-                      Locked Until Dean Approval
+                      Locked Until Faculty Approval
                     </p>
                   </div>
                 )}
@@ -237,10 +223,10 @@ export function MyInternshipApplicationsView({
               {/* Visual Status Stepper */}
               <div className="py-6">
                 <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground mb-4">
-                  Multi-Stage Governance Workflow
+                  Simplified Approval Workflow
                 </p>
 
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-5">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
                   {steps.map((step, idx) => (
                     <div
                       key={idx}
@@ -308,27 +294,18 @@ export function MyInternshipApplicationsView({
               )}
 
               {/* Reviewer Feedback / Remarks */}
-              {(app.adminComment || app.deanComment || app.rejectionReason) && (
+              {(app.adminComment || app.rejectionReason) && (
                 <div className="mt-2 space-y-2 border-t border-border/60 pt-4">
                   <h4 className="text-[11px] font-black uppercase tracking-wider text-muted-foreground">
-                    Governance Remarks & Official Audit Notes
+                    Faculty Coordinator Remarks & Official Notes
                   </h4>
 
                   {app.adminComment && (
                     <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-3 text-xs">
                       <span className="font-black text-brand">
-                        Administration Comment ({app.adminReviewedBy || "TPC"}):
+                        Faculty Coordinator Comment ({app.adminReviewedBy || "TPC"}):
                       </span>{" "}
                       <span className="text-foreground/90 font-medium">{app.adminComment}</span>
-                    </div>
-                  )}
-
-                  {app.deanComment && (
-                    <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/5 p-3 text-xs">
-                      <span className="font-black text-emerald-600 dark:text-emerald-400">
-                        Dean Final Sanction ({app.deanReviewedBy || "Dr. Ananya Sharma"}):
-                      </span>{" "}
-                      <span className="text-foreground/90 font-medium">{app.deanComment}</span>
                     </div>
                   )}
 
