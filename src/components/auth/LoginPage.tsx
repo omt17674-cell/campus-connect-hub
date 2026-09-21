@@ -1705,12 +1705,31 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
               <div className="mt-4 space-y-2">
                 <button
                   type="button"
-                  onClick={() => {
-                    const res = campusStore.loginWithGoogle();
-                    setStatusMessage({ text: res.message, type: "success" });
-                    if (onLoginSuccess) {
-                      setTimeout(onLoginSuccess, 300);
+                  onClick={async () => {
+                    setIsLoggingIn(true);
+                    setStatusMessage(null);
+                    try {
+                      // Try the server API first (works with or without DB — demo mode fallback built in)
+                      const res = await apiClient.loginWithGoogle(
+                        "student@gsfcuniversity.ac.in",
+                        "GSFC Student",
+                        "GSFC-STUDENT",
+                      );
+                      if (res?.success && res?.account) {
+                        campusStore.loginWithAccount(res.account);
+                        setIsLoggingIn(false);
+                        setStatusMessage({ text: res.message || "Signed in via Google Workspace!", type: "success" });
+                        if (onLoginSuccess) setTimeout(onLoginSuccess, 300);
+                        return;
+                      }
+                    } catch {
+                      // API unreachable — fall back to local store
                     }
+                    // Local-store fallback (works 100% offline)
+                    const res = campusStore.loginWithGoogle();
+                    setIsLoggingIn(false);
+                    setStatusMessage({ text: res.message, type: res.success ? "success" : "error" });
+                    if (res.success && onLoginSuccess) setTimeout(onLoginSuccess, 300);
                   }}
                   className="flex h-9 w-full items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50 transition-colors"
                 >

@@ -1,5 +1,5 @@
 import { supabaseSync } from "./supabase-sync";
-import { supabaseAdmin } from "./supabase-admin";
+import { supabaseAdmin, isSupabaseAdminConfigured } from "./supabase-admin";
 import { confirmUserEmailInAuth } from "./postgres";
 import { sendRegistrationOTP, sendPasswordResetOTP } from "./emailService";
 import {
@@ -941,6 +941,50 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
       return jsonResponse({ success: false, message: "Missing Google account email." }, 400);
     }
     const cleanEmail = body.email.trim().toLowerCase();
+    const displayName = body.name || cleanEmail.split("@")[0] || "GSFC User";
+    const rollNo = body.rollNo || cleanEmail.split("@")[0].toUpperCase();
+
+    // When database is not configured (SUPABASE_SERVICE_ROLE_KEY missing),
+    // fall back to demo-mode local session so Google SSO still works for showcase.
+    if (!isSupabaseAdminConfigured) {
+      const demoRole = "student";
+      const demoId = `u-google-${rollNo.toLowerCase()}`;
+      const sessionToken = createServerSession({
+        id: demoId,
+        role: demoRole,
+        email: cleanEmail,
+        name: displayName,
+        rollNo,
+      });
+      return jsonResponse({
+        success: true,
+        message: `Welcome, ${displayName}! (Demo mode — database not connected)`,
+        account: {
+          role: demoRole,
+          roleTitle: "GSFC Student",
+          roleBadge: rollNo,
+          name: displayName,
+          idOrRoll: rollNo,
+          email: cleanEmail,
+          profile: {
+            id: demoId,
+            name: displayName,
+            rollNo,
+            email: cleanEmail,
+            role: demoRole,
+            department: "Computer Science & Engineering",
+            year: 2,
+            semester: 4,
+            attendancePercentage: 100,
+            points: 100,
+            streakDays: 1,
+            volunteerHours: 0,
+            avatar: displayName.slice(0, 2).toUpperCase(),
+          },
+        },
+        token: sessionToken,
+      });
+    }
 
     // Verify against registered database accounts or students
     let account = await supabaseSync.getAccountByIdentifier(cleanEmail);
