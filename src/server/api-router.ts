@@ -1187,6 +1187,8 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
     // Save to Supabase first
     const saved = await supabaseSync.saveEvent(newEvent);
     
+    console.log("[API] Event save result:", { saved, eventId: newEvent.id, title: newEvent.title });
+    
     // Return success if saved (don't check auth - service role handles it)
     if (saved) {
       return jsonResponse(
@@ -1200,6 +1202,7 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
     }
 
     // Only return error if save actually failed
+    console.error("[API] Failed to save event:", newEvent);
     return jsonResponse(
       {
         success: false,

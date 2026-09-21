@@ -139,9 +139,14 @@ export const supabaseSync = {
         review_count: event.reviewCount,
       };
       const { error } = await supabaseAdmin.from("events").upsert(payload);
-      return !error;
+      if (error) {
+        console.error("[Supabase] saveEvent error:", error.message, error.code);
+        return false;
+      }
+      console.log("[Supabase] Event saved successfully:", event.id);
+      return true;
     } catch (e) {
-      console.warn("Supabase save event error:", e);
+      console.error("[Supabase] saveEvent exception:", e);
       return false;
     }
   },
