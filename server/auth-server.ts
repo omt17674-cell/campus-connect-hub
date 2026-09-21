@@ -7,7 +7,7 @@
 import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import jwt from "jsonwebtoken";
+import jwt, { SignOptions } from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import { v4 as uuidv4 } from "uuid";
 
@@ -16,8 +16,8 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.AUTH_SERVER_PORT || 5001;
-const JWT_SECRET = process.env.JWT_SECRET || "your-local-jwt-secret-change-in-production";
-const JWT_EXPIRY = process.env.JWT_EXPIRY || "7d";
+const JWT_SECRET: string = process.env.JWT_SECRET || "your-local-jwt-secret-change-in-production";
+const JWT_EXPIRY: string = process.env.JWT_EXPIRY || "7d";
 
 // ─── MIDDLEWARE ──────────────────────────────────────────────────────────
 
@@ -113,7 +113,8 @@ async function seedDatabase() {
 // ─── UTILITY FUNCTIONS ──────────────────────────────────────────────────
 
 function generateToken(userId: string): string {
-  return jwt.sign({ userId }, JWT_SECRET, { expiresIn: JWT_EXPIRY });
+  const options: SignOptions = { expiresIn: JWT_EXPIRY as any };
+  return jwt.sign({ userId }, JWT_SECRET, options);
 }
 
 function verifyToken(token: string): { userId: string } | null {
@@ -963,8 +964,8 @@ app.get("/api/health", (req: Request, res: Response) => {
     server: "Campus Connect Hub Auth Server",
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
-    eventsCount: eventsDatabase.size,
-    registrationsCount: registrationsDatabase.size,
+    usersCount: usersDatabase.size,
+    sessionsCount: sessionsDatabase.size,
   });
 });
 
