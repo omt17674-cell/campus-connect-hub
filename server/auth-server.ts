@@ -33,6 +33,8 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
+import supabaseEvents from "./supabase-events";
+
 // ─── IN-MEMORY DATABASE (for local testing) ─────────────────────────────
 
 interface User {
@@ -54,38 +56,10 @@ interface Session {
   expiresAt: Date;
 }
 
-interface CampusEvent {
-  id: string;
-  title: string;
-  description: string;
-  category: string;
-  date: string; // YYYY-MM-DD
-  time: string; // HH:MM - HH:MM
-  venue: string;
-  organizerName: string;
-  organizerEmail: string;
-  capacity: number;
-  registeredCount: number;
-  bannerImage: string;
-  status: "upcoming" | "live" | "completed" | "cancelled";
-  createdBy: string;
-  createdAt: Date;
-}
-
-interface EventRegistration {
-  id: string;
-  eventId: string;
-  userId: string;
-  userName: string;
-  userEmail: string;
-  registeredAt: Date;
-  status: "confirmed" | "cancelled";
-}
-
 const usersDatabase = new Map<string, User>();
 const sessionsDatabase = new Map<string, Session>();
-const eventsDatabase = new Map<string, CampusEvent>();
-const registrationsDatabase = new Map<string, EventRegistration>();
+
+// ⚠️ Events are now stored in SUPABASE (not in-memory)
 
 // ─── SEED DEMO DATA ──────────────────────────────────────────────────────
 
@@ -534,23 +508,37 @@ app.get("/api/auth/me", authenticateToken, (req: Request, res: Response) => {
   }
 });
 
-// ─── EVENT MANAGEMENT ENDPOINTS ─────────────────────────────────────────
+// ─── EVENT MANAGEMENT ENDPOINTS (Using Supabase) ──────────────────────
 
 /**
  * GET /api/events
  * Get all events (public endpoint, visible to students)
  */
-app.get("/api/events", (req: Request, res: Response) => {
+app.get("/api/events", async (req: Request, res: Response) => {
   try {
-    const events = Array.from(eventsDatabase.values()).sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
+    const status = req.query.status as string | undefined;
+    const events = await supabaseEvents.getEvents(status);
 
-    console.log(`✅ Retrieved ${events.length} events`);
+    console.log(`✅ Retrieved ${events.length} events from Supabase`);
 
     return res.status(200).json({
       success: true,
-      events,
+      events: events.map((e: any) => ({
+        id: e.id,
+        title: e.title,
+        description: e.description,
+        category: e.category,
+        date: e.date,
+        time: e.time,
+        venue: e.venue,
+        organizerName: e.organizer_name,
+        organizerEmail: e.organizer_email,
+        capacity: e.capacity,
+        registeredCount: e.registered_count,
+        bannerImage: e.banner_image,
+        status: e.status,
+        createdAt: e.created_at,
+      })),
       count: events.length,
     });
   } catch (error) {
@@ -566,10 +554,10 @@ app.get("/api/events", (req: Request, res: Response) => {
  * GET /api/events/:eventId
  * Get specific event details
  */
-app.get("/api/events/:eventId", (req: Request, res: Response) => {
+app.get("/api/events/:eventId", async (req: Request, res: Response) => {
   try {
     const { eventId } = req.params;
-    const event = eventsDatabase.get(eventId);
+    const event = await supabaseEvents.getEventById(eventId);
 
     if (!event) {
       return res.status(404).json({
@@ -580,7 +568,22 @@ app.get("/api/events/:eventId", (req: Request, res: Response) => {
 
     return res.status(200).json({
       success: true,
-      event,
+      event: {
+        id: event.id,
+        title: event.title,
+        description: event.description,
+        category: event.category,
+        date: event.date,
+        time: event.time,
+        venue: event.venue,
+        organizerName: event.organizer_name,
+        organizerEmail: event.organizer_email,
+        capacity: event.capacity,
+        registeredCount: event.registered_count,
+        bannerImage: event.banner_image,
+        status: event.status,
+        createdAt: event.created_at,
+      },
     });
   } catch (error) {
     console.error("Get event error:", error);
@@ -595,7 +598,7 @@ app.get("/api/events/:eventId", (req: Request, res: Response) => {
  * POST /api/events
  * Create new event (Admin only)
  */
-app.post("/api/events", authenticateToken, (req: Request, res: Response) => {
+app.post("/api/events", authenticateToken, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).userId;
     const user = usersDatabase.get(userId);
@@ -608,16 +611,7 @@ app.post("/api/events", authenticateToken, (req: Request, res: Response) => {
       });
     }
 
-    const {
-      title,
-      description,
-      category,
-      date,
-      time,
-      venue,
-      capacity,
-      bannerImage,
-    } = req.body;
+    const { title, description, category, date, time, venue, capacity, bannerImage } = req.body;
 
     if (!title || !description || !date || !time || !venue) {
       return res.status(400).json({
@@ -626,33 +620,50 @@ app.post("/api/events", authenticateToken, (req: Request, res: Response) => {
       });
     }
 
-    const eventId = `event-${uuidv4()}`;
-    const event: CampusEvent = {
-      id: eventId,
+    const event = await supabaseEvents.createEvent({
       title,
       description,
       category: category || "General",
       date,
       time,
       venue,
-      organizerName: user.name,
-      organizerEmail: user.email,
+      organizer_name: user.name,
+      organizer_email: user.email,
       capacity: capacity || 100,
-      registeredCount: 0,
-      bannerImage: bannerImage || "",
+      registered_count: 0,
+      banner_image: bannerImage || "",
       status: "upcoming",
-      createdBy: userId,
-      createdAt: new Date(),
-    };
+      created_by: userId,
+    });
 
-    eventsDatabase.set(eventId, event);
+    if (!event) {
+      return res.status(500).json({
+        success: false,
+        message: "Failed to create event in database",
+      });
+    }
 
-    console.log(`✅ Event created: ${title} (${eventId})`);
+    console.log(`✅ Event created: ${title}`);
 
     return res.status(201).json({
       success: true,
       message: "Event created successfully",
-      event,
+      event: {
+        id: event.id,
+        title: event.title,
+        description: event.description,
+        category: event.category,
+        date: event.date,
+        time: event.time,
+        venue: event.venue,
+        organizerName: event.organizer_name,
+        organizerEmail: event.organizer_email,
+        capacity: event.capacity,
+        registeredCount: event.registered_count,
+        bannerImage: event.banner_image,
+        status: event.status,
+        createdAt: event.created_at,
+      },
     });
   } catch (error) {
     console.error("Create event error:", error);
@@ -667,7 +678,7 @@ app.post("/api/events", authenticateToken, (req: Request, res: Response) => {
  * PUT /api/events/:eventId
  * Update event (Admin only)
  */
-app.put("/api/events/:eventId", authenticateToken, (req: Request, res: Response) => {
+app.put("/api/events/:eventId", authenticateToken, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).userId;
     const user = usersDatabase.get(userId);
@@ -680,7 +691,7 @@ app.put("/api/events/:eventId", authenticateToken, (req: Request, res: Response)
       });
     }
 
-    const event = eventsDatabase.get(eventId);
+    const event = await supabaseEvents.getEventById(eventId);
     if (!event) {
       return res.status(404).json({
         success: false,
@@ -689,23 +700,46 @@ app.put("/api/events/:eventId", authenticateToken, (req: Request, res: Response)
     }
 
     const { title, description, date, time, venue, status, capacity } = req.body;
+    const updates: any = {};
 
-    if (title) event.title = title;
-    if (description) event.description = description;
-    if (date) event.date = date;
-    if (time) event.time = time;
-    if (venue) event.venue = venue;
-    if (status) event.status = status;
-    if (capacity) event.capacity = capacity;
+    if (title) updates.title = title;
+    if (description) updates.description = description;
+    if (date) updates.date = date;
+    if (time) updates.time = time;
+    if (venue) updates.venue = venue;
+    if (status) updates.status = status;
+    if (capacity) updates.capacity = capacity;
 
-    eventsDatabase.set(eventId, event);
+    const updatedEvent = await supabaseEvents.updateEvent(eventId, updates);
 
-    console.log(`✅ Event updated: ${event.title}`);
+    if (!updatedEvent) {
+      return res.status(500).json({
+        success: false,
+        message: "Failed to update event",
+      });
+    }
+
+    console.log(`✅ Event updated: ${eventId}`);
 
     return res.status(200).json({
       success: true,
       message: "Event updated successfully",
-      event,
+      event: {
+        id: updatedEvent.id,
+        title: updatedEvent.title,
+        description: updatedEvent.description,
+        category: updatedEvent.category,
+        date: updatedEvent.date,
+        time: updatedEvent.time,
+        venue: updatedEvent.venue,
+        organizerName: updatedEvent.organizer_name,
+        organizerEmail: updatedEvent.organizer_email,
+        capacity: updatedEvent.capacity,
+        registeredCount: updatedEvent.registered_count,
+        bannerImage: updatedEvent.banner_image,
+        status: updatedEvent.status,
+        createdAt: updatedEvent.created_at,
+      },
     });
   } catch (error) {
     console.error("Update event error:", error);
@@ -720,7 +754,7 @@ app.put("/api/events/:eventId", authenticateToken, (req: Request, res: Response)
  * DELETE /api/events/:eventId
  * Delete event (Admin only)
  */
-app.delete("/api/events/:eventId", authenticateToken, (req: Request, res: Response) => {
+app.delete("/api/events/:eventId", authenticateToken, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).userId;
     const user = usersDatabase.get(userId);
@@ -733,7 +767,7 @@ app.delete("/api/events/:eventId", authenticateToken, (req: Request, res: Respon
       });
     }
 
-    const event = eventsDatabase.get(eventId);
+    const event = await supabaseEvents.getEventById(eventId);
     if (!event) {
       return res.status(404).json({
         success: false,
@@ -741,13 +775,13 @@ app.delete("/api/events/:eventId", authenticateToken, (req: Request, res: Respon
       });
     }
 
-    eventsDatabase.delete(eventId);
+    const deleted = await supabaseEvents.deleteEvent(eventId);
 
-    // Delete all registrations for this event
-    for (const [regId, reg] of registrationsDatabase.entries()) {
-      if (reg.eventId === eventId) {
-        registrationsDatabase.delete(regId);
-      }
+    if (!deleted) {
+      return res.status(500).json({
+        success: false,
+        message: "Failed to delete event",
+      });
     }
 
     console.log(`✅ Event deleted: ${event.title}`);
@@ -769,7 +803,7 @@ app.delete("/api/events/:eventId", authenticateToken, (req: Request, res: Respon
  * POST /api/events/:eventId/register
  * Register student for event
  */
-app.post("/api/events/:eventId/register", authenticateToken, (req: Request, res: Response) => {
+app.post("/api/events/:eventId/register", authenticateToken, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).userId;
     const user = usersDatabase.get(userId);
@@ -782,7 +816,7 @@ app.post("/api/events/:eventId/register", authenticateToken, (req: Request, res:
       });
     }
 
-    const event = eventsDatabase.get(eventId);
+    const event = await supabaseEvents.getEventById(eventId);
     if (!event) {
       return res.status(404).json({
         success: false,
@@ -790,44 +824,42 @@ app.post("/api/events/:eventId/register", authenticateToken, (req: Request, res:
       });
     }
 
-    // Check if already registered
-    for (const reg of registrationsDatabase.values()) {
-      if (reg.eventId === eventId && reg.userId === userId && reg.status === "confirmed") {
-        return res.status(409).json({
-          success: false,
-          message: "Already registered for this event",
-        });
-      }
-    }
-
     // Check capacity
-    if (event.registeredCount >= event.capacity) {
+    if (event.registered_count >= event.capacity) {
       return res.status(400).json({
         success: false,
         message: "Event capacity is full",
       });
     }
 
-    const registrationId = `reg-${uuidv4()}`;
-    const registration: EventRegistration = {
-      id: registrationId,
+    const registration = await supabaseEvents.registerForEvent(
       eventId,
       userId,
-      userName: user.name,
-      userEmail: user.email,
-      registeredAt: new Date(),
-      status: "confirmed",
-    };
+      user.name,
+      user.email
+    );
 
-    registrationsDatabase.set(registrationId, registration);
-    event.registeredCount += 1;
+    if (!registration) {
+      return res.status(400).json({
+        success: false,
+        message: "Failed to register or already registered",
+      });
+    }
 
-    console.log(`✅ Student registered for event: ${user.name} → ${event.title}`);
+    console.log(`✅ Student registered: ${user.name} → ${event.title}`);
 
     return res.status(201).json({
       success: true,
       message: "Registered for event successfully",
-      registration,
+      registration: {
+        id: registration.id,
+        eventId: registration.event_id,
+        userId: registration.student_id,
+        userName: registration.student_name,
+        userEmail: registration.student_email,
+        registeredAt: registration.registered_at,
+        status: registration.status,
+      },
     });
   } catch (error) {
     console.error("Register event error:", error);
@@ -842,7 +874,7 @@ app.post("/api/events/:eventId/register", authenticateToken, (req: Request, res:
  * GET /api/events/:eventId/registrations
  * Get event registrations (Admin only)
  */
-app.get("/api/events/:eventId/registrations", authenticateToken, (req: Request, res: Response) => {
+app.get("/api/events/:eventId/registrations", authenticateToken, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).userId;
     const user = usersDatabase.get(userId);
@@ -855,13 +887,19 @@ app.get("/api/events/:eventId/registrations", authenticateToken, (req: Request, 
       });
     }
 
-    const registrations = Array.from(registrationsDatabase.values()).filter(
-      (r) => r.eventId === eventId && r.status === "confirmed"
-    );
+    const registrations = await supabaseEvents.getEventRegistrations(eventId);
 
     return res.status(200).json({
       success: true,
-      registrations,
+      registrations: registrations.map((r: any) => ({
+        id: r.id,
+        eventId: r.event_id,
+        userId: r.student_id,
+        userName: r.student_name,
+        userEmail: r.student_email,
+        registeredAt: r.registered_at,
+        status: r.status,
+      })),
       count: registrations.length,
     });
   } catch (error) {
@@ -877,21 +915,30 @@ app.get("/api/events/:eventId/registrations", authenticateToken, (req: Request, 
  * GET /api/user/events
  * Get events registered by current student
  */
-app.get("/api/user/events", authenticateToken, (req: Request, res: Response) => {
+app.get("/api/user/events", authenticateToken, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).userId;
 
-    const registrations = Array.from(registrationsDatabase.values()).filter(
-      (r) => r.userId === userId && r.status === "confirmed"
-    );
-
-    const events = registrations
-      .map((reg) => eventsDatabase.get(reg.eventId))
-      .filter((e) => e !== undefined) as CampusEvent[];
+    const events = await supabaseEvents.getStudentEvents(userId);
 
     return res.status(200).json({
       success: true,
-      events,
+      events: events.map((e: any) => ({
+        id: e.id,
+        title: e.title,
+        description: e.description,
+        category: e.category,
+        date: e.date,
+        time: e.time,
+        venue: e.venue,
+        organizerName: e.organizer_name,
+        organizerEmail: e.organizer_email,
+        capacity: e.capacity,
+        registeredCount: e.registered_count,
+        bannerImage: e.banner_image,
+        status: e.status,
+        createdAt: e.created_at,
+      })),
       count: events.length,
     });
   } catch (error) {
@@ -903,111 +950,10 @@ app.get("/api/user/events", authenticateToken, (req: Request, res: Response) => 
   }
 });
 
-// ─── SEED DEMO EVENTS ────────────────────────────────────────────────────
+// ─── REMOVE DEMO EVENTS SEEDING (no longer needed) ────────────────────
 
 function seedDemoEvents() {
-  const now = new Date();
-  const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-  const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-
-  const demoEvents: CampusEvent[] = [
-    {
-      id: "event-001",
-      title: "Annual Tech Summit 2026",
-      description:
-        "Join us for an exciting tech summit featuring keynote speeches from industry experts. Learn about cutting-edge technologies, AI, blockchain, and web3.",
-      category: "Technical",
-      date: nextWeek.toISOString().split("T")[0],
-      time: "10:00 - 01:00 PM",
-      venue: "GSFC Amphitheatre",
-      organizerName: "Prof. Rajesh Kumar",
-      organizerEmail: "placement@gsfcuniversity.ac.in",
-      capacity: 500,
-      registeredCount: 0,
-      bannerImage: "https://via.placeholder.com/800x400?text=Tech+Summit",
-      status: "upcoming",
-      createdBy: "organizer-001",
-      createdAt: now,
-    },
-    {
-      id: "event-002",
-      title: "Coding Marathon - 24 Hours",
-      description:
-        "Challenge yourself in our 24-hour coding marathon. Solve problems, build projects, and win amazing prizes. All skill levels welcome!",
-      category: "Competition",
-      date: tomorrow.toISOString().split("T")[0],
-      time: "09:00 - 09:00 AM (Next Day)",
-      venue: "Computer Lab, Main Building",
-      organizerName: "Prof. Rajesh Kumar",
-      organizerEmail: "placement@gsfcuniversity.ac.in",
-      capacity: 100,
-      registeredCount: 0,
-      bannerImage: "https://via.placeholder.com/800x400?text=Coding+Marathon",
-      status: "upcoming",
-      createdBy: "organizer-001",
-      createdAt: now,
-    },
-    {
-      id: "event-003",
-      title: "Campus Career Fair 2026",
-      description:
-        "Meet top companies and explore internship & placement opportunities. Connect with HR professionals from leading tech companies.",
-      category: "Placement",
-      date: new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-      time: "02:00 - 06:00 PM",
-      venue: "Central Lawn",
-      organizerName: "Prof. Rajesh Kumar",
-      organizerEmail: "placement@gsfcuniversity.ac.in",
-      capacity: 800,
-      registeredCount: 0,
-      bannerImage: "https://via.placeholder.com/800x400?text=Career+Fair",
-      status: "upcoming",
-      createdBy: "organizer-001",
-      createdAt: now,
-    },
-    {
-      id: "event-004",
-      title: "Web Development Workshop",
-      description:
-        "Learn modern web development technologies: React, Node.js, and MongoDB. Perfect for beginners and intermediate developers.",
-      category: "Workshop",
-      date: new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-      time: "03:00 - 05:00 PM",
-      venue: "Classroom 201",
-      organizerName: "Prof. Rajesh Kumar",
-      organizerEmail: "placement@gsfcuniversity.ac.in",
-      capacity: 50,
-      registeredCount: 0,
-      bannerImage: "https://via.placeholder.com/800x400?text=Web+Dev+Workshop",
-      status: "upcoming",
-      createdBy: "organizer-001",
-      createdAt: now,
-    },
-    {
-      id: "event-005",
-      title: "Startup Pitch Competition",
-      description:
-        "Pitch your startup ideas to a panel of investors and industry experts. Network with fellow entrepreneurs and potential co-founders.",
-      category: "Business",
-      date: new Date(now.getTime() + 21 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-      time: "05:00 - 08:00 PM",
-      venue: "Conference Hall",
-      organizerName: "Prof. Rajesh Kumar",
-      organizerEmail: "placement@gsfcuniversity.ac.in",
-      capacity: 30,
-      registeredCount: 0,
-      bannerImage: "https://via.placeholder.com/800x400?text=Startup+Pitch",
-      status: "upcoming",
-      createdBy: "organizer-001",
-      createdAt: now,
-    },
-  ];
-
-  for (const event of demoEvents) {
-    eventsDatabase.set(event.id, event);
-  }
-
-  console.log(`✅ Seeded ${demoEvents.length} demo events`);
+  console.log("📝 Events are now stored in Supabase (no local seeding needed)");
 }
 
 // ─── HEALTH CHECK ───────────────────────────────────────────────────────
@@ -1049,8 +995,8 @@ async function startServer() {
     // Seed database with demo accounts
     await seedDatabase();
 
-    // Seed demo events
-    seedDemoEvents();
+    // Check Supabase connection
+    const supabaseConnected = await supabaseEvents.testConnection();
 
     app.listen(PORT, () => {
       console.log(`
@@ -1072,7 +1018,7 @@ async function startServer() {
 ║     POST   /api/auth/logout         - Logout user                        ║
 ║     GET    /api/auth/me             - Get current user profile           ║
 ║                                                                            ║
-║  EVENTS (NEW):                                                             ║
+║  EVENTS (Supabase Backed):                                                 ║
 ║     GET    /api/events              - Get all events                     ║
 ║     GET    /api/events/:id          - Get event details                  ║
 ║     POST   /api/events              - Create event (Admin)               ║
@@ -1084,24 +1030,26 @@ async function startServer() {
 ║                                                                            ║
 ║     GET    /api/health              - Health check                       ║
 ║                                                                            ║
-║  🔐 Demo Accounts (No External APIs):                                     ║
+║  🔐 Demo Accounts:                                                         ║
 ║                                                                            ║
 ║     👤 Student:                                                           ║
 ║        Email: student@gsfcuniversity.ac.in                               ║
 ║        Password: Password@123                                             ║
-║        Role: student                                                      ║
 ║                                                                            ║
 ║     👨‍💼 Admin:                                                               ║
 ║        Email: admin.dean@gsfcuniversity.ac.in                            ║
 ║        Password: AdminPass@123                                            ║
-║        Role: admin                                                        ║
 ║                                                                            ║
 ║     💼 Organizer:                                                         ║
 ║        Email: placement@gsfcuniversity.ac.in                             ║
 ║        Password: OrgPass@123                                              ║
-║        Role: organizer                                                    ║
 ║                                                                            ║
-║  📅 Demo Events: 5 events pre-seeded and ready to view!                   ║
+║  💾 DATABASE:                                                              ║
+║     ${
+       supabaseConnected
+         ? "✅ Supabase Connected - Events saved to database"
+         : "⚠️  Supabase Not Connected - Check credentials in .env"
+     }
 ║                                                                            ║
 ╚════════════════════════════════════════════════════════════════════════════╝
       `);
