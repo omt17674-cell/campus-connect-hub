@@ -1941,7 +1941,13 @@ export const campusStore = {
   },
 
   loginWithAccount(account: CampusAccount, sessionToken?: string) {
-    if (sessionToken) serverSessionToken = sessionToken;
+    if (sessionToken) {
+      serverSessionToken = sessionToken;
+      // Save token to localStorage for API calls
+      if (typeof window !== "undefined") {
+        localStorage.setItem("authToken", sessionToken);
+      }
+    }
     const currentState = campusStore.getState();
     const cleanRoll = (account.profile?.rollNo || account.idOrRoll || "").toUpperCase();
     const cleanEmail = (account.email || account.profile?.email || "").toLowerCase();
