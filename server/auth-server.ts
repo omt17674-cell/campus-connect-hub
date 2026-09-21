@@ -80,7 +80,7 @@ async function seedDatabase() {
   });
 
   // Demo Admin Account
-  const adminHashedPassword = await bcrypt.hash("AdminPass@123", 10);
+  const adminHashedPassword = await bcrypt.hash("9558413347@Om", 10);
   usersDatabase.set("admin-001", {
     id: "admin-001",
     email: "admin.dean@gsfcuniversity.ac.in",
@@ -92,23 +92,22 @@ async function seedDatabase() {
     createdAt: new Date(),
   });
 
-  // Demo Organizer Account
-  const organizerHashedPassword = await bcrypt.hash("OrgPass@123", 10);
+  // Demo Organizer Account (TPC Admin)
+  const organizerHashedPassword = await bcrypt.hash("7043313347@Om", 10);
   usersDatabase.set("organizer-001", {
     id: "organizer-001",
-    email: "placement@gsfcuniversity.ac.in",
+    email: "tpc.admin@gsfcuniversity.ac.in",
     password: organizerHashedPassword,
-    name: "Prof. Rajesh Kumar",
-    rollNo: "ORG-TPC-001",
+    name: "Prof. Rajiv Mehta",
+    rollNo: "TPC-ADMIN-108",
     role: "organizer",
-    avatar: "RK",
+    avatar: "RM",
     createdAt: new Date(),
   });
 
   console.log("✅ Database seeded with demo accounts:");
-  console.log("   Student: student@gsfcuniversity.ac.in / Password@123");
-  console.log("   Admin: admin.dean@gsfcuniversity.ac.in / AdminPass@123");
-  console.log("   Organizer: placement@gsfcuniversity.ac.in / OrgPass@123");
+  console.log("   Admin: admin.dean@gsfcuniversity.ac.in (Password not displayed for security)");
+  console.log("   TPC Coordinator: tpc.admin@gsfcuniversity.ac.in (Password not displayed for security)");
 }
 
 // ─── UTILITY FUNCTIONS ──────────────────────────────────────────────────

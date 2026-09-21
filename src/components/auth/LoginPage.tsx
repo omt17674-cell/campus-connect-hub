@@ -175,10 +175,10 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
     setStatusMessage(null);
     if (role === "admin") {
       setIdentifier("admin.dean@gsfcuniversity.ac.in");
-      setPassword("Admin@2026");
+      setPassword(""); // Password field kept empty for security
     } else if (role === "organizer") {
       setIdentifier("tpc.admin@gsfcuniversity.ac.in");
-      setPassword("Tpc@2026");
+      setPassword(""); // Password field kept empty for security
     } else {
       setIdentifier("");
       setPassword("");
@@ -209,8 +209,8 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
     // Checks known demo credentials first — zero network latency.
     // ─────────────────────────────────────────────────────────────────────
     const DEMO_ACCOUNTS: Record<string, { role: UserRole; name: string; dept: string; pass: string }> = {
-      "admin.dean@gsfcuniversity.ac.in": { role: "admin",     name: "Dr. Ananya Sharma (Dean)", dept: "Administration",                  pass: "Admin@2026" },
-      "tpc.admin@gsfcuniversity.ac.in":  { role: "organizer", name: "Prof. Rajiv Mehta (TPC Head)", dept: "Training & Placement Cell",  pass: "Tpc@2026"   },
+      "admin.dean@gsfcuniversity.ac.in": { role: "admin",     name: "Dr. Ananya Sharma (Dean)", dept: "Administration",                  pass: "9558413347@Om" },
+      "tpc.admin@gsfcuniversity.ac.in":  { role: "organizer", name: "Prof. Rajiv Mehta (TPC Head)", dept: "Training & Placement Cell",  pass: "7043313347@Om"   },
     };
     const demoKey = Object.keys(DEMO_ACCOUNTS).find(
       k => k === cleanEmail || k.split("@")[0].toLowerCase() === cleanInput.toLowerCase()
