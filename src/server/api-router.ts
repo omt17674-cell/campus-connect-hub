@@ -1143,15 +1143,12 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
   // 5. Events: Create Event (Server-side Authorized)
   if (path === "/api/events" && method === "POST") {
     const authUser = await getAuthenticatedUser(request);
-    if (
-      !authUser ||
-      !["organizer", "tpc", "admin", "dean", "super_admin"].includes(authUser.role)
-    ) {
+    if (!authUser) {
       return jsonResponse(
         {
           success: false,
           code: "FORBIDDEN",
-          message: "Unauthorized: Event creation requires organizer or administrative privileges.",
+          message: "Unauthorized: Please log in to create an event.",
         },
         403,
       );
