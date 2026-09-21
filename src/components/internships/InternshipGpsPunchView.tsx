@@ -96,10 +96,9 @@ export function InternshipGpsPunchView({
       setGpsStatus("locked");
       toast.success(`📍 Live GPS Locked: ${details.formattedAddress}`);
     } catch (err: any) {
-      setGpsStatus("locked");
-      const fallbackDetails = await reverseGeocodeWithGeoapify(userLocation.latitude, userLocation.longitude);
-      setLocationDetails(fallbackDetails);
-      toast.info("Using active campus reference coordinates.");
+      setGpsStatus("error");
+      setLocationDetails(null);
+      toast.error(err?.message || "Unable to get a live GPS fix. Please enable location and try again.");
     }
   };
 
@@ -112,7 +111,7 @@ export function InternshipGpsPunchView({
   const isApproved = selectedApp?.status === "APPROVED" || selectedApp?.status === "ACTIVE";
   const isBeforeStart = selectedInternship ? todayStr < selectedInternship.startDate : false;
   const isAfterEnd = selectedInternship ? todayStr > selectedInternship.endDate : false;
-  const canPunch = isApproved && !isBeforeStart && !isAfterEnd;
+  const canPunch = isApproved && !isBeforeStart && !isAfterEnd && gpsStatus === "locked";
 
   // Filter attendance records for this application
   const myAttendance = attendanceRecords.filter(
@@ -349,9 +348,17 @@ export function InternshipGpsPunchView({
             </div>
 
             <div className="pt-2 border-t border-border/60">
-              <span className="text-[10px] text-muted-foreground">Reverse-Geocoded Address:</span>
+              <span className="text-[10px] text-muted-foreground">Nearest mapped address:</span>
               <p className="mt-0.5 text-xs font-semibold text-foreground leading-snug">
                 {locationDetails?.formattedAddress || "Resolving address..."}
+              </p>
+              {locationDetails?.distanceMeters !== undefined && (
+                <p className="mt-1 text-[10px] text-muted-foreground">
+                  This is the nearest mapped place, approximately {locationDetails.distanceMeters}m from the exact GPS pin.
+                </p>
+              )}
+              <p className="mt-1 text-[10px] text-muted-foreground">
+                Exact attendance location is the latitude/longitude above, not the street label.
               </p>
             </div>
           </div>

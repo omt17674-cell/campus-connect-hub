@@ -172,6 +172,7 @@ export interface CampusState {
 }
 
 const INITIAL_USER: UserProfile = STUDENT_ACCOUNT.profile;
+let serverSessionToken: string | null = null;
 export const SAMPLE_ORGANIZER: UserProfile = TPC_ADMIN_ACCOUNT.profile;
 export const SAMPLE_ADMIN: UserProfile = ADMIN_ACCOUNT.profile;
 
@@ -1843,6 +1844,33 @@ export const campusStore = {
             );
             return { internshipApplications: [...remoteApps, ...localOnly] };
           });
+
+          // Migrate this student's legacy local-only applications after the table is available.
+          const currentUser = campusStore.getState().currentUser;
+          const localStudentApplications = (campusStore.getState().internshipApplications || []).filter(
+            (application) =>
+              !remoteApps.some((remote) => remote.id === application.id) &&
+              (application.studentId === currentUser.id ||
+                application.enrollmentNumber.toUpperCase() === (currentUser.rollNo || "").toUpperCase()),
+          );
+          await Promise.all(
+            localStudentApplications.map(async (application) => {
+              try {
+                const response = await fetch("/api/internships/applications", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    application: serializeInternshipApplicationForDb(application),
+                  }),
+                });
+                if (!response.ok) {
+                  console.warn("Could not migrate local internship application", application.id);
+                }
+              } catch (error) {
+                console.warn("Local internship application migration deferred", error);
+              }
+            }),
+          );
         }
 
         // 8. Process Internship Attendance
@@ -1912,7 +1940,8 @@ export const campusStore = {
     CAMPUS_ACCOUNTS.push(...updated);
   },
 
-  loginWithAccount(account: CampusAccount) {
+  loginWithAccount(account: CampusAccount, sessionToken?: string) {
+    if (sessionToken) serverSessionToken = sessionToken;
     const currentState = campusStore.getState();
     const cleanRoll = (account.profile?.rollNo || account.idOrRoll || "").toUpperCase();
     const cleanEmail = (account.email || account.profile?.email || "").toLowerCase();
@@ -2003,6 +2032,11 @@ export const campusStore = {
       currentRole: "student",
       digitalId: INITIAL_DIGITAL_ID,
     }));
+    serverSessionToken = null;
+  },
+
+  getServerSessionToken() {
+    return serverSessionToken;
   },
 
   setRole(role: UserRole) {
@@ -2186,7 +2220,7 @@ export const campusStore = {
     }
   },
 
-  recordCheckIn(
+  async recordCheckIn(
     eventId: string,
     token: string,
     forcedOffline = false,
@@ -2195,8 +2229,10 @@ export const campusStore = {
       longitude: number;
       distanceMeters: number;
       verified: boolean;
+      accuracy?: number;
+      capturedAt?: string;
     },
-  ): { success: boolean; offlineQueued: boolean; message: string; record?: AttendanceRecord } {
+  ): Promise<{ success: boolean; offlineQueued: boolean; message: string; record?: AttendanceRecord }> {
     const state = campusStore.getState();
     const event = state.events.find((e) => e.id === eventId);
     if (!event) return { success: false, offlineQueued: false, message: "Event not found." };
@@ -2248,6 +2284,39 @@ export const campusStore = {
         offlineQueued: true,
         message:
           "Offline: Check-in saved securely on device with location metadata. Will auto-sync when online.",
+      };
+    }
+
+    const sessionToken = serverSessionToken;
+    if (!sessionToken) {
+      return {
+        success: false,
+        offlineQueued: false,
+        message: "Your authenticated session has expired. Please sign in again.",
+      };
+    }
+
+    const serverResponse = await fetch("/api/attendance/check-in", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${sessionToken}`,
+      },
+      body: JSON.stringify({
+        eventId,
+        token,
+        latitude: locationData?.latitude,
+        longitude: locationData?.longitude,
+        accuracy: locationData?.accuracy,
+        capturedAt: locationData?.capturedAt,
+      }),
+    });
+    const serverResult = await serverResponse.json().catch(() => null);
+    if (!serverResponse.ok || !serverResult?.success) {
+      return {
+        success: false,
+        offlineQueued: false,
+        message: serverResult?.message || "Attendance could not be verified by the server.",
       };
     }
 
@@ -4714,32 +4783,7 @@ export const campusStore = {
     try {
       if (typeof window !== "undefined" && navigator.onLine) {
         const dbPayload = serializeInternshipApplicationForDb(newApplication);
-        const { error: dbErr } = await supabase.from("internship_applications").insert(dbPayload);
-        if (dbErr) {
-          // Check for unique constraint violation (student_id + internship_id)
-          if (
-            dbErr.code === "23505" ||
-            dbErr.message?.includes("unq_student_internship") ||
-            dbErr.message?.includes("duplicate key")
-          ) {
-            // Roll back optimistic local state
-            campusStore.setState((prev) => ({
-              internshipApplications: (prev.internshipApplications || []).filter(
-                (a) => a.id !== newId,
-              ),
-              internshipNotifications: (prev.internshipNotifications || []).filter(
-                (n) => n.id !== studentNotif.id,
-              ),
-            }));
-            return {
-              success: false,
-              message:
-                "You have already submitted an application for this internship. Multiple concurrent applications are prevented.",
-            };
-          }
-          console.debug("Supabase application insert note:", dbErr);
-        }
-        await supabase.from("internship_notifications").insert({
+        const notificationPayload = {
           id: studentNotif.id,
           student_id: studentNotif.studentId,
           application_id: studentNotif.applicationId,
@@ -4748,10 +4792,39 @@ export const campusStore = {
           message: studentNotif.message,
           is_read: false,
           created_at: studentNotif.createdAt,
+        };
+        const response = await fetch("/api/internships/applications", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ application: dbPayload, notification: notificationPayload }),
         });
+        const result = (await response.json()) as { success?: boolean; message?: string };
+        if (!response.ok || !result.success) {
+          campusStore.setState((prev) => ({
+            internshipApplications: (prev.internshipApplications || []).filter(
+              (a) => a.id !== newId,
+            ),
+            internshipNotifications: (prev.internshipNotifications || []).filter(
+              (n) => n.id !== studentNotif.id,
+            ),
+          }));
+          return {
+            success: false,
+            message: result.message || "Application could not be saved to the university database.",
+          };
+        }
       }
     } catch (err) {
-      console.debug("Supabase application insert note:", err);
+      campusStore.setState((prev) => ({
+        internshipApplications: (prev.internshipApplications || []).filter((a) => a.id !== newId),
+        internshipNotifications: (prev.internshipNotifications || []).filter(
+          (n) => n.id !== studentNotif.id,
+        ),
+      }));
+      return {
+        success: false,
+        message: "Application could not be saved. Check your connection and try again.",
+      };
     } finally {
       inFlightApplications.delete(lockKey);
     }

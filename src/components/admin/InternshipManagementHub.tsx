@@ -46,6 +46,7 @@ import {
   InternshipAttendanceRecord,
 } from "@/lib/types";
 import { InternshipAttendanceMapModal } from "./InternshipAttendanceMapModal";
+import { DateRangeFilter } from "./DateRangeFilter";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -100,6 +101,8 @@ export function InternshipManagementHub({ state }: InternshipManagementHubProps)
   const [appPageSize, setAppPageSize] = useState(25);
   const [attPage, setAttPage] = useState(1);
   const [attPageSize, setAttPageSize] = useState(25);
+  const [attendanceStartDate, setAttendanceStartDate] = useState("");
+  const [attendanceEndDate, setAttendanceEndDate] = useState("");
 
   useEffect(() => {
     const unsub = subscribeAdminInternshipRealtime(() => {
@@ -170,8 +173,22 @@ export function InternshipManagementHub({ state }: InternshipManagementHubProps)
   }, [queueFilteredApplications, appPage, appPageSize]);
 
   const paginatedAttendance = useMemo(() => {
-    return attendanceRecords.slice((attPage - 1) * attPageSize, attPage * attPageSize);
-  }, [attendanceRecords, attPage, attPageSize]);
+    const filtered = attendanceRecords.filter((record) => {
+      if (attendanceStartDate && record.attendanceDate < attendanceStartDate) return false;
+      if (attendanceEndDate && record.attendanceDate > attendanceEndDate) return false;
+      return true;
+    });
+    return filtered.slice((attPage - 1) * attPageSize, attPage * attPageSize);
+  }, [attendanceRecords, attendanceStartDate, attendanceEndDate, attPage, attPageSize]);
+
+  const filteredAttendanceCount = useMemo(
+    () => attendanceRecords.filter((record) => {
+      if (attendanceStartDate && record.attendanceDate < attendanceStartDate) return false;
+      if (attendanceEndDate && record.attendanceDate > attendanceEndDate) return false;
+      return true;
+    }).length,
+    [attendanceRecords, attendanceStartDate, attendanceEndDate]
+  );
 
   // Action Handlers
   const handleOpenReviewDialog = (
@@ -634,6 +651,17 @@ export function InternshipManagementHub({ state }: InternshipManagementHubProps)
             </Button>
           </div>
 
+          <DateRangeFilter
+            startDate={attendanceStartDate}
+            endDate={attendanceEndDate}
+            onDateChange={(start, end) => {
+              setAttendanceStartDate(start);
+              setAttendanceEndDate(end);
+              setAttPage(1);
+            }}
+            label="Attendance Date"
+          />
+
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead>
@@ -695,6 +723,13 @@ export function InternshipManagementHub({ state }: InternshipManagementHubProps)
                     </tr>
                   );
                 })}
+                {paginatedAttendance.length === 0 && (
+                  <tr>
+                    <td colSpan={9} className="p-10 text-center text-sm font-semibold text-muted-foreground">
+                      No internship attendance records match the selected date range.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -702,7 +737,7 @@ export function InternshipManagementHub({ state }: InternshipManagementHubProps)
           {/* Pagination Controls for Attendance */}
           <PaginationControls
             currentPage={attPage}
-            totalItems={attendanceRecords.length}
+            totalItems={filteredAttendanceCount}
             pageSize={attPageSize}
             onPageChange={setAttPage}
             onPageSizeChange={setAttPageSize}

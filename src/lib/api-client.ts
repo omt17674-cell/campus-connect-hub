@@ -23,12 +23,11 @@ export const apiClient = {
     }
   },
 
-  async loginWithGoogle(email?: string, name?: string, rollNo?: string) {
+  async loginWithGoogle(accessToken: string) {
     try {
       const res = await fetch("/api/auth/google", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, name, rollNo }),
+        headers: { Authorization: `Bearer ${accessToken}` },
       });
       return await res.json();
     } catch (e) {
@@ -49,7 +48,7 @@ export const apiClient = {
     }
   },
 
-  async sendOtp(mobileNumber: string, purpose: "login" | "attendance" = "login") {
+  async sendOtp(mobileNumber: string, purpose: "login" | "attendance" | "registration" = "login") {
     try {
       const res = await fetch("/api/auth/otp/send", {
         method: "POST",
@@ -65,7 +64,7 @@ export const apiClient = {
   async verifyOtp(
     mobileNumber: string,
     code: string,
-    purpose: "login" | "attendance" = "login",
+    purpose: "login" | "attendance" | "registration" = "login",
     role?: string,
   ) {
     try {
@@ -324,24 +323,4 @@ export const apiClient = {
     }
   },
 
-  /**
-   * Phone.Email Authentication - Verify phone number
-   * @param userJsonUrl - The URL provided by Phone.Email service
-   * @param role - Optional role for the user (student, organizer, admin)
-   */
-  async verifyPhoneEmail(userJsonUrl: string, role?: string) {
-    try {
-      const res = await fetch("/api/auth/phone-email/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_json_url: userJsonUrl, role }),
-      });
-      return await res.json();
-    } catch (e) {
-      return { 
-        success: false, 
-        message: "Network error verifying phone number." 
-      };
-    }
-  },
 };

@@ -26,6 +26,8 @@ import {
   Coordinates,
   getLiveStudentLocation,
   GSFC_CAMPUS_VENUES,
+  MAX_ACCEPTABLE_ACCURACY_METERS,
+  MAX_REJECTABLE_ACCURACY_METERS,
 } from "@/lib/geofence-engine";
 import { translations } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -44,14 +46,15 @@ export function QRScannerModal({ onClose, onSuccess }: QRScannerModalProps) {
   const [offlineSaved, setOfflineSaved] = useState(false);
   const [scannedEvent, setScannedEvent] = useState<CampusEvent | null>(null);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
+  const [cameraError, setCameraError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const scanFrameRef = useRef<number | null>(null);
 
   // Live Location & Geofencing state
   const [userLocation, setUserLocation] = useState<Coordinates>({ latitude: 22.3688, longitude: 73.1893 });
   const [locationAccuracy, setLocationAccuracy] = useState<number>(15);
-  const [locationStatus, setLocationStatus] = useState<"loading" | "acquired" | "simulated" | "denied">("loading");
-  const [locationBypass, setLocationBypass] = useState(false);
+  const [locationStatus, setLocationStatus] = useState<"loading" | "acquired" | "denied">("loading");
 
   // Default to live event or first event
   const liveEvent = state.events.find((e) => e.status === "live") || state.events[0];
@@ -79,10 +82,8 @@ export function QRScannerModal({ onClose, onSuccess }: QRScannerModalProps) {
           setLocationStatus("acquired");
         }
       } catch (e) {
-        // Fallback to default on-campus simulation coords
         if (isMounted) {
-          setUserLocation({ latitude: 22.3689, longitude: 73.1892 });
-          setLocationStatus("simulated");
+          setLocationStatus("denied");
         }
       }
     }
@@ -94,46 +95,84 @@ export function QRScannerModal({ onClose, onSuccess }: QRScannerModalProps) {
     };
   }, []);
 
-  // Request actual camera stream if available on device
   useEffect(() => {
-    let mounted = true;
+    if (!hasCameraPermission || !videoRef.current || !("BarcodeDetector" in window)) return;
 
-    async function initCamera() {
-      try {
-        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-          const stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: "environment" },
-          });
-          if (mounted) {
-            streamRef.current = stream;
-            if (videoRef.current) {
-              videoRef.current.srcObject = stream;
-            }
-            setHasCameraPermission(true);
+    const detector = new (window as Window & { BarcodeDetector: new (options: { formats: string[] }) => { detect: (source: HTMLVideoElement) => Promise<Array<{ rawValue?: string }>> } }).BarcodeDetector({ formats: ["qr_code"] });
+    const scanFrame = async () => {
+      const video = videoRef.current;
+      if (video && video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && scanStatus === "ready") {
+        try {
+          const [result] = await detector.detect(video);
+          if (result?.rawValue) {
+            const parsed = JSON.parse(result.rawValue) as { eventId?: string };
+            handleProcessScan(result.rawValue, parsed.eventId || selectedSimEventId);
+            return;
           }
-        } else {
-          setHasCameraPermission(false);
+        } catch {
+          // Keep scanning until a complete QR payload is visible.
         }
-      } catch (err) {
-        console.warn("Camera access not available or denied, simulator available:", err);
-        if (mounted) setHasCameraPermission(false);
       }
-    }
+      scanFrameRef.current = requestAnimationFrame(scanFrame);
+    };
 
-    initCamera();
+    scanFrameRef.current = requestAnimationFrame(scanFrame);
+    return () => {
+      if (scanFrameRef.current !== null) cancelAnimationFrame(scanFrameRef.current);
+    };
+  }, [hasCameraPermission, scanStatus, selectedSimEventId]);
+
+  // Request actual camera stream if available on device
+  const startCamera = async () => {
+    setCameraError(null);
+    setHasCameraPermission(null);
+    try {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error("Camera access is not supported by this browser.");
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: {
+          facingMode: { ideal: "environment" },
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
+      });
+      streamRef.current = stream;
+      setHasCameraPermission(true);
+    } catch (err) {
+      console.warn("Camera access not available or denied, simulator available:", err);
+      setCameraError(err instanceof Error ? err.message : "Camera permission was denied.");
+      setHasCameraPermission(false);
+    }
+  };
+
+  // The first camera request can resolve before the video element mounts.
+  // Attach the retained stream after permission changes the rendered view.
+  useEffect(() => {
+    if (!hasCameraPermission || !videoRef.current || !streamRef.current) return;
+    videoRef.current.srcObject = streamRef.current;
+    void videoRef.current.play().catch(() => {
+      setCameraError("Tap Start Camera to begin the mobile camera preview.");
+    });
+  }, [hasCameraPermission]);
+
+  useEffect(() => {
+    void startCamera();
 
     return () => {
-      mounted = false;
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
       }
     };
   }, []);
 
-  const handleProcessScan = (payloadJson: string, eventId: string) => {
+  const handleProcessScan = async (payloadJson: string, eventId: string) => {
     setScanStatus("scanning");
 
-    setTimeout(() => {
+    setTimeout(async () => {
       // Validate token
       const validation = validateQrPayload(payloadJson, eventId);
       if (!validation.valid) {
@@ -150,7 +189,25 @@ export function QRScannerModal({ onClose, onSuccess }: QRScannerModalProps) {
       }
 
       // Check Geofencing
-      if (!isInsideGeofence && !locationBypass) {
+      if (locationStatus !== "acquired") {
+        setScanStatus("error");
+        setErrorMessage("Location permission is required to verify your presence at this event.");
+        return;
+      }
+
+      if (locationAccuracy > MAX_REJECTABLE_ACCURACY_METERS) {
+        setScanStatus("error");
+        setErrorMessage("Unable to verify your location because GPS accuracy is too low. Please move to an open area and try again.");
+        return;
+      }
+
+      if (locationAccuracy > MAX_ACCEPTABLE_ACCURACY_METERS) {
+        setScanStatus("error");
+        setErrorMessage(`GPS accuracy is ±${locationAccuracy}m. Please refresh your location until accuracy is ±${MAX_ACCEPTABLE_ACCURACY_METERS}m or better.`);
+        return;
+      }
+
+      if (!isInsideGeofence) {
         setScanStatus("error");
         setErrorMessage(
           `Geofence Failed: You are ${currentDistanceMeters}m away from ${event.venue}. Attendance requires you to be within ${allowedRadius}m of the campus venue.`
@@ -161,15 +218,17 @@ export function QRScannerModal({ onClose, onSuccess }: QRScannerModalProps) {
       setScannedEvent(event);
 
       // Perform check-in via store (attaching live GPS coordinates)
-      const res = campusStore.recordCheckIn(
+      const res = await campusStore.recordCheckIn(
         eventId,
-        validation.payload?.token || "QR-VERIFIED",
+        payloadJson,
         false,
         {
           latitude: userLocation.latitude,
           longitude: userLocation.longitude,
           distanceMeters: currentDistanceMeters,
-          verified: isInsideGeofence || locationBypass,
+          verified: isInsideGeofence,
+          accuracy: locationAccuracy,
+          capturedAt: new Date().toISOString(),
         }
       );
 
@@ -276,7 +335,7 @@ export function QRScannerModal({ onClose, onSuccess }: QRScannerModalProps) {
               <span>
                 {locationStatus === "acquired"
                   ? `Live GPS Locked (±${locationAccuracy || 10}m)`
-                  : "Device Location Active"}
+                  : "Location permission required"}
               </span>
             </div>
             <button
@@ -288,7 +347,7 @@ export function QRScannerModal({ onClose, onSuccess }: QRScannerModalProps) {
                   setLocationAccuracy(Math.round(accuracy));
                   setLocationStatus("acquired");
                 } catch {
-                  setLocationStatus("simulated");
+                  setLocationStatus("denied");
                 }
               }}
               className="font-bold text-brand hover:underline flex items-center gap-1 text-[11px]"
@@ -311,10 +370,19 @@ export function QRScannerModal({ onClose, onSuccess }: QRScannerModalProps) {
           ) : (
             <div className="flex size-full flex-col items-center justify-center p-6 text-center text-slate-300">
               <Camera className="size-10 text-brand opacity-60" />
-              <p className="mt-2 text-xs font-semibold">Camera Viewfinder Active</p>
+              <p className="mt-2 text-xs font-semibold">Camera preview unavailable</p>
               <p className="mt-1 text-[11px] text-slate-400">
-                (GPS Geofence + Rotating QR Active)
+                {cameraError || "Allow camera permission to scan QR codes."}
               </p>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => void startCamera()}
+                className="mt-3 rounded-xl bg-[#1A3C6E] text-xs font-bold text-white"
+              >
+                <Camera className="mr-1.5 size-3.5 text-[#F2A93B]" />
+                Start Camera
+              </Button>
             </div>
           )}
 
@@ -385,16 +453,6 @@ export function QRScannerModal({ onClose, onSuccess }: QRScannerModalProps) {
                 >
                   <RefreshCw className="mr-1.5 size-3.5" /> Try Again
                 </Button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setLocationBypass(true);
-                    setScanStatus("ready");
-                  }}
-                  className="inline-flex items-center justify-center rounded-xl border border-rose-300/50 bg-rose-900/90 px-3.5 py-1.5 text-xs font-bold text-white shadow-sm transition-colors hover:bg-rose-800 hover:border-rose-200"
-                >
-                  Bypass Geofence (Admin Demo)
-                </button>
               </div>
             </div>
           )}

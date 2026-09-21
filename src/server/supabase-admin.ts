@@ -3,6 +3,11 @@ import { createClient, SupabaseClient } from "@supabase/supabase-js";
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "";
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 
+// Log for debugging (remove in production)
+if (typeof window === 'undefined') {
+  console.log('[Supabase Admin] Service role key configured:', !!serviceRoleKey);
+}
+
 export const isSupabaseAdminConfigured = Boolean(
   supabaseUrl && serviceRoleKey && serviceRoleKey !== "your-supabase-service-role-secret-key",
 );

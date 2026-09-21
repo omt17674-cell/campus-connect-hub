@@ -14,6 +14,8 @@ export interface GeofenceResult {
 // GSFC University Vadodara Campus Benchmark Coordinates
 export const GSFC_CAMPUS_CENTER: Coordinates = { latitude: 22.3685, longitude: 73.1895 };
 export const DEFAULT_ALLOWED_RADIUS_METERS = 350;
+export const MAX_ACCEPTABLE_ACCURACY_METERS = 50;
+export const MAX_REJECTABLE_ACCURACY_METERS = 100;
 
 export const GSFC_CAMPUS_VENUES: Record<string, Coordinates> = {
   "Innovation Lab, Block C": { latitude: 22.3689, longitude: 73.1892 },
@@ -101,8 +103,8 @@ export async function getLiveStudentLocation(): Promise<{ coords: Coordinates; a
       },
       {
         enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 30000,
+        timeout: 20000,
+        maximumAge: 0,
       }
     );
   });

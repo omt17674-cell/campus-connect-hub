@@ -24,6 +24,8 @@ import {
   Coordinates,
   getLiveStudentLocation,
   GSFC_CAMPUS_VENUES,
+  MAX_ACCEPTABLE_ACCURACY_METERS,
+  MAX_REJECTABLE_ACCURACY_METERS,
 } from "@/lib/geofence-engine";
 import { generateCertificatePdf } from "@/lib/certificate-generator";
 import {
@@ -62,7 +64,7 @@ export function PunchAttendanceModal({
   });
   const [locationDetails, setLocationDetails] = useState<GeoapifyLocationDetails | null>(null);
   const [locationAccuracy, setLocationAccuracy] = useState<number | null>(null);
-  const [locationStatus, setLocationStatus] = useState<"loading" | "acquired" | "simulated">("loading");
+  const [locationStatus, setLocationStatus] = useState<"loading" | "acquired" | "denied">("loading");
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [isPunching, setIsPunching] = useState(false);
 
@@ -91,10 +93,9 @@ export function PunchAttendanceModal({
       setLocationDetails(details);
       setStatusMessage(`📍 Live GPS Locked: ${details.formattedAddress}`);
     } catch (err: any) {
-      setLocationStatus("simulated");
-      const fallbackDetails = await reverseGeocodeWithGeoapify(userLocation.latitude, userLocation.longitude);
-      setLocationDetails(fallbackDetails);
-      setStatusMessage(err?.message || "Using active campus coordinates.");
+      setLocationStatus("denied");
+      setLocationDetails(null);
+      setStatusMessage(err?.message || "Location permission is required to verify your presence at this event.");
     }
   };
 
@@ -117,13 +118,8 @@ export function PunchAttendanceModal({
         }
       } catch {
         if (mounted) {
-          const fallbackCoords = { latitude: 22.3689, longitude: 73.1892 };
-          setUserLocation(fallbackCoords);
-          setLocationStatus("simulated");
-          const details = await reverseGeocodeWithGeoapify(fallbackCoords.latitude, fallbackCoords.longitude);
-          if (mounted) {
-            setLocationDetails(details);
-          }
+          setLocationStatus("denied");
+          setLocationDetails(null);
         }
       }
     }
@@ -135,6 +131,14 @@ export function PunchAttendanceModal({
 
   // Handle Punch In
   const handlePunchIn = () => {
+    if (locationStatus !== "acquired" || !locationAccuracy || locationAccuracy > MAX_ACCEPTABLE_ACCURACY_METERS) {
+      setStatusMessage(
+        locationAccuracy && locationAccuracy > MAX_REJECTABLE_ACCURACY_METERS
+          ? "Unable to obtain a sufficiently accurate GPS fix. Please move to an open area and try again."
+          : `Location accuracy must be ±${MAX_ACCEPTABLE_ACCURACY_METERS}m or better before attendance can be recorded.`,
+      );
+      return;
+    }
     setIsPunching(true);
     setTimeout(() => {
       const res = campusStore.punchIn(event.id, {
@@ -165,6 +169,10 @@ export function PunchAttendanceModal({
 
   // Handle Punch Out
   const handlePunchOut = () => {
+    if (locationStatus !== "acquired" || !locationAccuracy || locationAccuracy > MAX_ACCEPTABLE_ACCURACY_METERS) {
+      setStatusMessage(`Location accuracy must be ±${MAX_ACCEPTABLE_ACCURACY_METERS}m or better before attendance can be recorded.`);
+      return;
+    }
     setIsPunching(true);
     setTimeout(() => {
       const res = campusStore.punchOut(event.id, {

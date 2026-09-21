@@ -32,9 +32,6 @@ import {
   CAMPUS_ACCOUNTS,
   CampusAccount,
   STUDENT_ACCOUNT,
-  ADMIN_ACCOUNT,
-  TPC_ADMIN_ACCOUNT,
-  getStoredAccounts,
   campusStore,
 } from "@/lib/campus-store";
 import { UserRole, UserProfile } from "@/lib/types";
@@ -43,7 +40,6 @@ import { ShortCampusTourModal } from "@/components/tour/ShortCampusTourModal";
 import { supabase } from "@/lib/supabase";
 import { apiClient } from "@/lib/api-client";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
-import { PhoneEmailAuthButton } from "@/components/auth/PhoneEmailAuth";
 
 interface LoginPageProps {
 
@@ -51,7 +47,6 @@ interface LoginPageProps {
 }
 
 export function LoginPage({ onLoginSuccess }: LoginPageProps) {
-  const allAccounts = getStoredAccounts();
   const [activeTab, setActiveTab] = useState<"signin" | "register">("signin");
   const [signInMethod, setSignInMethod] = useState<"password" | "otp">("password");
   const [selectedRole, setSelectedRole] = useState<UserRole>("student");
@@ -68,7 +63,6 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
   const [otpSent, setOtpSent] = useState(false);
   const [otpTimer, setOtpTimer] = useState(30);
   const [isSendingOtp, setIsSendingOtp] = useState(false);
-  const [lastOtpPreview, setLastOtpPreview] = useState<string | null>(null);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -120,7 +114,6 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
   const [fpTimer, setFpTimer] = useState(0);
   const [fpLoading, setFpLoading] = useState(false);
   const [fpError, setFpError] = useState<string | null>(null);
-  const [fpDevOtp, setFpDevOtp] = useState<string | null>(null);
 
   // Countdown for forgot-password OTP resend
   useEffect(() => {
@@ -145,6 +138,16 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
   // Listen for Supabase Auth confirmation link clicks (e.g. from email "Confirm email address")
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if ((event === "SIGNED_IN" || event === "INITIAL_SESSION") && session?.user && regStep !== "otp" && !regSubmitting) {
+        const result = await apiClient.loginWithGoogle(session.access_token);
+        if (result.success && result.account) {
+          campusStore.loginWithAccount(result.account, result.token);
+          setStatusMessage({ text: result.message || "Signed in with Google Workspace.", type: "success" });
+          onLoginSuccess?.();
+        } else {
+          setStatusMessage({ text: result.message || "Google account is not registered with GSFC University.", type: "error" });
+        }
+      }
       if ((event === "SIGNED_IN" || event === "USER_UPDATED") && session?.user && regStep === "otp") {
         const email = session.user.email || registeredEmail;
         const userMeta = session.user.user_metadata || {};
@@ -155,7 +158,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
       }
     });
     return () => subscription.unsubscribe();
-  }, [regStep, regRollNo, registeredEmail, regPassword]);
+  }, [regStep, regRollNo, registeredEmail, regPassword, regSubmitting]);
 
   // Mask email for display e.g. o***r@gsfcuniversity.ac.in
   const maskEmail = (emailStr: string) => {
@@ -201,67 +204,10 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
     const cleanEmail = cleanInput.includes("@") ? cleanInput.toLowerCase() : `${cleanInput.toLowerCase()}@gsfcuniversity.ac.in`;
     const cleanPass = password.trim();
 
-    // Auto-detect role if user typed dean or organizer credentials, or selected that role
-    const isDeanLogin =
-      selectedRole === "admin" ||
-      cleanEmail === "admin.dean@gsfcuniversity.ac.in" ||
-      cleanInput.toUpperCase() === "ADM-DEAN-001" ||
-      cleanEmail.includes("dean.studentaffairs") ||
-      cleanInput.toLowerCase().includes("admin.dean");
-
-    const isTpcLogin =
-      selectedRole === "organizer" ||
-      cleanEmail === "tpc.admin@gsfcuniversity.ac.in" ||
-      cleanInput.toUpperCase() === "TPC-ADMIN-108" ||
-      cleanInput.toLowerCase().includes("tpc.admin");
-
-    if (isDeanLogin && selectedRole !== "admin") {
-      setSelectedRole("admin");
-    } else if (isTpcLogin && selectedRole !== "organizer") {
-      setSelectedRole("organizer");
-    }
-
-    // Direct verified credential matching for Dean (instant, immune to network timeout or 'Failed to fetch')
-    if (isDeanLogin) {
-      if (cleanPass === "Admin@2026" || cleanPass === "admin@2026") {
-        campusStore.loginWithAccount(ADMIN_ACCOUNT);
-        setIsLoggingIn(false);
-        setStatusMessage({ text: "Welcome back, Dr. Ananya Sharma (Dean)!", type: "success" });
-        if (onLoginSuccess) onLoginSuccess();
-        return;
-      } else {
-        setIsLoggingIn(false);
-        setStatusMessage({
-          text: "Invalid password for Dean Administration. Hint: Dean Password is Admin@2026",
-          type: "error",
-        });
-        return;
-      }
-    }
-
-    // Direct verified credential matching for TPC Head
-    if (isTpcLogin) {
-      if (cleanPass === "Tpc@2026" || cleanPass === "tpc@2026" || cleanPass === "Admin@2026") {
-        campusStore.loginWithAccount(TPC_ADMIN_ACCOUNT);
-        setIsLoggingIn(false);
-        setStatusMessage({ text: "Welcome back, Prof. Rajiv Mehta (TPC Head)!", type: "success" });
-        if (onLoginSuccess) onLoginSuccess();
-        return;
-      } else {
-        setIsLoggingIn(false);
-        setStatusMessage({
-          text: "Invalid password for Placement Faculty Coordinator. Hint: Password is Tpc@2026",
-          type: "error",
-        });
-        return;
-      }
-    }
-
     try {
       const cleanInputUpper = cleanInput.toUpperCase();
       const cleanEmailLower = cleanEmail.toLowerCase();
       const currentState = campusStore.getState();
-      const storedAccounts = getStoredAccounts();
 
       // Extract roll prefix if input is email (e.g. "24bt04171@..." -> "24BT04171")
       const extractedRoll = cleanInput.includes("@")
@@ -275,12 +221,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
           s.rollNo?.toUpperCase() === cleanInputUpper ||
           s.email?.toLowerCase() === cleanEmailLower
       );
-      let matchedAccount: any = storedAccounts.find(
-        (a) =>
-          a.idOrRoll?.toUpperCase() === extractedRoll ||
-          a.idOrRoll?.toUpperCase() === cleanInputUpper ||
-          a.email?.toLowerCase() === cleanEmailLower
-      );
+      let matchedAccount: any = null;
       const matchedReg: any = currentState.registrations?.find(
         (r) =>
           r.userRollNo?.toUpperCase() === extractedRoll ||
@@ -354,148 +295,36 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
         return;
       }
 
-      // 3. Authenticate with Supabase Auth (capped at 2.5s timeout to prevent hanging)
-      let authData: any = null;
-      let authError: any = null;
-
-      try {
-        const authTimeout = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("auth_timeout")), 2500)
-        );
-        const authPromise = supabase.auth.signInWithPassword({
-          email: targetEmail,
-          password: cleanPass,
-        });
-        const res: any = await Promise.race([authPromise, authTimeout]);
-        authData = res?.data;
-        authError = res?.error;
-      } catch (authTimeoutErr) {
-        // Supabase remote service is slow/timing out (> 2.5s) — fallback immediately to local auth
-        console.warn("Supabase Auth latency timeout, proceeding with local university verification");
-      }
-
-      if (authError) {
-        const errMsg = authError.message || "";
-        const isNetworkOrTimeout =
-          errMsg.toLowerCase().includes("failed to fetch") ||
-          errMsg.toLowerCase().includes("timeout") ||
-          (authError as any).name === "TypeError";
-
-        // Check if unverified user attempting login
-        if (
-          errMsg.toLowerCase().includes("email not confirmed") ||
-          errMsg.toLowerCase().includes("not verified") ||
-          errMsg.toLowerCase().includes("unconfirmed")
-        ) {
-          setIsLoggingIn(false);
-          setRegisteredEmail(targetEmail);
-          setRegEmail(targetEmail);
-          setActiveTab("register");
-          setRegStep("otp");
-          setRegOtpTimer(60);
-          setRegEmailOtp("");
-          try {
-            await supabase.auth.resend({ type: "signup", email: targetEmail });
-          } catch {}
-          setStatusMessage({
-            text: `Your email is not verified yet. We sent a 6-digit verification code to ${maskEmail(targetEmail)}.`,
-            type: "error",
-          });
-          return;
-        }
-
-        // If it's NOT a timeout/network error and user has local password that doesn't match
-        if (!isNetworkOrTimeout && matchedAccount?.password && matchedAccount.password !== cleanPass) {
-          setIsLoggingIn(false);
-          setStatusMessage({
-            text: "Invalid password. Please check your credentials.",
-            type: "error",
-          });
-          return;
-        }
-      }
-
-      // Construct verified profile instantly (no additional slow network waterfall)
-      const studentRow = matchedStudent;
-      const accountRow = matchedAccount;
-      const userMeta = authData?.user?.user_metadata || {};
-
-      const name =
-        studentRow?.full_name ||
-        studentRow?.fullName ||
-        accountRow?.name ||
-        matchedReg?.userName ||
-        userMeta.full_name ||
-        cleanInput;
-
-      const roll =
-        studentRow?.roll_no ||
-        studentRow?.rollNo ||
-        accountRow?.roll_no ||
-        accountRow?.idOrRoll ||
-        matchedReg?.userRollNo ||
-        userMeta.roll_no ||
-        extractedRoll;
-
-      const role = (accountRow?.role || userMeta.role || selectedRole) as UserRole;
-      const dept =
-        studentRow?.department ||
-        accountRow?.department ||
-        matchedReg?.department ||
-        userMeta.department ||
-        "Computer Science & Engineering";
-
-      const studentMobile =
-        studentRow?.mobile_number ||
-        studentRow?.mobileNumber ||
-        accountRow?.mobile_number ||
-        userMeta?.mobile_number ||
-        undefined;
-
-      const stableId =
-        accountRow?.id ||
-        studentRow?.id ||
-        matchedReg?.userId ||
-        authData?.user?.id ||
-        `u-${roll.toLowerCase()}`;
-
-      const foundAccount: CampusAccount = {
-        role,
-        roleTitle: role === "admin" ? "TPC Admin" : role === "organizer" ? "Placement Faculty Coordinator" : "GSFC Student",
-        roleBadge: roll,
-        name,
-        idOrRoll: roll,
+      // Supabase Auth is mandatory. Never fall back to localStorage or cached profiles.
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email: targetEmail,
         password: cleanPass,
-        profile: {
-          id: stableId,
-          name,
-          rollNo: roll,
-          email: targetEmail,
-          role,
-          department: dept,
-          school: studentRow?.school || userMeta.school || "School of Technology (SOT)",
-          degree: studentRow?.degree || userMeta.degree || "B.Tech",
-          semester: studentRow?.semester || accountRow?.semester || userMeta.semester || 4,
-          residenceType: studentRow?.residence_type || studentRow?.residenceType || "dayscholar",
-          hostelBlockOrBusRoute: studentRow?.hostel_block_or_bus_route || studentRow?.hostelBlockOrBusRoute,
-          clubsInterested: studentRow?.clubs_interested || studentRow?.clubsInterested || [],
-          mobileNumber: (studentMobile && studentMobile !== "N/A" && studentMobile !== "Not provided") ? studentMobile : undefined,
-          avatar: name.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase() || "ST",
-          points: accountRow?.points || 100,
-          streakDays: accountRow?.streak_days || 1,
-          volunteerHours: accountRow?.volunteer_hours || 0,
-          attendanceRate: accountRow?.attendance_percentage || 100,
-          badges: ["b1"],
-          isVerified: true,
-        },
-      };
+      });
+      if (authError || !authData.session?.access_token) {
+        setIsLoggingIn(false);
+        setStatusMessage({
+          text: authError?.message || "Authentication failed. Please check your credentials.",
+          type: "error",
+        });
+        return;
+      }
 
-      campusStore.loginWithAccount(foundAccount);
-      console.log(`[Auth Session] Logged in user: ${name} | currentUser.id: ${stableId} | rollNo: ${roll} | role: ${role}`);
+      const serverResult = await apiClient.loginWithGoogle(authData.session.access_token);
+      if (!serverResult?.success || !serverResult.account) {
+        setIsLoggingIn(false);
+        setStatusMessage({
+          text: serverResult?.message || "Your account is not authorized by the GSFC database.",
+          type: "error",
+        });
+        return;
+      }
+
+      campusStore.loginWithAccount(serverResult.account, serverResult.token);
       setIsLoggingIn(false);
-      setStatusMessage({ text: `Welcome back, ${name}!`, type: "success" });
-      if (onLoginSuccess) onLoginSuccess();
+      setStatusMessage({ text: serverResult.message || `Welcome back, ${serverResult.account.name}!`, type: "success" });
+      onLoginSuccess?.();
+      return;
+
     } catch (err: any) {
       setIsLoggingIn(false);
       const isFetchErr =
@@ -525,9 +354,6 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
         setOtpSent(true);
         setOtpTimer(30);
         setStatusMessage({ text: res.message, type: "success" });
-        if (res.otp) {
-          setLastOtpPreview(res.otp);
-        }
       } else {
         setStatusMessage({ text: res.message || "Failed to send OTP.", type: "error" });
       }
@@ -550,7 +376,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
       const res = await apiClient.verifyOtp(otpMobile.trim(), otpCode.trim(), "login", selectedRole);
       setIsLoggingIn(false);
       if (res.success && res.account) {
-        campusStore.loginWithAccount(res.account);
+        campusStore.loginWithAccount(res.account, res.token);
         setStatusMessage({ text: res.message || `Welcome back, ${res.account.name}!`, type: "success" });
         if (onLoginSuccess) onLoginSuccess();
       } else {
@@ -559,63 +385,6 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
     } catch (err: any) {
       setIsLoggingIn(false);
       setStatusMessage({ text: err?.message || "OTP verification network error.", type: "error" });
-    }
-  };
-
-  // Handle Phone.Email Authentication
-  const handlePhoneEmailAuth = async (userJsonUrl: string) => {
-    setIsLoggingIn(true);
-    setStatusMessage(null);
-
-    try {
-      const result = await apiClient.verifyPhoneEmail(userJsonUrl, selectedRole);
-      
-      if (!result.success) {
-        setIsLoggingIn(false);
-        setStatusMessage({
-          text: result.message || "Phone verification failed",
-          type: "error"
-        });
-        return;
-      }
-
-      // If existing user, log them in directly
-      if (result.isExistingUser && result.account) {
-        campusStore.loginWithAccount(result.account);
-        setIsLoggingIn(false);
-        setStatusMessage({ 
-          text: result.message || `Welcome back, ${result.account.name}!`, 
-          type: "success" 
-        });
-        if (onLoginSuccess) onLoginSuccess();
-        return;
-      }
-
-      // New user - pre-fill registration form
-      if (result.phoneData) {
-        const { fullPhoneNumber, firstName, lastName, email } = result.phoneData;
-        
-        setActiveTab("register");
-        setRegPhone(fullPhoneNumber);
-        if (firstName || lastName) {
-          setRegFullName(`${firstName || ""} ${lastName || ""}`.trim());
-        }
-        if (email) {
-          setRegEmail(email);
-        }
-        
-        setIsLoggingIn(false);
-        setStatusMessage({
-          text: "Phone verified! Please complete your registration.",
-          type: "success"
-        });
-      }
-    } catch (err: any) {
-      setIsLoggingIn(false);
-      setStatusMessage({
-        text: err?.message || "Failed to verify phone number",
-        type: "error"
-      });
     }
   };
 
@@ -677,7 +446,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
         return;
       }
 
-      // 7. Initiate Supabase Auth SignUp (generates and delivers 6-digit email OTP)
+      // 7. Create the Auth identity, then verify the mobile number with real SMS OTP.
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email: cleanEmail,
         password: regPassword,
@@ -715,36 +484,19 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
         return;
       }
 
-      // 8. If Supabase auto-confirmed (e.g. dev mode without email confirmation enabled), verify directly
-      if (signUpData.session) {
-        await completeRegistrationAfterVerification(cleanRoll, cleanEmail, regPassword, signUpData.session?.access_token);
+      const otpRes = await apiClient.sendOtp(regPhone.trim(), "registration");
+      if (!otpRes?.success) {
+        setRegSubmitting(false);
+        setStatusMessage({ text: otpRes?.message || "Mobile verification is temporarily unavailable. Please contact administration.", type: "error" });
         return;
       }
 
-      // 9. Dispatch Registration Verification OTP via backend API (and SMS)
-      let deliveredOtp: string | null = null;
-      try {
-        const otpRes = await apiClient.sendRegistrationOtp(cleanEmail, regPhone.trim(), cleanRoll);
-        if (otpRes?.success && otpRes?.otp) {
-          deliveredOtp = otpRes.otp;
-          setRegOtpPreview(deliveredOtp);
-        }
-      } catch (err) {
-        console.warn("Failed to dispatch registration OTP:", err);
-      }
-
-      // 10. Move to OTP Verification Screen
       setRegisteredEmail(cleanEmail);
       setRegStep("otp");
       setRegOtpTimer(60);
       setRegEmailOtp("");
       setRegSubmitting(false);
-      setStatusMessage({
-        text: deliveredOtp
-          ? `Verification OTP generated! Enter code below or click the link in your confirmation email.`
-          : `We sent verification instructions to ${maskEmail(cleanEmail)}.`,
-        type: "success",
-      });
+      setStatusMessage({ text: "A verification code was sent to your registered mobile number.", type: "success" });
     } catch (err: any) {
       console.warn("Registration initiation error:", err);
       setRegSubmitting(false);
@@ -755,7 +507,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
     }
   };
 
-  // Handle Verify Email OTP (STEP D & E)
+  // Handle mobile registration OTP (STEP D & E)
   const handleVerifyRegOtp = async (e?: React.FormEvent, customOtp?: string) => {
     if (e) e.preventDefault();
     const codeToVerify = (customOtp || regEmailOtp).trim();
@@ -767,53 +519,25 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
     setIsVerifyingRegOtp(true);
     setStatusMessage(null);
 
-    const targetEmail = registeredEmail || (regEmail.includes("@") ? regEmail.trim().toLowerCase() : `${regEmail.trim().toLowerCase()}@gsfcuniversity.ac.in`);
     const cleanRoll = regRollNo.trim().toUpperCase();
 
     try {
-      let isVerified = false;
-      let sessionToken: string | undefined;
-
-      // 1. Verify against server registration OTP store & confirm user in Supabase auth.users
-      try {
-        const apiRes = await apiClient.verifyRegistrationOtp(targetEmail, codeToVerify);
-        if (apiRes?.success && apiRes?.verified) {
-          isVerified = true;
-        }
-      } catch (err) {
-        console.warn("API registration OTP verify error:", err);
-      }
-
-      // 2. Also try Supabase Auth client verifyOtp if applicable
-      try {
-        const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
-          email: targetEmail,
-          token: codeToVerify,
-          type: "signup",
-        });
-        if (!verifyError && verifyData?.session) {
-          isVerified = true;
-          sessionToken = verifyData.session.access_token;
-        }
-      } catch (sbErr) {
-        // Ignored if API verification succeeded
-      }
-
-      if (!isVerified) {
+      const otpRes = await apiClient.verifyOtp(regPhone.trim(), codeToVerify, "registration");
+      if (!otpRes?.success || !otpRes?.verified) {
         setIsVerifyingRegOtp(false);
         setStatusMessage({
-          text: "Invalid or expired verification code. Please check the code and try again.",
+          text: otpRes?.message || "Invalid or expired verification code. Please check the code and try again.",
           type: "error",
         });
         return;
       }
 
-      // 3. Verified successfully! Finalize registration in database
+      const targetEmail = registeredEmail || (regEmail.includes("@") ? regEmail.trim().toLowerCase() : `${regEmail.trim().toLowerCase()}@gsfcuniversity.ac.in`);
+      // Verified successfully. Persist identity and account in the database.
       await completeRegistrationAfterVerification(
         cleanRoll,
         targetEmail,
         regPassword,
-        sessionToken
       );
     } catch (err: any) {
       setIsVerifyingRegOtp(false);
@@ -931,7 +655,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
 
       await campusStore.registerNewStudent(newStudentObj);
       campusStore.registerNewAccount(newAccount);
-      campusStore.loginWithAccount(newAccount);
+      campusStore.loginWithAccount(newAccount, resData?.token);
 
       await campusStore.loadFromSupabase();
 
@@ -971,21 +695,9 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
     setIsResendingRegOtp(true);
     setStatusMessage(null);
 
-    const targetEmail = registeredEmail || (regEmail.includes("@") ? regEmail.trim().toLowerCase() : `${regEmail.trim().toLowerCase()}@gsfcuniversity.ac.in`);
-    const cleanRoll = regRollNo.trim().toUpperCase();
-
     try {
-      const [sbRes, apiRes] = await Promise.allSettled([
-        supabase.auth.resend({
-          type: "signup",
-          email: targetEmail,
-        }),
-        apiClient.sendRegistrationOtp(targetEmail, regPhone.trim(), cleanRoll),
-      ]);
-
-      if (apiRes.status === "fulfilled" && apiRes.value?.success && apiRes.value?.otp) {
-        setRegOtpPreview(apiRes.value.otp);
-      }
+      const apiRes = await apiClient.sendOtp(regPhone.trim(), "registration");
+      if (!apiRes?.success) throw new Error(apiRes?.message || "Mobile verification is temporarily unavailable.");
 
       setIsResendingRegOtp(false);
       setRegOtpTimer(60);
@@ -1331,18 +1043,6 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
                           className="w-full bg-transparent px-3 py-2.5 text-center font-mono text-sm font-black tracking-widest text-slate-800 placeholder:text-slate-300 focus:outline-none"
                         />
                       </div>
-                      {lastOtpPreview && (
-                        <div className="flex items-center justify-between rounded-lg bg-amber-500/10 border border-amber-500/20 px-2.5 py-1.5 text-[11px] text-amber-800 font-semibold">
-                          <span>SMS Dispatched! Code: <strong className="font-mono">{lastOtpPreview}</strong></span>
-                          <button
-                            type="button"
-                            onClick={() => setOtpCode(lastOtpPreview)}
-                            className="text-[10px] font-bold text-[#1A3C6E] hover:underline"
-                          >
-                            Fill OTP
-                          </button>
-                        </div>
-                      )}
                     </div>
                   )}
 
@@ -1374,7 +1074,6 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
                     setFpNewPassword("");
                     setFpConfirmPassword("");
                     setFpError(null);
-                    setFpDevOtp(null);
                     setStatusMessage(null);
                   }}
                   className="text-xs font-bold text-[#1A3C6E] hover:underline"
@@ -1435,7 +1134,6 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
                           const res = await apiClient.requestPasswordReset(emailVal);
                           setFpLoading(false);
                           if (res.success) {
-                            if (import.meta.env.DEV && res.devOtp) setFpDevOtp(res.devOtp);
                             setForgotStep("otp");
                             setFpTimer(60);
                             setFpOtp("");
@@ -1487,19 +1185,6 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
                         <span className="font-bold text-[#1A3C6E]">{maskEmail(fpEmail)}</span>.
                         Check your email inbox and spam folder.
                       </p>
-
-                      {import.meta.env.DEV && fpDevOtp && (
-                        <div className="rounded-xl bg-amber-50 border border-amber-200 p-2.5 text-[11px]">
-                          <span className="font-bold text-amber-800">DEV:</span>{" "}
-                          <span className="font-mono font-black text-[#1A3C6E]">{fpDevOtp}</span>{" "}
-                          <button
-                            type="button"
-                            onClick={() => setFpOtp(fpDevOtp)}
-                            className="ml-1 text-[10px] font-black text-[#1A3C6E] underline"
-                          >Fill</button>
-                          <div className="mt-1 text-amber-700">⚠️ Configure email provider for production</div>
-                        </div>
-                      )}
 
                       <div className="flex justify-center">
                         <InputOTP
@@ -1559,7 +1244,6 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
                               const res = await apiClient.requestPasswordReset(fpEmail.trim().toLowerCase());
                               setFpLoading(false);
                               if (res.success || res.code === "COOLDOWN_ACTIVE") {
-                                if (import.meta.env.DEV && res.devOtp) setFpDevOtp(res.devOtp);
                                 setFpOtp("");
                                 setFpTimer(res.retryAfterSeconds || 60);
                               } else {
@@ -1706,30 +1390,20 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
                 <button
                   type="button"
                   onClick={async () => {
-                    setIsLoggingIn(true);
                     setStatusMessage(null);
-                    try {
-                      // Try the server API first (works with or without DB — demo mode fallback built in)
-                      const res = await apiClient.loginWithGoogle(
-                        "student@gsfcuniversity.ac.in",
-                        "GSFC Student",
-                        "GSFC-STUDENT",
-                      );
-                      if (res?.success && res?.account) {
-                        campusStore.loginWithAccount(res.account);
-                        setIsLoggingIn(false);
-                        setStatusMessage({ text: res.message || "Signed in via Google Workspace!", type: "success" });
-                        if (onLoginSuccess) setTimeout(onLoginSuccess, 300);
-                        return;
-                      }
-                    } catch {
-                      // API unreachable — fall back to local store
+                    const redirectOrigin = window.location.hostname === "localhost"
+                      ? window.location.origin
+                      : "https://campus-connect-hub-indol.vercel.app";
+                    const { error } = await supabase.auth.signInWithOAuth({
+                      provider: "google",
+                      options: { redirectTo: redirectOrigin },
+                    });
+                    if (error) {
+                      // OAuth not configured in Supabase dashboard → use local-store demo login
+                      const res = campusStore.loginWithGoogle();
+                      setStatusMessage({ text: res.message, type: res.success ? "success" : "error" });
+                      if (res.success && onLoginSuccess) setTimeout(onLoginSuccess, 300);
                     }
-                    // Local-store fallback (works 100% offline)
-                    const res = campusStore.loginWithGoogle();
-                    setIsLoggingIn(false);
-                    setStatusMessage({ text: res.message, type: res.success ? "success" : "error" });
-                    if (res.success && onLoginSuccess) setTimeout(onLoginSuccess, 300);
                   }}
                   className="flex h-9 w-full items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50 transition-colors"
                 >
@@ -1755,13 +1429,6 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
                 </button>
               </div>
 
-              {/* Phone.Email Authentication */}
-              <PhoneEmailAuthButton
-                onSuccess={handlePhoneEmailAuth}
-                onError={(error) => {
-                  setStatusMessage({ text: error, type: "error" });
-                }}
-              />
             </div>
           )}
 
@@ -2298,12 +1965,12 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
                       {regSubmitting ? (
                         <span className="flex items-center gap-2">
                           <Loader2 className="size-4 animate-spin text-[#F2A93B]" />
-                          Sending Verification OTP...
+                          Creating your student account...
                         </span>
                       ) : (
                         <span className="flex items-center gap-2">
                           <UserPlus className="size-4 text-[#F2A93B]" />
-                          Continue to Email Verification →
+                          Create Account & Open Dashboard →
                         </span>
                       )}
                     </Button>
