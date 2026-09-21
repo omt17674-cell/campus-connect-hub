@@ -2701,24 +2701,54 @@ export const campusStore = {
       details: `Status: ${status} · Capacity: ${newEvent.capacity} · Dept: ${newEvent.department}`,
     };
 
+    // Save snapshot for rollback if database write fails
+    const previousState = {
+      events: [...campusStore.getState().events],
+      auditLogs: [...campusStore.getState().auditLogs],
+    };
+
     // Optimistically update local store
     campusStore.setState((prev) => ({
       events: [newEvent, ...prev.events],
       auditLogs: [auditEntry, ...prev.auditLogs],
     }));
 
-    // Await database write to Supabase
+    // Use backend API endpoint to create event (with service role)
     if (typeof window !== "undefined" && navigator.onLine) {
       try {
-        const { error } = await supabase.from("events").upsert(serializeEventForDb(newEvent));
+        const token = localStorage.getItem("authToken") || "";
+        const response = await fetch("/api/events", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(serializeEventForDb(newEvent)),
+        });
 
-        if (error) {
-          logSupabaseError("upsert", "events", error);
-          toast.error(`Database write warning: ${error.message}`);
-          return { success: false, event: newEvent, error: error.message };
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          const errorMsg = errorData.error || `HTTP ${response.status}`;
+          logSupabaseError("api_post", "events", new Error(errorMsg));
+          // Roll back the optimistic update — event was never saved
+          campusStore.setState(() => previousState);
+          toast.error(
+            `❌ Event was NOT saved to the database: ${errorMsg}. Please try again.`,
+            { duration: 8000 },
+          );
+          return { success: false, event: newEvent, error: errorMsg };
         }
+
+        const result = await response.json();
+        // Event was successfully saved to database
       } catch (err: any) {
-        logSupabaseError("upsert_catch", "events", err);
+        logSupabaseError("api_catch", "events", err);
+        // Roll back the optimistic update — event was never saved
+        campusStore.setState(() => previousState);
+        toast.error(
+          `❌ Event was NOT saved — network error: ${err.message || "Failed to reach database"}. Please check your connection and try again.`,
+          { duration: 8000 },
+        );
         return { success: false, event: newEvent, error: err.message };
       }
     }
@@ -2729,6 +2759,8 @@ export const campusStore = {
   async approveEvent(eventId: string): Promise<boolean> {
     const state = campusStore.getState();
     const event = state.events.find((e) => e.id === eventId);
+    const previousEvents = [...state.events];
+    const previousAuditLogs = [...state.auditLogs];
     const audit: AuditLogEntry = {
       id: `aud-${Date.now()}`,
       action: "Event Approved by Dean",
@@ -2752,12 +2784,15 @@ export const campusStore = {
 
         if (error) {
           logSupabaseError("update", "events", error);
-          toast.error(`Failed to update event in database: ${error.message}`);
+          campusStore.setState(() => ({ events: previousEvents, auditLogs: previousAuditLogs }));
+          toast.error(`❌ Failed to approve event in database: ${error.message}. Please try again.`, { duration: 8000 });
           return false;
         }
         toast.success(`Event approved and published to campus directory!`);
-      } catch (err) {
+      } catch (err: any) {
         logSupabaseError("update_catch", "events", err);
+        campusStore.setState(() => ({ events: previousEvents, auditLogs: previousAuditLogs }));
+        toast.error(`❌ Failed to approve event — network error: ${err.message || "Failed to reach database"}`, { duration: 8000 });
         return false;
       }
     }
@@ -2765,6 +2800,8 @@ export const campusStore = {
   },
 
   async rejectEvent(eventId: string): Promise<boolean> {
+    const previousEvents = [...campusStore.getState().events];
+
     campusStore.setState((prev) => ({
       events: prev.events.map((e) => (e.id === eventId ? { ...e, status: "rejected" } : e)),
     }));
@@ -2778,11 +2815,15 @@ export const campusStore = {
 
         if (error) {
           logSupabaseError("update", "events", error);
+          campusStore.setState(() => ({ events: previousEvents }));
+          toast.error(`❌ Failed to reject event in database: ${error.message}. Please try again.`, { duration: 8000 });
           return false;
         }
         toast.info("Event proposal rejected.");
-      } catch (err) {
+      } catch (err: any) {
         logSupabaseError("update_catch", "events", err);
+        campusStore.setState(() => ({ events: previousEvents }));
+        toast.error(`❌ Failed to reject event — network error: ${err.message || "Failed to reach database"}`, { duration: 8000 });
         return false;
       }
     }
@@ -2790,6 +2831,11 @@ export const campusStore = {
   },
 
   async updateEventStatus(eventId: string, status: EventStatus): Promise<boolean> {
+    const previousState = {
+      events: [...campusStore.getState().events],
+      auditLogs: [...campusStore.getState().auditLogs],
+    };
+
     campusStore.setState((prev) => {
       const event = prev.events.find((e) => e.id === eventId);
       const audit: AuditLogEntry = {
@@ -2812,10 +2858,14 @@ export const campusStore = {
 
         if (error) {
           logSupabaseError("update", "events", error);
+          campusStore.setState(() => previousState);
+          toast.error(`❌ Failed to update event status: ${error.message}. Please try again.`, { duration: 8000 });
           return false;
         }
-      } catch (err) {
+      } catch (err: any) {
         logSupabaseError("update_catch", "events", err);
+        campusStore.setState(() => previousState);
+        toast.error(`❌ Failed to update event status — network error: ${err.message || "Failed to reach database"}`, { duration: 8000 });
         return false;
       }
     }
