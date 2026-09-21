@@ -151,4 +151,169 @@ export const localApiClient = {
       return { status: "offline" };
     }
   },
+
+  /**
+   * EVENTS API
+   */
+
+  /**
+   * Get all events
+   */
+  async getEvents(): Promise<{ success: boolean; events?: any[]; message?: string }> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/events`);
+      return await res.json();
+    } catch (e) {
+      return { success: false, message: "Network error fetching events." };
+    }
+  },
+
+  /**
+   * Get event details
+   */
+  async getEventDetails(eventId: string): Promise<{ success: boolean; event?: any; message?: string }> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/events/${eventId}`);
+      return await res.json();
+    } catch (e) {
+      return { success: false, message: "Network error fetching event." };
+    }
+  },
+
+  /**
+   * Create event (Admin only)
+   */
+  async createEvent(
+    token: string,
+    eventData: {
+      title: string;
+      description: string;
+      category: string;
+      date: string;
+      time: string;
+      venue: string;
+      capacity: number;
+      bannerImage?: string;
+    }
+  ): Promise<{ success: boolean; event?: any; message?: string }> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/events`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(eventData),
+      });
+      return await res.json();
+    } catch (e) {
+      return { success: false, message: "Network error creating event." };
+    }
+  },
+
+  /**
+   * Update event (Admin only)
+   */
+  async updateEvent(
+    token: string,
+    eventId: string,
+    eventData: Partial<{
+      title: string;
+      description: string;
+      date: string;
+      time: string;
+      venue: string;
+      status: string;
+      capacity: number;
+    }>
+  ): Promise<{ success: boolean; event?: any; message?: string }> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/events/${eventId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(eventData),
+      });
+      return await res.json();
+    } catch (e) {
+      return { success: false, message: "Network error updating event." };
+    }
+  },
+
+  /**
+   * Delete event (Admin only)
+   */
+  async deleteEvent(token: string, eventId: string): Promise<{ success: boolean; message?: string }> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/events/${eventId}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      return await res.json();
+    } catch (e) {
+      return { success: false, message: "Network error deleting event." };
+    }
+  },
+
+  /**
+   * Register for event (Student)
+   */
+  async registerForEvent(
+    token: string,
+    eventId: string
+  ): Promise<{ success: boolean; registration?: any; message?: string }> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/events/${eventId}/register`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      return await res.json();
+    } catch (e) {
+      return { success: false, message: "Network error registering for event." };
+    }
+  },
+
+  /**
+   * Get event registrations (Admin only)
+   */
+  async getEventRegistrations(
+    token: string,
+    eventId: string
+  ): Promise<{ success: boolean; registrations?: any[]; count?: number; message?: string }> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/events/${eventId}/registrations`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      return await res.json();
+    } catch (e) {
+      return { success: false, message: "Network error fetching registrations." };
+    }
+  },
+
+  /**
+   * Get my registered events (Student)
+   */
+  async getMyEvents(token: string): Promise<{ success: boolean; events?: any[]; count?: number; message?: string }> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/user/events`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      return await res.json();
+    } catch (e) {
+      return { success: false, message: "Network error fetching my events." };
+    }
+  },
 };
