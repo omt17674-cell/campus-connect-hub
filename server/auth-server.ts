@@ -6,13 +6,13 @@
 
 import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
-import dotenv from "dotenv";
+import { config as dotenvConfig } from "dotenv";
 import jwt, { SignOptions } from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import { v4 as uuidv4 } from "uuid";
 
 // Load environment variables
-dotenv.config();
+dotenvConfig();
 
 const app = express();
 const PORT = process.env.AUTH_SERVER_PORT || 5001;
@@ -33,7 +33,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
-import supabaseEvents from "./supabase-events";
+let supabaseEvents: any;
 
 // ─── IN-MEMORY DATABASE (for local testing) ─────────────────────────────
 
@@ -992,6 +992,10 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
 
 async function startServer() {
   try {
+    // Dynamically import supabaseEvents to avoid module initialization errors
+    const { default: importedEvents } = await import("./supabase-events.ts");
+    supabaseEvents = importedEvents;
+    
     // Seed database with demo accounts
     await seedDatabase();
 

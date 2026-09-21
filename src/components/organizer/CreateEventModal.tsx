@@ -45,7 +45,7 @@ export function CreateEventModal({ onClose, onSuccess }: CreateEventModalProps) 
     e.preventDefault();
     if (!title.trim() || !description.trim()) return;
 
-    await campusStore.createEvent({
+    const result = await campusStore.createEvent({
       title,
       description,
       category,
@@ -68,7 +68,11 @@ export function CreateEventModal({ onClose, onSuccess }: CreateEventModalProps) 
       ],
     });
 
-    onSuccess();
+    if (result.success) {
+      onSuccess();
+    } else {
+      toast.error(result.error || "Failed to create event. Please try again.");
+    }
   };
 
   return (
