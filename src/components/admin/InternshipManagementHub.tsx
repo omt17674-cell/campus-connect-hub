@@ -122,7 +122,8 @@ export function InternshipManagementHub({ state }: InternshipManagementHubProps)
   // Memoized Metrics for production performance (100+ concurrent records)
   const {
     totalApps,
-    pendingReviewApps,
+    pendingAdminApps,
+    pendingDeanApps,
     approvedActiveApps,
     rejectedApps,
     changesRequestedApps,
@@ -131,7 +132,8 @@ export function InternshipManagementHub({ state }: InternshipManagementHubProps)
     const todayStr = new Date().toISOString().slice(0, 10);
     return {
       totalApps: applications.length,
-      pendingReviewApps: applications.filter((a) => a.status === "ADMIN_REVIEW" || a.status === "SUBMITTED"),
+      pendingAdminApps: applications.filter((a) => a.status === "ADMIN_REVIEW" || a.status === "SUBMITTED"),
+      pendingDeanApps: applications.filter((a) => a.status === "DEAN_REVIEW" || a.status === "ADMIN_APPROVED"),
       approvedActiveApps: applications.filter((a) => a.status === "APPROVED" || a.status === "ACTIVE"),
       rejectedApps: applications.filter((a) => a.status === "REJECTED"),
       changesRequestedApps: applications.filter((a) => a.status === "CHANGES_REQUESTED"),

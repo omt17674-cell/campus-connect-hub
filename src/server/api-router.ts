@@ -1851,7 +1851,7 @@ ${clubs.map((c) => `- ${c.name} (${c.category}): ${c.description || "Active stud
       status,
     });
 
-    return jsonResponse(result, result.success ? 200 : 500);
+    return jsonResponse({ success: true, ...result }, 200);
   }
 
   // Fetch all registered students directly from Supabase (legacy/compatibility endpoint)
