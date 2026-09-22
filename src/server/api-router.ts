@@ -1172,6 +1172,51 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
     });
   }
 
+  // 0.5 Test Event Save - Direct Test Endpoint
+  if (path === "/api/test-event-save" && method === "POST") {
+    console.log("[Test] Testing event save directly...");
+    
+    const testEvent: CampusEvent = {
+      id: `evt-test-${Date.now()}`,
+      title: "Test Event",
+      description: "This is a test",
+      category: "workshop",
+      department: "Test",
+      date: new Date().toISOString().split('T')[0],
+      time: "10:00 AM",
+      venue: "Test Hall",
+      organizerName: "Test Admin",
+      organizerEmail: "test@gsfc.edu",
+      capacity: 100,
+      registeredCount: 0,
+      waitlistCount: 0,
+      approvalRequired: false,
+      isTeamEvent: false,
+      minTeamSize: 1,
+      maxTeamSize: 4,
+      volunteerHoursReward: 0,
+      bannerImage: "",
+      status: "upcoming",
+      averageRating: 5.0,
+      reviewCount: 0,
+    };
+
+    const result = await supabaseSync.saveEvent(testEvent);
+    
+    if (result) {
+      return jsonResponse({
+        success: true,
+        message: "Test event saved successfully!",
+        event: testEvent,
+      }, 201);
+    } else {
+      return jsonResponse({
+        success: false,
+        message: "Test event save failed - check server logs",
+      }, 500);
+    }
+  }
+
   // 1. Events: List Catalog
   if (path === "/api/events" && method === "GET") {
     const category = url.searchParams.get("category");
