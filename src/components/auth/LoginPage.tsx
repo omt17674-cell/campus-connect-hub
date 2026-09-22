@@ -541,20 +541,20 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
         return;
       }
 
-      // 7. Send OTP for mobile number verification (Auth user will be created server-side after OTP verification)
-      const otpRes = await apiClient.sendOtp(regPhone.trim(), "registration");
+      // 7. Send EMAIL OTP for registration verification
+      const otpRes = await apiClient.sendRegistrationOtp(cleanEmail);
       if (!otpRes?.success) {
         setRegSubmitting(false);
-        setStatusMessage({ text: otpRes?.message || "Mobile verification is temporarily unavailable. Please contact administration.", type: "error" });
+        setStatusMessage({ text: otpRes?.message || "Email verification is temporarily unavailable. Please contact administration.", type: "error" });
         return;
       }
 
       setRegisteredEmail(cleanEmail);
       setRegStep("otp");
-      setRegOtpTimer(60);
+      setRegOtpTimer(600); // 10 minutes for email OTP
       setRegEmailOtp("");
       setRegSubmitting(false);
-      setStatusMessage({ text: "A verification code was sent to your registered mobile number.", type: "success" });
+      setStatusMessage({ text: "A verification code was sent to your registered email address. Please check your inbox and spam folder.", type: "success" });
     } catch (err: any) {
       console.warn("Registration initiation error:", err);
       setRegSubmitting(false);
@@ -578,9 +578,11 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
     setStatusMessage(null);
 
     const cleanRoll = regRollNo.trim().toUpperCase();
+    const targetEmail = registeredEmail || (regEmail.includes("@") ? regEmail.trim().toLowerCase() : `${regEmail.trim().toLowerCase()}@gsfcuniversity.ac.in`);
 
     try {
-      const otpRes = await apiClient.verifyOtp(regPhone.trim(), codeToVerify, "registration");
+      // Verify EMAIL OTP (not mobile OTP)
+      const otpRes = await apiClient.verifyRegistrationOtp(targetEmail, codeToVerify);
       if (!otpRes?.success || !otpRes?.verified) {
         setIsVerifyingRegOtp(false);
         setStatusMessage({
@@ -590,7 +592,6 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
         return;
       }
 
-      const targetEmail = registeredEmail || (regEmail.includes("@") ? regEmail.trim().toLowerCase() : `${regEmail.trim().toLowerCase()}@gsfcuniversity.ac.in`);
       // Verified successfully. Persist identity and account in the database.
       await completeRegistrationAfterVerification(
         cleanRoll,
@@ -753,21 +754,23 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
     setIsResendingRegOtp(true);
     setStatusMessage(null);
 
+    const targetEmail = registeredEmail || (regEmail.includes("@") ? regEmail.trim().toLowerCase() : `${regEmail.trim().toLowerCase()}@gsfcuniversity.ac.in`);
+
     try {
-      const apiRes = await apiClient.sendOtp(regPhone.trim(), "registration");
-      if (!apiRes?.success) throw new Error(apiRes?.message || "Mobile verification is temporarily unavailable.");
+      const apiRes = await apiClient.sendRegistrationOtp(targetEmail);
+      if (!apiRes?.success) throw new Error(apiRes?.message || "Email verification is temporarily unavailable.");
 
       setIsResendingRegOtp(false);
-      setRegOtpTimer(60);
+      setRegOtpTimer(600); // 10 minutes
       setRegEmailOtp("");
       setStatusMessage({
-        text: `A new 6-digit verification code has been dispatched. Enter the code below or click the link in your email.`,
+        text: `A new 6-digit verification code has been sent to your email. Valid for 10 minutes.`,
         type: "success",
       });
     } catch (err: any) {
       setIsResendingRegOtp(false);
       setStatusMessage({
-        text: err?.message || "Failed to resend verification OTP. Check network.",
+        text: err?.message || "Failed to resend verification code. Check network.",
         type: "error",
       });
     }
