@@ -112,7 +112,11 @@ export const supabaseSync = {
     return null;
   },
 
-  async saveEvent(event: CampusEvent): Promise<boolean> {
+  async saveEvent(event: CampusEvent): Promise<{
+    success: boolean;
+    data: CampusEvent | null;
+    error: { message: string; code?: string; details?: string; hint?: string } | null;
+  }> {
     try {
       const payload = {
         id: event.id,
@@ -139,34 +143,87 @@ export const supabaseSync = {
         review_count: event.reviewCount,
       };
 
-      console.log('[Supabase] saveEvent called with:', {
+      console.log('[EVENT_CREATE] DB_WRITE_START', {
         eventId: event.id,
         title: event.title,
-        hasServiceRole: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
-        supabaseUrl: process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL,
       });
 
-      const { error, data } = await supabaseAdmin.from("events").upsert(payload).select();
-      
+      const { data, error } = await supabaseAdmin
+        .from("events")
+        .upsert(payload)
+        .select()
+        .single();
+
       if (error) {
-        console.error('[Supabase] saveEvent error:', {
+        console.error('[EVENT_CREATE] DB_WRITE_ERROR', {
           message: error.message,
           code: error.code,
           details: error.details,
           hint: error.hint,
         });
-        return false;
+        return {
+          success: false,
+          data: null,
+          error: {
+            message: error.message,
+            code: error.code,
+            details: error.details,
+            hint: error.hint,
+          },
+        };
       }
 
-      console.log('[Supabase] Event saved successfully:', event.id);
-      return true;
+      if (!data) {
+        console.warn('[EVENT_CREATE] DB_WRITE_NO_DATA', { eventId: event.id });
+        return {
+          success: false,
+          data: null,
+          error: { message: 'No data returned from database' },
+        };
+      }
+
+      console.log('[EVENT_CREATE] DB_WRITE_SUCCESS', { eventId: event.id });
+      return {
+        success: true,
+        data: {
+          id: data.id,
+          title: data.title,
+          description: data.description || "",
+          category: data.category,
+          department: data.department,
+          date: data.date,
+          time: data.time,
+          venue: data.venue,
+          venueLatitude: data.venue_latitude,
+          venueLongitude: data.venue_longitude,
+          allowedRadiusMeters: data.allowed_radius_meters,
+          organizerName: data.organizer_name,
+          organizerEmail: data.organizer_email,
+          capacity: data.capacity,
+          registeredCount: data.registered_count,
+          waitlistCount: data.waitlist_count,
+          approvalRequired: data.approval_required,
+          isTeamEvent: data.is_team_event,
+          minTeamSize: data.min_team_size,
+          maxTeamSize: data.max_team_size,
+          volunteerHoursReward: data.volunteer_hours_reward,
+          bannerImage: data.banner_image,
+          status: data.status,
+          averageRating: data.average_rating,
+          reviewCount: data.review_count,
+        },
+        error: null,
+      };
     } catch (e: any) {
-      console.error('[Supabase] saveEvent exception:', {
+      console.error('[EVENT_CREATE] DB_WRITE_EXCEPTION', {
         message: e.message,
-        stack: e.stack,
         name: e.name,
       });
-      return false;
+      return {
+        success: false,
+        data: null,
+        error: { message: e.message || 'Database exception' },
+      };
     }
   },
 

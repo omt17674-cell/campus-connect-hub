@@ -2688,9 +2688,12 @@ export const campusStore = {
         ? "pending_approval"
         : "upcoming";
 
-    const newEvent: CampusEvent = {
+    // Create temporary ID for optimistic UI only (NOT for database)
+    const tempId = `temp-evt-${Date.now()}`;
+
+    const tempEvent: CampusEvent = {
       ...eventData,
-      id: `evt-${Date.now()}`,
+      id: tempId,
       registeredCount: 0,
       waitlistCount: 0,
       status,
@@ -2702,9 +2705,9 @@ export const campusStore = {
       id: `aud-${Date.now()}`,
       action: "Event Created",
       performedBy: `${state.currentUser.name} (${state.currentUser.role})`,
-      target: newEvent.title,
+      target: tempEvent.title,
       timestamp: new Date().toISOString().replace("T", " ").slice(0, 19),
-      details: `Status: ${status} · Capacity: ${newEvent.capacity} · Dept: ${newEvent.department}`,
+      details: `Status: ${status} · Capacity: ${tempEvent.capacity} · Dept: ${tempEvent.department}`,
     };
 
     // Save snapshot for rollback if database write fails
@@ -2713,53 +2716,95 @@ export const campusStore = {
       auditLogs: [...campusStore.getState().auditLogs],
     };
 
-    // Optimistically update local store
+    // Optimistically update local store with TEMPORARY event
     campusStore.setState((prev) => ({
-      events: [newEvent, ...prev.events],
+      events: [tempEvent, ...prev.events],
       auditLogs: [auditEntry, ...prev.auditLogs],
     }));
 
-    // Use backend API endpoint to create event (with service role)
+    // Use backend API endpoint to create event (server generates real ID)
     if (typeof window !== "undefined" && navigator.onLine) {
       try {
         const token = localStorage.getItem("authToken") || "";
+        
+        console.log('[EVENT_CREATE_FRONTEND] REQUEST_SENT', { tempId });
+        
         const response = await fetch("/api/events", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify(newEvent),
+          // Send WITHOUT id - let server generate it
+          body: JSON.stringify({
+            title: eventData.title,
+            description: eventData.description,
+            category: eventData.category,
+            department: eventData.department,
+            date: eventData.date,
+            time: eventData.time,
+            venue: eventData.venue,
+            venueLatitude: eventData.venueLatitude,
+            venueLongitude: eventData.venueLongitude,
+            allowedRadiusMeters: eventData.allowedRadiusMeters,
+            organizerName: eventData.organizerName,
+            organizerEmail: eventData.organizerEmail,
+            capacity: eventData.capacity,
+            approvalRequired: eventData.approvalRequired,
+            isTeamEvent: eventData.isTeamEvent,
+            minTeamSize: eventData.minTeamSize,
+            maxTeamSize: eventData.maxTeamSize,
+            volunteerHoursReward: eventData.volunteerHoursReward,
+            bannerImage: eventData.bannerImage,
+            rules: eventData.rules,
+          }),
         });
 
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          const errorMsg = errorData.error || `HTTP ${response.status}`;
-          logSupabaseError("api_post", "events", new Error(errorMsg));
-          // Roll back the optimistic update — event was never saved
-          campusStore.setState(() => previousState);
-          toast.error(
-            `❌ Event was NOT saved to the database: ${errorMsg}. Please try again.`,
-            { duration: 8000 },
-          );
-          return { success: false, event: newEvent, error: errorMsg };
-        }
+        console.log('[EVENT_CREATE_FRONTEND] RESPONSE_STATUS', { status: response.status });
 
         const result = await response.json();
-        // Event was successfully saved to database
+
+        if (!response.ok) {
+          console.error('[EVENT_CREATE_FRONTEND] RESPONSE_ERROR', { status: response.status, message: result.message });
+          logSupabaseError("api_post", "events", new Error(result.message || `HTTP ${response.status}`));
+          // Roll back optimistic update - use real database event or remove temporary
+          campusStore.setState(() => previousState);
+          toast.error(
+            result.message || `Event creation failed. Please try again.`,
+            { duration: 8000 },
+          );
+          return { success: false, event: tempEvent, error: result.message };
+        }
+
+        // Success: Remove temporary event, add REAL database event
+        if (result.success && result.event) {
+          console.log('[EVENT_CREATE_FRONTEND] REPLACE_TEMP_WITH_REAL', { tempId, realId: result.event.id });
+          campusStore.setState((prev) => ({
+            events: [
+              result.event, // Add real database event
+              ...prev.events.filter(e => e.id !== tempId), // Remove temporary event
+            ],
+          }));
+          toast.success(`Event created successfully!`, { duration: 5000 });
+          return { success: true, event: result.event };
+        } else {
+          throw new Error(result.message || 'Unexpected response format');
+        }
+
       } catch (err: any) {
+        console.error('[EVENT_CREATE_FRONTEND] EXCEPTION', { error: err.message });
         logSupabaseError("api_catch", "events", err);
-        // Roll back the optimistic update — event was never saved
+        // Roll back optimistic update
         campusStore.setState(() => previousState);
         toast.error(
-          `❌ Event was NOT saved — network error: ${err.message || "Failed to reach database"}. Please check your connection and try again.`,
+          err.message || `Network error. Please check your connection and try again.`,
           { duration: 8000 },
         );
-        return { success: false, event: newEvent, error: err.message };
+        return { success: false, event: tempEvent, error: err.message };
       }
     }
 
-    return { success: true, event: newEvent };
+    return { success: true, event: tempEvent };
   },
 
   async approveEvent(eventId: string): Promise<boolean> {

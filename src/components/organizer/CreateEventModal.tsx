@@ -40,38 +40,54 @@ export function CreateEventModal({ onClose, onSuccess }: CreateEventModalProps) 
   const [maxTeamSize, setMaxTeamSize] = useState(4);
   const [volunteerHoursReward, setVolunteerHoursReward] = useState(4);
   const [bannerImage, setBannerImage] = useState(PRESET_BANNERS[0].url);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !description.trim()) return;
+    
+    if (isSubmitting) {
+      console.warn('[CreateEventModal] Submission already in progress, ignoring duplicate click');
+      return;
+    }
+    
+    if (!title.trim() || !description.trim()) {
+      toast.error('Please fill in title and description');
+      return;
+    }
 
-    const result = await campusStore.createEvent({
-      title,
-      description,
-      category,
-      department,
-      date,
-      time,
-      venue,
-      capacity: Number(capacity),
-      approvalRequired,
-      isTeamEvent,
-      minTeamSize: isTeamEvent ? Number(minTeamSize) : undefined,
-      maxTeamSize: isTeamEvent ? Number(maxTeamSize) : undefined,
-      volunteerHoursReward: Number(volunteerHoursReward),
-      organizerName: currentUser.name,
-      organizerEmail: currentUser.email,
-      bannerImage,
-      rules: [
-        "Please bring your valid GSFC Student ID card.",
-        "Attend at least 80% of the session duration for verified certificate issuance.",
-      ],
-    });
+    setIsSubmitting(true);
 
-    if (result.success) {
-      onSuccess();
-    } else {
-      toast.error(result.error || "Failed to create event. Please try again.");
+    try {
+      const result = await campusStore.createEvent({
+        title,
+        description,
+        category,
+        department,
+        date,
+        time,
+        venue,
+        capacity: Number(capacity),
+        approvalRequired,
+        isTeamEvent,
+        minTeamSize: isTeamEvent ? Number(minTeamSize) : undefined,
+        maxTeamSize: isTeamEvent ? Number(maxTeamSize) : undefined,
+        volunteerHoursReward: Number(volunteerHoursReward),
+        organizerName: currentUser.name,
+        organizerEmail: currentUser.email,
+        bannerImage,
+        rules: [
+          "Please bring your valid GSFC Student ID card.",
+          "Attend at least 80% of the session duration for verified certificate issuance.",
+        ],
+      });
+
+      if (result.success) {
+        onSuccess();
+      } else {
+        toast.error(result.error || "Failed to create event. Please try again.");
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -343,9 +359,10 @@ export function CreateEventModal({ onClose, onSuccess }: CreateEventModalProps) 
             </Button>
             <Button
               type="submit"
-              className="rounded-xl bg-[#1A3C6E] text-white hover:bg-[#1A3C6E]/90 font-bold"
+              disabled={isSubmitting}
+              className="rounded-xl bg-[#1A3C6E] text-white hover:bg-[#1A3C6E]/90 font-bold disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              Publish Event
+              {isSubmitting ? "Creating Event..." : "Publish Event"}
             </Button>
           </div>
         </form>

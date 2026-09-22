@@ -1226,22 +1226,28 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
     return jsonResponse({ success: true, count: events.length, events });
   }
 
-  // 5. Events: Create Event (Server-side Authorized)
+  // 5. Events: Create Event
   if (path === "/api/events" && method === "POST") {
+    console.log('[EVENT_CREATE] REQUEST_START');
+    
     const eventData =
       await parseBody<Omit<CampusEvent, "id" | "registeredCount" | "waitlistCount">>(request);
     if (!eventData || !eventData.title || !eventData.venue || !eventData.date) {
-      return jsonResponse({ success: false, message: "Missing required event fields." }, 400);
+      console.log('[EVENT_CREATE] VALIDATION_FAILED', { missing: { title: !eventData?.title, venue: !eventData?.venue, date: !eventData?.date } });
+      return jsonResponse({ success: false, message: "Missing required event fields (title, venue, date)." }, 400);
     }
+
+    // Generate ID ONCE on backend
+    const eventId = `evt-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
     const newEvent: CampusEvent = {
       ...eventData,
-      id: `evt-${Date.now()}`,
-      registeredCount: eventData.registeredCount || 0,
-      waitlistCount: eventData.waitlistCount || 0,
+      id: eventId,
+      registeredCount: 0,
+      waitlistCount: 0,
       status: eventData.status || "upcoming",
-      averageRating: eventData.averageRating || 5.0,
-      reviewCount: eventData.reviewCount || 0,
+      averageRating: 5.0,
+      reviewCount: 0,
       description: eventData.description || "",
       category: eventData.category || "workshop",
       department: eventData.department || "General",
@@ -1257,31 +1263,39 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
       bannerImage: eventData.bannerImage || "",
     };
 
-    console.log("[API] Creating event:", { id: newEvent.id, title: newEvent.title, organizer: newEvent.organizerName });
+    console.log('[EVENT_CREATE] EVENT_PAYLOAD', { id: newEvent.id, title: newEvent.title });
 
-    // Save to Supabase first
-    const saved = await supabaseSync.saveEvent(newEvent);
+    // Save to Supabase - now returns structured result
+    const saveResult = await supabaseSync.saveEvent(newEvent);
     
-    console.log("[API] Event save result:", { saved, eventId: newEvent.id });
+    console.log('[EVENT_CREATE] DB_RESULT', { success: saveResult.success, eventId: newEvent.id });
     
-    // Return success if saved (don't check auth - service role handles it)
-    if (saved) {
+    // Return success with actual database event if saved
+    if (saveResult.success && saveResult.data) {
+      console.log('[EVENT_CREATE] HTTP_201_SUCCESS', { eventId: saveResult.data.id });
       return jsonResponse(
         {
           success: true,
-          message: "Event created successfully in Supabase.",
-          event: newEvent,
+          message: "Event created successfully.",
+          event: saveResult.data,
         },
         201,
       );
     }
 
-    // Only return error if save actually failed
-    console.error("[API] Failed to save event:", newEvent);
+    // Return error with details if failed
+    const errorMessage = saveResult.error?.message || "Could not save event to database.";
+    console.log('[EVENT_CREATE] HTTP_500_ERROR', { 
+      eventId: newEvent.id, 
+      reason: saveResult.error?.message,
+      code: saveResult.error?.code,
+    });
+    
     return jsonResponse(
       {
         success: false,
-        message: "Error saving event to database.",
+        message: "Event could not be created. Please try again.",
+        code: "EVENT_CREATE_FAILED",
       },
       500,
     );
