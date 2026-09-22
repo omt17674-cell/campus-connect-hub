@@ -138,15 +138,34 @@ export const supabaseSync = {
         average_rating: event.averageRating,
         review_count: event.reviewCount,
       };
-      const { error } = await supabaseAdmin.from("events").upsert(payload);
+
+      console.log('[Supabase] saveEvent called with:', {
+        eventId: event.id,
+        title: event.title,
+        hasServiceRole: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+        supabaseUrl: process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL,
+      });
+
+      const { error, data } = await supabaseAdmin.from("events").upsert(payload).select();
+      
       if (error) {
-        console.error("[Supabase] saveEvent error:", error.message, error.code);
+        console.error('[Supabase] saveEvent error:', {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint,
+        });
         return false;
       }
-      console.log("[Supabase] Event saved successfully:", event.id);
+
+      console.log('[Supabase] Event saved successfully:', event.id);
       return true;
-    } catch (e) {
-      console.error("[Supabase] saveEvent exception:", e);
+    } catch (e: any) {
+      console.error('[Supabase] saveEvent exception:', {
+        message: e.message,
+        stack: e.stack,
+        name: e.name,
+      });
       return false;
     }
   },

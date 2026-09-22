@@ -1157,7 +1157,22 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
     });
   }
 
-  // 4. Events: List Catalog
+  // 0. Health Check & Debug
+  if (path === "/api/debug" && method === "GET") {
+    return jsonResponse({
+      success: true,
+      debug: {
+        timestamp: new Date().toISOString(),
+        nodeEnv: process.env.NODE_ENV,
+        supabaseUrl: process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "NOT SET",
+        hasServiceRoleKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+        serviceRoleKeyLength: process.env.SUPABASE_SERVICE_ROLE_KEY?.length || 0,
+        isSupabaseAdminConfigured,
+      },
+    });
+  }
+
+  // 1. Events: List Catalog
   if (path === "/api/events" && method === "GET") {
     const category = url.searchParams.get("category");
     const status = url.searchParams.get("status");
