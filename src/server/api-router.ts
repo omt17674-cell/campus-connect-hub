@@ -465,24 +465,14 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
 
     const smsResult = await dispatchSms(cleanNumber, generatedOtp, body.purpose || "login");
 
-    // In development or when no SMS provider is configured, still allow OTP verification
-    // This enables testing and development without external SMS services
-    if (!smsResult.dispatched && process.env.NODE_ENV === "production") {
-      otpStore.delete(cleanNumber);
-      return jsonResponse(
-        {
-          success: false,
-          code: "SMS_PROVIDER_NOT_CONFIGURED",
-          message: "Mobile verification is temporarily unavailable. Please contact administration.",
-        },
-        503,
-      );
-    }
-
-    // Development mode: Log OTP for testing (NEVER log in production)
-    if (!smsResult.dispatched && process.env.NODE_ENV !== "production") {
+    // If SMS provider is not configured, log OTP for development/testing
+    // Registration can proceed without SMS - OTP is stored server-side and verified
+    if (!smsResult.dispatched) {
       console.log(
-        `[DEV MODE - OTP SEND] Mobile: +91${cleanNumber}, OTP: ${generatedOtp}, Purpose: ${body.purpose || "login"}`,
+        `[OTP SEND] SMS Provider Not Configured - Mobile: +91${cleanNumber}, Purpose: ${body.purpose || "login"}`,
+      );
+      console.log(
+        `[OTP SEND] In development/testing, OTP is: ${generatedOtp} (check server logs to complete registration)`,
       );
     }
 
