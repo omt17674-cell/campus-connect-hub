@@ -454,7 +454,9 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
 
     const smsResult = await dispatchSms(cleanNumber, generatedOtp, body.purpose || "login");
 
-    if (!smsResult.dispatched) {
+    // In development or when no SMS provider is configured, still allow OTP verification
+    // This enables testing and development without external SMS services
+    if (!smsResult.dispatched && process.env.NODE_ENV === "production") {
       otpStore.delete(cleanNumber);
       return jsonResponse(
         {
@@ -463,6 +465,13 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
           message: "Mobile verification is temporarily unavailable. Please contact administration.",
         },
         503,
+      );
+    }
+
+    // Development mode: Log OTP for testing (NEVER log in production)
+    if (!smsResult.dispatched && process.env.NODE_ENV !== "production") {
+      console.log(
+        `[DEV MODE - OTP SEND] Mobile: +91${cleanNumber}, OTP: ${generatedOtp}, Purpose: ${body.purpose || "login"}`,
       );
     }
 
