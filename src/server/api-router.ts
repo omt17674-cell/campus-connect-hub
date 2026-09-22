@@ -1226,6 +1226,23 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
     return jsonResponse({ success: true, count: events.length, events });
   }
 
+  // DIAGNOSTIC: Check Supabase configuration
+  if (path === "/api/config" && method === "GET") {
+    const hasUrl = !!process.env.VITE_SUPABASE_URL || !!process.env.SUPABASE_URL;
+    const hasKey = !!process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const isConfigured = hasUrl && hasKey;
+
+    return jsonResponse({
+      configured: isConfigured,
+      debug: {
+        hasSupabaseUrl: hasUrl,
+        hasServiceRoleKey: hasKey,
+        supabaseUrlSet: !!(process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL),
+        nodeEnv: process.env.NODE_ENV,
+      },
+    });
+  }
+
   // 5. Events: Create Event
   if (path === "/api/events" && method === "POST") {
     console.log('[EVENT_CREATE] REQUEST_START');
