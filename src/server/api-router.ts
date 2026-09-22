@@ -3,6 +3,17 @@ import { isSupabaseAdminConfigured, supabaseAdmin } from "./supabase-admin";
 import { confirmUserEmailInAuth } from "./postgres";
 import { sendRegistrationOTP, sendPasswordResetOTP } from "./emailService";
 import { validateQrPayload } from "../lib/qr-engine";
+
+// ──────────────────────────────────────────────────────────────
+// Helper: Generate secure password
+// ──────────────────────────────────────────────────────────────
+function generateSecurePassword(): string {
+  return Array.from({ length: 16 }, () =>
+    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%"[
+      Math.floor(Math.random() * 70)
+    ]
+  ).join("");
+}
 import {
   CampusEvent,
   Registration,
@@ -1894,7 +1905,67 @@ ${clubs.map((c) => `- ${c.name} (${c.category}): ${c.description || "Active stud
       createdAt: new Date().toISOString(),
     };
 
-    // 1. Sync to Supabase table: new_registered_students
+    // 1. Create Auth user via admin API with email already confirmed (since OTP verified email ownership)
+    try {
+      console.log("[REGISTER] Creating auth user via admin API for:", cleanEmail);
+      
+      // Check if auth user already exists
+      let existingAuthUser = null;
+      try {
+        const { data: users, error: getUserError } = await supabaseAdmin.auth.admin.listUsers();
+        if (!getUserError && users) {
+          existingAuthUser = users.users.find(u => u.email?.toLowerCase() === cleanEmail);
+        }
+      } catch (e) {
+        console.warn("[REGISTER] Could not check existing auth users:", e);
+      }
+
+      if (!existingAuthUser) {
+        const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+          email: cleanEmail,
+          password: body.password || generateSecurePassword(),
+          email_confirm: true, // Email already verified via OTP
+          user_metadata: {
+            full_name: newStudent.fullName,
+            roll_no: cleanRoll,
+            role: "student",
+            department: newStudent.department,
+            degree: newStudent.degree,
+            school: newStudent.school,
+            semester: newStudent.semester,
+            mobile_number: cleanMobile,
+          },
+        });
+
+        if (authError) {
+          console.error("[REGISTER] Auth user creation failed:", authError.message);
+          return jsonResponse(
+            {
+              success: false,
+              code: "AUTH_USER_CREATION_FAILED",
+              message: `Failed to create authentication user: ${authError.message}`,
+            },
+            500,
+          );
+        }
+
+        console.log("[REGISTER] Auth user created successfully:", authData?.user?.id);
+      } else {
+        console.log("[REGISTER] Auth user already exists, proceeding with application registration");
+      }
+    } catch (authErr: any) {
+      console.error("[REGISTER] Unexpected error creating auth user:", authErr);
+      return jsonResponse(
+        {
+          success: false,
+          code: "AUTH_CREATION_ERROR",
+          message: "Failed to initialize authentication. Please try again.",
+        },
+        500,
+      );
+    }
+
+    // 2. Sync to Supabase table: new_registered_students
     const supabaseResult = await supabaseSync.saveNewStudent(newStudent);
     if (!supabaseResult.success) {
       return jsonResponse(
@@ -1907,7 +1978,7 @@ ${clubs.map((c) => `- ${c.name} (${c.category}): ${c.description || "Active stud
       );
     }
 
-    // 2. Also create login account in Supabase accounts table with atomic rollback on failure
+    // 3. Also create login account in Supabase accounts table with atomic rollback on failure
     try {
       const accountRes = await supabaseSync.saveAccount({
         id: `u-${cleanRoll.toLowerCase()}`,
@@ -1936,11 +2007,10 @@ ${clubs.map((c) => `- ${c.name} (${c.category}): ${c.description || "Active stud
         throw new Error(accountRes?.message || "Failed to create corresponding student account");
       }
 
-      // Ensure email is confirmed in auth.users
-      await confirmUserEmailInAuth(cleanEmail);
+      console.log("[REGISTER] Student and account records created successfully");
     } catch (secErr: any) {
       console.error(
-        "[Register] Secondary account sync failed, rolling back student record:",
+        "[REGISTER] Secondary account sync failed, rolling back student record:",
         secErr,
       );
       await supabaseSync.deleteStudent(cleanRoll);

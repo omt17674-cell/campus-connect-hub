@@ -541,44 +541,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
         return;
       }
 
-      // 7. Create the Auth identity, then verify the mobile number with real SMS OTP.
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-        email: cleanEmail,
-        password: regPassword,
-        options: {
-          data: {
-            full_name: regFullName.trim(),
-            roll_no: cleanRoll,
-            role: regRole,
-            department: regDepartment,
-            degree: regDegree,
-            school: regSchool,
-            semester: regSemester,
-            mobile_number: regPhone.trim(),
-          },
-        },
-      });
-
-      if (signUpError) {
-        setRegSubmitting(false);
-        if (
-          signUpError.message.toLowerCase().includes("already registered") ||
-          signUpError.message.toLowerCase().includes("user already exists")
-        ) {
-          setStatusMessage({
-            text: `An account with email '${cleanEmail}' is already registered. Please sign in instead.`,
-            type: "error",
-          });
-          return;
-        }
-
-        setStatusMessage({
-          text: signUpError.message || "Failed to initiate registration with Supabase Auth.",
-          type: "error",
-        });
-        return;
-      }
-
+      // 7. Send OTP for mobile number verification (Auth user will be created server-side after OTP verification)
       const otpRes = await apiClient.sendOtp(regPhone.trim(), "registration");
       if (!otpRes?.success) {
         setRegSubmitting(false);
