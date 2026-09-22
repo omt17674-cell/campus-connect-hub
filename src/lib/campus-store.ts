@@ -2729,7 +2729,7 @@ export const campusStore = {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify(serializeEventForDb(newEvent)),
+          body: JSON.stringify(newEvent),
         });
 
         if (!response.ok) {

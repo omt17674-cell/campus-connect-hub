@@ -1177,17 +1177,32 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
     const newEvent: CampusEvent = {
       ...eventData,
       id: `evt-${Date.now()}`,
-      registeredCount: 0,
-      waitlistCount: 0,
+      registeredCount: eventData.registeredCount || 0,
+      waitlistCount: eventData.waitlistCount || 0,
       status: eventData.status || "upcoming",
-      averageRating: 5.0,
-      reviewCount: 0,
+      averageRating: eventData.averageRating || 5.0,
+      reviewCount: eventData.reviewCount || 0,
+      description: eventData.description || "",
+      category: eventData.category || "workshop",
+      department: eventData.department || "General",
+      time: eventData.time || "10:00 AM",
+      organizerName: eventData.organizerName || "Admin",
+      organizerEmail: eventData.organizerEmail || "admin@gsfc.edu",
+      capacity: eventData.capacity || 100,
+      approvalRequired: eventData.approvalRequired ?? false,
+      isTeamEvent: eventData.isTeamEvent ?? false,
+      minTeamSize: eventData.minTeamSize || 1,
+      maxTeamSize: eventData.maxTeamSize || 4,
+      volunteerHoursReward: eventData.volunteerHoursReward || 0,
+      bannerImage: eventData.bannerImage || "",
     };
+
+    console.log("[API] Creating event:", { id: newEvent.id, title: newEvent.title, organizer: newEvent.organizerName });
 
     // Save to Supabase first
     const saved = await supabaseSync.saveEvent(newEvent);
     
-    console.log("[API] Event save result:", { saved, eventId: newEvent.id, title: newEvent.title });
+    console.log("[API] Event save result:", { saved, eventId: newEvent.id });
     
     // Return success if saved (don't check auth - service role handles it)
     if (saved) {
