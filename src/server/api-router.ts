@@ -282,9 +282,10 @@ function jsonResponse(data: unknown, status = 200): Response {
     status,
     headers: {
       "content-type": "application/json; charset=utf-8",
-      "access-control-allow-origin": "*",
+      "access-control-allow-origin": process.env.FRONTEND_URL || "http://localhost:5173",
       "access-control-allow-methods": "GET, POST, PUT, DELETE, OPTIONS",
       "access-control-allow-headers": "Content-Type, Authorization",
+      "access-control-allow-credentials": "true",
     },
   });
 }
@@ -308,9 +309,10 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
     return new Response(null, {
       status: 204,
       headers: {
-        "access-control-allow-origin": "*",
+        "access-control-allow-origin": process.env.FRONTEND_URL || "http://localhost:5173",
         "access-control-allow-methods": "GET, POST, PUT, DELETE, OPTIONS",
         "access-control-allow-headers": "Content-Type, Authorization",
+        "access-control-allow-credentials": "true",
       },
     });
   }
@@ -1803,8 +1805,8 @@ ${clubs.map((c) => `- ${c.name} (${c.category}): ${c.description || "Active stud
   // 12. Newly Registered Students (Immutable Identity System)
   if (path === "/api/students/register" && method === "POST") {
     // Rate limit registrations
-    const rateLimit = checkRateLimit(request, "student-register", 10, 60 * 1000);
-    if (!rateLimit.allowed) {
+    const clientIp = request.headers.get("x-forwarded-for") || "unknown";
+    if (!checkRateLimit(`register:${clientIp}`, 10, 60 * 1000)) {
       return jsonResponse(
         {
           success: false,
