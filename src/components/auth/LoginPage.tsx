@@ -541,20 +541,9 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
         return;
       }
 
-      // 7. Send EMAIL OTP for registration verification
-      const otpRes = await apiClient.sendRegistrationOtp(cleanEmail);
-      if (!otpRes?.success) {
-        setRegSubmitting(false);
-        setStatusMessage({ text: otpRes?.message || "Email verification is temporarily unavailable. Please contact administration.", type: "error" });
-        return;
-      }
-
+      // 7. Skip OTP verification and create account directly
       setRegisteredEmail(cleanEmail);
-      setRegStep("otp");
-      setRegOtpTimer(600); // 10 minutes for email OTP
-      setRegEmailOtp("");
-      setRegSubmitting(false);
-      setStatusMessage({ text: "A verification code was sent to your registered email address. Please check your inbox and spam folder.", type: "success" });
+      await completeRegistrationAfterVerification(cleanRoll, cleanEmail, regPassword);
     } catch (err: any) {
       console.warn("Registration initiation error:", err);
       setRegSubmitting(false);
