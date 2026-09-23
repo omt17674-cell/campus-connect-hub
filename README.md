@@ -79,6 +79,18 @@ npm run build
 
 ---
 
+## 🗄️ Database Setup (Supabase PostgreSQL)
+
+Campus Connect Hub uses a single canonical Supabase project.
+
+1. Create a Supabase project and execute `supabase-schema.sql` in the Supabase SQL Editor to provision all canonical tables (`accounts`, `new_registered_students`, `events`, `registrations`, `attendance`, `clubs`, `announcements`, `internships`, `internship_applications`, `internship_attendance`).
+2. Run `PRODUCTION_DATABASE_SETUP.sql` to apply canonical Row Level Security (RLS) policies and performance indexes.
+3. Configure `.env` or deployment settings:
+   - `VITE_SUPABASE_URL`
+   - `VITE_SUPABASE_ANON_KEY`
+   - `SUPABASE_SERVICE_ROLE_KEY`
+
+
 ## 📱 Mobile Native Build (iOS & Android)
 
 ```bash

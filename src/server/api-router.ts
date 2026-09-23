@@ -235,7 +235,7 @@ async function getAuthenticatedUser(request: Request): Promise<ActiveSession | n
   const token = authHeader.replace(/^Bearer\s+/i, "").trim();
   if (!token) return null;
 
-  // First check local sessions (for auth-server)
+  // 1. Check verified server sessions
   const session = activeSessions.get(token);
   if (session) {
     if (Date.now() > session.expiresAt) {
@@ -245,29 +245,39 @@ async function getAuthenticatedUser(request: Request): Promise<ActiveSession | n
     return session;
   }
 
-  // If not in local sessions, try to get from Supabase accounts table
-  // This allows Vercel login to work
+  // 2. Validate Supabase JWT token via Supabase Auth
   try {
-    const { data: accounts, error } = await supabaseSync.getAccounts();
-    if (!error && accounts && accounts.length > 0) {
-      // Return first account with admin/organizer/tpc role as authenticated
-      // In production, validate JWT token properly
-      const adminAccount = accounts.find(
-        (a: any) => ["admin", "organizer", "tpc", "dean", "super_admin"].includes(a.role)
-      );
-      
-      if (adminAccount) {
+    const { data: authData, error } = await supabaseAdmin.auth.getUser(token);
+    if (!error && authData?.user?.email) {
+      const email = authData.user.email.toLowerCase().trim();
+      // Look up account in database to get verified role, roll number, and name
+      const account = await supabaseSync.getAccountByIdentifier(email);
+      if (account) {
         return {
-          id: adminAccount.id,
-          email: adminAccount.email,
-          name: adminAccount.name,
-          role: adminAccount.role as "student" | "admin" | "organizer" | "faculty",
-          expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000,
+          userId: account.id,
+          role: account.role,
+          email: account.email,
+          name: account.name,
+          rollNo: account.roll_no,
+          expiresAt: Date.now() + 24 * 60 * 60 * 1000,
+        };
+      }
+
+      // Check student registry
+      const student = await supabaseSync.getStudentByRollOrEmail("___NONE___", email);
+      if (student) {
+        return {
+          userId: student.id,
+          role: "student",
+          email: student.email,
+          name: student.fullName,
+          rollNo: student.rollNo,
+          expiresAt: Date.now() + 24 * 60 * 60 * 1000,
         };
       }
     }
   } catch (err) {
-    console.warn("Error checking Supabase accounts:", err);
+    console.debug("[Auth] Token validation error:", err);
   }
 
   return null;
@@ -333,30 +343,21 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
     return null;
   }
 
-  // 1. Health Check & Supabase Status
+  // 1. Health Check & Supabase Status (Safe, production-grade)
   if (path === "/api/health" && method === "GET") {
     const supabaseStatus = await supabaseSync.pingSupabase();
-    const events = await supabaseSync.getEvents();
-    const students = await supabaseSync.getNewRegisteredStudents();
 
     return jsonResponse({
-      status: "online",
+      status: supabaseStatus.connected ? "online" : "degraded",
       institution: "GSFC University, Vadodara",
       service: "Campus Connect Hub REST API Gateway",
       version: "2.6.0",
-      database: {
-        engine: "Supabase PostgreSQL",
-        projectRef: "llhfumrtotectnbpeabu",
-        connected: supabaseStatus.connected,
-        configured: isSupabaseAdminConfigured,
-        error: supabaseStatus.error || null,
-        note: supabaseStatus.connected
-          ? "Active & Synchronized with Supabase"
-          : "Ready (Run supabase-schema.sql if tables uncreated)",
-      },
-      totalEvents: events.length,
-      totalStudents: students.length,
+      databaseConnected: supabaseStatus.connected,
+      schemaReady: supabaseStatus.schemaReady,
+      requiredTablesReady: supabaseStatus.requiredTablesReady,
+      environmentConfigured: isSupabaseAdminConfigured,
       timestamp: new Date().toISOString(),
+      ...(supabaseStatus.error && { error: supabaseStatus.error }),
     });
   }
 
@@ -862,8 +863,54 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
       );
     }
 
+    if (!body.password) {
+      return jsonResponse({ success: false, message: "Password is required to sign in." }, 400);
+    }
+
     // Check account strictly in database
     const account = await supabaseSync.getAccountByIdentifier(cleanIdentifier);
+    let targetEmail = account?.email;
+
+    if (!account) {
+      // Check new_registered_students table
+      const cleanId = cleanIdentifier.toUpperCase();
+      const student = await supabaseSync.getStudentByRollOrEmail(
+        cleanId,
+        cleanIdentifier.toLowerCase(),
+      );
+      if (student) {
+        targetEmail = student.email;
+      }
+    }
+
+    if (!targetEmail) {
+      return jsonResponse(
+        { success: false, message: "Invalid credentials or account not registered." },
+        401,
+      );
+    }
+
+    // Authenticate password with Supabase Auth (or auth client)
+    let authUser = null;
+    try {
+      const { data: authData, error: authError } = await supabaseAdmin.auth.signInWithPassword({
+        email: targetEmail,
+        password: body.password,
+      });
+
+      if (authError || !authData.user) {
+        return jsonResponse(
+          { success: false, message: "Invalid credentials. Please verify your email and password." },
+          401,
+        );
+      }
+      authUser = authData.user;
+    } catch (authErr: any) {
+      return jsonResponse(
+        { success: false, message: "Authentication service error. Please try again." },
+        500,
+      );
+    }
 
     if (account) {
       const serverRole = account.role;
@@ -910,7 +957,7 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
       });
     }
 
-    // Check new_registered_students table
+    // Fallback for verified student record
     const cleanId = cleanIdentifier.toUpperCase();
     const student = await supabaseSync.getStudentByRollOrEmail(
       cleanId,
@@ -1169,66 +1216,6 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
     });
   }
 
-  // 0. Health Check & Debug
-  if (path === "/api/debug" && method === "GET") {
-    return jsonResponse({
-      success: true,
-      debug: {
-        timestamp: new Date().toISOString(),
-        nodeEnv: process.env.NODE_ENV,
-        supabaseUrl: process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "NOT SET",
-        hasServiceRoleKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
-        serviceRoleKeyLength: process.env.SUPABASE_SERVICE_ROLE_KEY?.length || 0,
-        isSupabaseAdminConfigured,
-      },
-    });
-  }
-
-  // 0.5 Test Event Save - Direct Test Endpoint
-  if (path === "/api/test-event-save" && method === "POST") {
-    console.log("[Test] Testing event save directly...");
-    
-    const testEvent: CampusEvent = {
-      id: `evt-test-${Date.now()}`,
-      title: "Test Event",
-      description: "This is a test",
-      category: "workshop",
-      department: "Test",
-      date: new Date().toISOString().split('T')[0],
-      time: "10:00 AM",
-      venue: "Test Hall",
-      organizerName: "Test Admin",
-      organizerEmail: "test@gsfc.edu",
-      capacity: 100,
-      registeredCount: 0,
-      waitlistCount: 0,
-      approvalRequired: false,
-      isTeamEvent: false,
-      minTeamSize: 1,
-      maxTeamSize: 4,
-      volunteerHoursReward: 0,
-      bannerImage: "",
-      status: "upcoming",
-      averageRating: 5.0,
-      reviewCount: 0,
-    };
-
-    const result = await supabaseSync.saveEvent(testEvent);
-    
-    if (result) {
-      return jsonResponse({
-        success: true,
-        message: "Test event saved successfully!",
-        event: testEvent,
-      }, 201);
-    } else {
-      return jsonResponse({
-        success: false,
-        message: "Test event save failed - check server logs",
-      }, 500);
-    }
-  }
-
   // 1. Events: List Catalog
   if (path === "/api/events" && method === "GET") {
     const category = url.searchParams.get("category");
@@ -1236,23 +1223,6 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
 
     const events = await supabaseSync.getEvents(category, status);
     return jsonResponse({ success: true, count: events.length, events });
-  }
-
-  // DIAGNOSTIC: Check Supabase configuration
-  if (path === "/api/config" && method === "GET") {
-    const hasUrl = !!process.env.VITE_SUPABASE_URL || !!process.env.SUPABASE_URL;
-    const hasKey = !!process.env.SUPABASE_SERVICE_ROLE_KEY;
-    const isConfigured = hasUrl && hasKey;
-
-    return jsonResponse({
-      configured: isConfigured,
-      debug: {
-        hasSupabaseUrl: hasUrl,
-        hasServiceRoleKey: hasKey,
-        supabaseUrlSet: !!(process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL),
-        nodeEnv: process.env.NODE_ENV,
-      },
-    });
   }
 
   // 5. Events: Create Event
@@ -1555,7 +1525,9 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
       );
     }
 
-    const certId = `GSFC-CERT-${event.id.toUpperCase()}-${body.userRollNo.slice(-4)}-${Date.now().toString(36).toUpperCase()}`;
+    const verifiedRoll = authUser.rollNo || userReg.userRollNo || "0000";
+    const rollSuffix = verifiedRoll.replace(/[^a-zA-Z0-9]/g, "").slice(-4) || "0000";
+    const certId = `GSFC-CERT-${event.id.toUpperCase()}-${rollSuffix}-${Date.now().toString(36).toUpperCase()}`;
 
     const record: AttendanceRecord = {
       id: `att-${Date.now()}`,
@@ -1563,7 +1535,7 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
       eventTitle: event.title,
       userId: authUser.userId,
       userName: authUser.name,
-      userRollNo: authUser.rollNo || userReg.userRollNo,
+      userRollNo: verifiedRoll,
       department: userReg.department,
       timestamp: new Date().toISOString(),
       punchInTime: new Date().toISOString(),

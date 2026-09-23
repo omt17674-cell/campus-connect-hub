@@ -13,16 +13,63 @@ import {
 } from "../lib/types";
 
 export const supabaseSync = {
-  // Check if Supabase tables are initialized and reachable
-  async pingSupabase(): Promise<{ connected: boolean; error?: string }> {
+  // Check if Supabase connection and canonical tables are initialized and reachable
+  async pingSupabase(): Promise<{ 
+    connected: boolean; 
+    schemaReady: boolean;
+    requiredTablesReady: boolean;
+    error?: string;
+  }> {
     try {
-      const { data, error } = await supabaseAdmin.from("events").select("id").limit(1);
-      if (error) {
-        return { connected: false, error: error.message };
+      const requiredTables = [
+        "accounts",
+        "new_registered_students",
+        "events",
+        "registrations",
+        "attendance",
+        "announcements",
+        "internships",
+        "internship_applications",
+        "internship_attendance",
+      ];
+
+      const checks = await Promise.all(
+        requiredTables.map(async (table) => {
+          try {
+            const { error } = await supabaseAdmin.from(table).select("*", { count: "exact", head: true });
+            return { table, ok: !error, error: error?.message };
+          } catch (e: any) {
+            return { table, ok: false, error: e?.message || String(e) };
+          }
+        })
+      );
+
+      const failedTables = checks.filter((c) => !c.ok);
+      const isConnected = checks.some((c) => c.ok);
+      const allReady = failedTables.length === 0;
+
+      if (!isConnected) {
+        return {
+          connected: false,
+          schemaReady: false,
+          requiredTablesReady: false,
+          error: failedTables[0]?.error || "Cannot connect to database",
+        };
       }
-      return { connected: true };
+
+      return {
+        connected: true,
+        schemaReady: allReady,
+        requiredTablesReady: allReady,
+        error: failedTables.length > 0 ? `Pending tables: ${failedTables.map((f) => f.table).join(", ")}` : undefined,
+      };
     } catch (err) {
-      return { connected: false, error: String(err) };
+      return { 
+        connected: false, 
+        schemaReady: false, 
+        requiredTablesReady: false, 
+        error: String(err) 
+      };
     }
   },
 

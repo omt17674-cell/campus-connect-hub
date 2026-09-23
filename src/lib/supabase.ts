@@ -1,60 +1,55 @@
 import { createClient } from "@supabase/supabase-js";
 
-const DEFAULT_SUPABASE_URL = "https://ebyhgllzwayrkhwwyvba.supabase.co";
-const DEFAULT_SUPABASE_ANON_KEY = "sb_publishable_dF4Lu5WtR5l1H6jmNFQl7A_Xw15G04Z";
-
+// Canonical environment variable configuration only
 const supabaseUrl =
   import.meta.env?.VITE_SUPABASE_URL ||
   (typeof process !== "undefined" ? process.env?.VITE_SUPABASE_URL : undefined) ||
-  DEFAULT_SUPABASE_URL;
+  "";
 
 const supabaseAnonKey =
   import.meta.env?.VITE_SUPABASE_ANON_KEY ||
   (typeof process !== "undefined" ? process.env?.VITE_SUPABASE_ANON_KEY : undefined) ||
-  DEFAULT_SUPABASE_ANON_KEY;
+  "";
 
-// Startup diagnostics — log once so misconfigurations are caught immediately
+// Fail loudly in browser if required environment variables are missing
 if (typeof window !== "undefined") {
-  const isUsingFallback =
-    !import.meta.env?.VITE_SUPABASE_URL &&
-    !(typeof process !== "undefined" && process.env?.VITE_SUPABASE_URL);
-
-  if (isUsingFallback) {
-    console.warn(
-      "[Supabase Client] ⚠️ VITE_SUPABASE_URL env var is not set — using hardcoded fallback.",
-      "If this is a Vercel deployment, set the env var in Vercel → Project → Settings → Environment Variables.",
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.error(
+      "[Supabase Client] ❌ FATAL CONFIGURATION ERROR: VITE_SUPABASE_URL and/or VITE_SUPABASE_ANON_KEY environment variables are missing. " +
+        "Ensure they are configured in your .env or deployment platform (Vercel) settings."
     );
-  }
-
-  console.info("[Supabase Client] Connecting to:", supabaseUrl);
-
-  // Fire-and-forget connectivity check on page load
-  fetch(`${supabaseUrl}/rest/v1/`, {
-    method: "HEAD",
-    headers: { apikey: supabaseAnonKey },
-  })
-    .then((res) => {
-      if (!res.ok) {
-        console.error(
-          `[Supabase Client] ❌ Connectivity check failed (HTTP ${res.status}). ` +
-            `The Supabase project may be paused, or the URL/key is wrong.`,
-        );
-      } else {
-        console.info("[Supabase Client] ✅ Supabase project is reachable.");
-      }
+  } else {
+    console.info("[Supabase Client] Canonical Supabase endpoint configured:", supabaseUrl);
+    
+    // Quick connectivity check
+    fetch(`${supabaseUrl}/rest/v1/`, {
+      method: "HEAD",
+      headers: { apikey: supabaseAnonKey },
     })
-    .catch((err) => {
-      console.error(
-        "[Supabase Client] ❌ Cannot reach Supabase at all — 'Failed to fetch'. " +
-          "Possible causes: project paused, wrong URL, CORS block, or network issue.",
-        err,
-      );
-    });
+      .then((res) => {
+        if (!res.ok) {
+          console.error(
+            `[Supabase Client] ❌ Database connectivity check returned HTTP ${res.status}. Check project status or API keys.`
+          );
+        } else {
+          console.info("[Supabase Client] ✅ Supabase project connection verified.");
+        }
+      })
+      .catch((err) => {
+        console.error("[Supabase Client] ❌ Connection error:", err);
+      });
+  }
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-  },
-});
+export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
+
+export const supabase = createClient(
+  supabaseUrl || "https://placeholder-url.supabase.co",
+  supabaseAnonKey || "placeholder-anon-key",
+  {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+    },
+  }
+);

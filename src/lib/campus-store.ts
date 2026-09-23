@@ -2327,7 +2327,8 @@ export const campusStore = {
     }
 
     // Direct Online Check-In
-    const certId = `GSFC-CERT-${event.id.replace(/[^a-zA-Z0-9]/g, "").toUpperCase()}-${state.currentUser.rollNo.slice(-4)}-${Date.now().toString(36).toUpperCase()}`;
+    const safeRoll = (state.currentUser.rollNo || "0000").replace(/[^a-zA-Z0-9]/g, "");
+    const certId = `GSFC-CERT-${event.id.replace(/[^a-zA-Z0-9]/g, "").toUpperCase()}-${(safeRoll.slice(-4) || "0000")}-${Date.now().toString(36).toUpperCase()}`;
 
     const newRecord: AttendanceRecord = {
       id: `att-${Date.now()}`,
@@ -2432,7 +2433,8 @@ export const campusStore = {
     if (!event) return { success: false, message: "Event not found" };
 
     const now = new Date().toISOString();
-    const certId = `GSFC-CERT-${event.id.replace(/[^a-zA-Z0-9]/g, "").toUpperCase()}-${state.currentUser.rollNo.slice(-4)}-${Date.now().toString(36).toUpperCase()}`;
+    const safeRoll = (state.currentUser.rollNo || "0000").replace(/[^a-zA-Z0-9]/g, "");
+    const certId = `GSFC-CERT-${event.id.replace(/[^a-zA-Z0-9]/g, "").toUpperCase()}-${(safeRoll.slice(-4) || "0000")}-${Date.now().toString(36).toUpperCase()}`;
 
     // Check if an attendance record already exists
     let existingRecord = state.attendanceRecords.find(
@@ -2625,7 +2627,8 @@ export const campusStore = {
     let addedXp = 0;
 
     for (const item of state.pendingCheckins) {
-      const certId = `GSFC-CERT-${item.eventId.replace(/[^a-zA-Z0-9]/g, "").toUpperCase()}-${item.userRollNo.slice(-4)}-${Date.now().toString(36).toUpperCase()}`;
+      const safeRoll = (item.userRollNo || "0000").replace(/[^a-zA-Z0-9]/g, "");
+      const certId = `GSFC-CERT-${item.eventId.replace(/[^a-zA-Z0-9]/g, "").toUpperCase()}-${(safeRoll.slice(-4) || "0000")}-${Date.now().toString(36).toUpperCase()}`;
       newAttendanceRecords.push({
         id: `att-sync-${Date.now()}-${item.id}`,
         eventId: item.eventId,
@@ -3599,7 +3602,7 @@ export const campusStore = {
       verifiedMethod: "unified_otp_barcode",
       tokenUsed: `GSFC-UNIFIED-OTP-BC-${data.studentRollNo}`,
       synced: true,
-      certificateId: `GSFC-CERT-${event.id.replace(/[^a-zA-Z0-9]/g, "").toUpperCase()}-${data.studentRollNo.slice(-4)}-98A4`,
+      certificateId: `GSFC-CERT-${event.id.replace(/[^a-zA-Z0-9]/g, "").toUpperCase()}-${((data.studentRollNo || "0000").replace(/[^a-zA-Z0-9]/g, "").slice(-4) || "0000")}-98A4`,
       locationVerified: data.location.verified,
       userLatitude: data.location.latitude,
       userLongitude: data.location.longitude,

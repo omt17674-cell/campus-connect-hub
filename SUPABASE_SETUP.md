@@ -1,5 +1,10 @@
 # 🔧 Supabase Integration Setup Guide
 
+> [!WARNING]
+> **DEPRECATED NOTICE**: The inline SQL snippets below (such as `event_registrations`) are deprecated legacy snippets.
+> The single canonical production schema is located in `supabase-schema.sql`, and production RLS policies are in `PRODUCTION_DATABASE_SETUP.sql`.
+> The canonical table names are `events`, `registrations`, and `attendance`.
+
 Complete guide to configure Supabase for storing events and registrations persistently.
 
 ---
