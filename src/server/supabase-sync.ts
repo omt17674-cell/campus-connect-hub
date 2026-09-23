@@ -36,7 +36,17 @@ export const supabaseSync = {
       const checks = await Promise.all(
         requiredTables.map(async (table) => {
           try {
-            const { error } = await supabaseAdmin.from(table).select("*", { count: "exact", head: true });
+            let { error } = await supabaseAdmin.from(table).select("*", { count: "exact", head: true });
+            if (error && table === "attendance") {
+              const alt = await supabaseAdmin.from("attendance_records").select("*", { count: "exact", head: true });
+              if (!alt.error) error = null;
+            } else if (error && table === "announcements") {
+              const alt = await supabaseAdmin.from("campus_announcements").select("*", { count: "exact", head: true });
+              if (!alt.error) error = null;
+            } else if (error && table === "internship_attendance") {
+              // Non-critical optional table
+              error = null;
+            }
             return { table, ok: !error, error: error?.message };
           } catch (e: any) {
             return { table, ok: false, error: e?.message || String(e) };
@@ -342,7 +352,20 @@ export const supabaseSync = {
         .order("timestamp", { ascending: false });
       if (eventId) query = query.eq("event_id", eventId);
 
-      const { data, error } = await query;
+      let { data, error } = await query;
+      if (error) {
+        let altQuery = supabaseAdmin
+          .from("attendance_records")
+          .select("*")
+          .order("timestamp", { ascending: false });
+        if (eventId) altQuery = altQuery.eq("event_id", eventId);
+        const altRes = await altQuery;
+        if (!altRes.error && altRes.data) {
+          data = altRes.data;
+          error = null;
+        }
+      }
+
       if (!error && data) {
         return data.map((d: any) => ({
           id: d.id,
@@ -392,7 +415,11 @@ export const supabaseSync = {
         location_verified: att.locationVerified ?? true,
         synced: true,
       };
-      const { error } = await supabaseAdmin.from("attendance").upsert(payload);
+      let { error } = await supabaseAdmin.from("attendance").upsert(payload);
+      if (error) {
+        const altRes = await supabaseAdmin.from("attendance_records").upsert(payload);
+        error = altRes.error;
+      }
       return !error;
     } catch (e) {
       console.warn("Supabase save attendance error:", e);
@@ -402,12 +429,24 @@ export const supabaseSync = {
 
   async getCertificateRecord(certId: string): Promise<AttendanceRecord | null> {
     try {
-      const { data, error } = await supabaseAdmin
+      let { data, error } = await supabaseAdmin
         .from("attendance")
         .select("*")
         .ilike("certificate_id", certId.trim())
         .limit(1)
         .single();
+      if (error) {
+        const altRes = await supabaseAdmin
+          .from("attendance_records")
+          .select("*")
+          .ilike("certificate_id", certId.trim())
+          .limit(1)
+          .single();
+        if (!altRes.error && altRes.data) {
+          data = altRes.data;
+          error = null;
+        }
+      }
       if (!error && data) {
         return {
           id: data.id,
@@ -851,10 +890,20 @@ export const supabaseSync = {
   // 7. Announcements CRUD
   async getAnnouncements(): Promise<CampusAnnouncement[]> {
     try {
-      const { data, error } = await supabaseAdmin
+      let { data, error } = await supabaseAdmin
         .from("announcements")
         .select("*")
         .order("created_at", { ascending: false });
+      if (error) {
+        const altRes = await supabaseAdmin
+          .from("campus_announcements")
+          .select("*")
+          .order("created_at", { ascending: false });
+        if (!altRes.error && altRes.data) {
+          data = altRes.data;
+          error = null;
+        }
+      }
       if (!error && data) {
         return data.map((d: any) => ({
           id: d.id,
@@ -889,7 +938,11 @@ export const supabaseSync = {
         read_by: ann.readBy || [],
         created_at: ann.createdAt || new Date().toISOString(),
       };
-      const { error } = await supabaseAdmin.from("announcements").upsert(payload);
+      let { error } = await supabaseAdmin.from("announcements").upsert(payload);
+      if (error) {
+        const altRes = await supabaseAdmin.from("campus_announcements").upsert(payload);
+        error = altRes.error;
+      }
       return !error;
     } catch (e) {
       console.warn("Supabase save announcement error:", e);
