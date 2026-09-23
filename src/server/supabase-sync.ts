@@ -165,30 +165,6 @@ export const supabaseSync = {
     error: { message: string; code?: string; details?: string; hint?: string } | null;
   }> {
     try {
-      // Check if admin client is configured
-      if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-        console.error('[EVENT_CREATE] SUPABASE_SERVICE_ROLE_KEY not set in environment');
-        return {
-          success: false,
-          data: null,
-          error: { 
-            message: 'Database configuration missing: SUPABASE_SERVICE_ROLE_KEY not set',
-            code: 'CONFIG_ERROR',
-          },
-        };
-      }
-
-      if (!process.env.VITE_SUPABASE_URL && !process.env.SUPABASE_URL) {
-        console.error('[EVENT_CREATE] SUPABASE_URL not set in environment');
-        return {
-          success: false,
-          data: null,
-          error: { 
-            message: 'Database configuration missing: SUPABASE_URL not set',
-            code: 'CONFIG_ERROR',
-          },
-        };
-      }
 
       const payload = {
         id: event.id,

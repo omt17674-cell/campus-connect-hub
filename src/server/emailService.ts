@@ -20,18 +20,20 @@ import { fileURLToPath } from "url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // ──────────────────────────────────────────────────────────────
-// Email Config from environment (SMTP ONLY)
+// Email Config from environment (SMTP or Resend)
 // ──────────────────────────────────────────────────────────────
 
 const SMTP_HOST = process.env.SMTP_HOST || "";
 const SMTP_PORT = parseInt(process.env.SMTP_PORT || "587", 10);
 const SMTP_USER = process.env.SMTP_USER || "";
 const SMTP_PASSWORD = process.env.SMTP_PASSWORD || "";
-const EMAIL_FROM = process.env.EMAIL_FROM || SMTP_USER || "noreply@campusconnect.local";
+const EMAIL_FROM = process.env.EMAIL_FROM || "onboarding@resend.dev";
 const EMAIL_FROM_NAME = process.env.EMAIL_FROM_NAME || "Campus Connect Hub";
+const RESEND_API_KEY = process.env.RESEND_API_KEY || "";
 
 const isSmtpConfigured = Boolean(SMTP_HOST && SMTP_USER && SMTP_PASSWORD);
-const isEmailConfigured = isSmtpConfigured;
+const isResendConfigured = Boolean(RESEND_API_KEY && RESEND_API_KEY.startsWith("re_"));
+const isEmailConfigured = isSmtpConfigured || isResendConfigured;
 
 // ──────────────────────────────────────────────────────────────
 // Template Loader & Renderer
@@ -42,7 +44,6 @@ function loadTemplate(filename: string): string {
     const templatePath = join(__dirname, "email", "templates", filename);
     return readFileSync(templatePath, "utf-8");
   } catch {
-    // Fallback if path resolution fails (e.g. bundled output structure differs)
     try {
       const altPath = join(process.cwd(), "src", "server", "email", "templates", filename);
       return readFileSync(altPath, "utf-8");
@@ -110,7 +111,6 @@ async function dispatchViaSmtp(payload: {
   text: string;
 }): Promise<{ sent: boolean; provider: string; error?: string }> {
   try {
-    // Dynamic import to avoid bundling issues
     const nodemailer = await import("nodemailer");
     const transporter = nodemailer.default.createTransport({
       host: SMTP_HOST,
@@ -140,7 +140,44 @@ async function dispatchViaSmtp(payload: {
 }
 
 // ──────────────────────────────────────────────────────────────
-// Core Dispatch — SMTP only
+// Dispatch via Resend API
+// ──────────────────────────────────────────────────────────────
+
+async function dispatchViaResend(payload: {
+  to: string;
+  subject: string;
+  html: string;
+  text: string;
+}): Promise<{ sent: boolean; provider: string; error?: string }> {
+  try {
+    const fromAddress = EMAIL_FROM.includes("@") ? EMAIL_FROM : "onboarding@resend.dev";
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${RESEND_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: `${EMAIL_FROM_NAME} <${fromAddress}>`,
+        to: [payload.to],
+        subject: payload.subject,
+        html: payload.html,
+        text: payload.text,
+      }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      return { sent: false, provider: "Resend", error: data.message || `HTTP ${res.status}` };
+    }
+    return { sent: true, provider: "Resend API" };
+  } catch (err: any) {
+    return { sent: false, provider: "Resend", error: err?.message };
+  }
+}
+
+// ──────────────────────────────────────────────────────────────
+// Core Dispatch
 // ──────────────────────────────────────────────────────────────
 
 async function dispatchEmail(payload: {
@@ -148,30 +185,29 @@ async function dispatchEmail(payload: {
   subject: string;
   html: string;
   text: string;
-}): Promise<{ sent: boolean; provider: string; configured: boolean }> {
+}): Promise<{ sent: boolean; provider: string; configured: boolean; error?: string }> {
   if (!isEmailConfigured) {
-    // Log only in dev, never in production
-    if (process.env.NODE_ENV !== "production") {
-      console.log(`[Email DEV] No SMTP provider configured. Would send to: ${payload.to.replace(/(?<=.{2}).*(?=@)/, "***")}`);
-      console.log(`[Email DEV] Subject: ${payload.subject}`);
-    } else {
-      console.warn("[Email] SMTP not configured (SMTP_HOST, SMTP_USER, SMTP_PASSWORD env vars missing). Email NOT sent.");
-    }
-    return { sent: false, provider: "none", configured: false };
+    console.warn("[Email] No email provider configured (SMTP or Resend). Email not sent.");
+    return { sent: false, provider: "none", configured: false, error: "No email provider configured" };
   }
 
-  // Mask email in logs — never log OTP or sensitive body
   const maskedTo = payload.to.replace(/(?<=.{2}).*(?=@)/, "***");
-  console.log(`[Email] Dispatching to ${maskedTo} via SMTP`);
+  console.log(`[Email] Dispatching email to ${maskedTo}`);
 
-  const result = await dispatchViaSmtp(payload);
+  let result: { sent: boolean; provider: string; error?: string };
+  if (isSmtpConfigured) {
+    result = await dispatchViaSmtp(payload);
+  } else {
+    result = await dispatchViaResend(payload);
+  }
+
   if (result.sent) {
     console.log(`[Email] ✓ Sent via ${result.provider} to ${maskedTo}`);
     return { sent: true, provider: result.provider, configured: true };
   }
 
-  console.error(`[Email] SMTP dispatch failed: ${result.error}`);
-  return { sent: false, provider: result.provider, configured: true };
+  console.error(`[Email] Dispatch failed: ${result.error}`);
+  return { sent: false, provider: result.provider, configured: true, error: result.error };
 }
 
 // ──────────────────────────────────────────────────────────────
@@ -221,5 +257,5 @@ export const emailService = {
   sendRegistrationOTP,
   sendPasswordResetOTP,
   isConfigured: isEmailConfigured,
-  provider: isSmtpConfigured ? "SMTP" : "none",
+  provider: isSmtpConfigured ? "SMTP" : isResendConfigured ? "Resend" : "none",
 };

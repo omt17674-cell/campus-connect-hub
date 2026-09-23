@@ -1,7 +1,7 @@
 import { supabaseSync } from "./supabase-sync";
 import { isSupabaseAdminConfigured, supabaseAdmin } from "./supabase-admin";
 import { confirmUserEmailInAuth } from "./postgres";
-import { sendRegistrationOTP, sendPasswordResetOTP } from "./emailService";
+import { sendRegistrationOTP, sendPasswordResetOTP, emailService } from "./emailService";
 import { validateQrPayload } from "../lib/qr-engine";
 
 // ──────────────────────────────────────────────────────────────
@@ -356,6 +356,8 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
       schemaReady: supabaseStatus.schemaReady,
       requiredTablesReady: supabaseStatus.requiredTablesReady,
       environmentConfigured: isSupabaseAdminConfigured,
+      emailConfigured: emailService.isConfigured,
+      emailProvider: emailService.provider,
       timestamp: new Date().toISOString(),
       ...(supabaseStatus.error && { error: supabaseStatus.error }),
     });
