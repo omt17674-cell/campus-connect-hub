@@ -534,71 +534,129 @@ END $$;
 
 -- Master Data
 INSERT INTO public.academic_years (id, year_name, is_current, start_date, end_date)
-VALUES 
-  ('ay-2025-26', '2025-2026', true, '2025-07-01', '2026-06-30'),
-  ('ay-2024-25', '2024-2025', false, '2024-07-01', '2025-06-30')
-ON CONFLICT (id) DO NOTHING;
+SELECT 'ay-2025-26', '2025-2026', true, '2025-07-01', '2026-06-30'
+WHERE NOT EXISTS (SELECT 1 FROM public.academic_years WHERE id = 'ay-2025-26' OR year_name = '2025-2026');
+
+INSERT INTO public.academic_years (id, year_name, is_current, start_date, end_date)
+SELECT 'ay-2024-25', '2024-2025', false, '2024-07-01', '2025-06-30'
+WHERE NOT EXISTS (SELECT 1 FROM public.academic_years WHERE id = 'ay-2024-25' OR year_name = '2024-2025');
 
 INSERT INTO public.departments (id, code, name, school)
-VALUES 
-  ('dept-cse', 'CSE', 'Computer Science & Engineering', 'School of Technology (SOT)'),
-  ('dept-chem', 'CHE', 'Chemical & Petrochemical Eng', 'School of Technology (SOT)'),
-  ('dept-mech', 'MECH', 'Mechanical & Automation Eng', 'School of Technology (SOT)'),
-  ('dept-som', 'SOM', 'School of Management', 'School of Management (SOM)')
-ON CONFLICT (id) DO NOTHING;
+SELECT 'dept-cse', 'CSE', 'Computer Science & Engineering', 'School of Technology (SOT)'
+WHERE NOT EXISTS (SELECT 1 FROM public.departments WHERE id = 'dept-cse' OR code = 'CSE');
+
+INSERT INTO public.departments (id, code, name, school)
+SELECT 'dept-chem', 'CHE', 'Chemical & Petrochemical Eng', 'School of Technology (SOT)'
+WHERE NOT EXISTS (SELECT 1 FROM public.departments WHERE id = 'dept-chem' OR code = 'CHE');
+
+INSERT INTO public.departments (id, code, name, school)
+SELECT 'dept-mech', 'MECH', 'Mechanical & Automation Eng', 'School of Technology (SOT)'
+WHERE NOT EXISTS (SELECT 1 FROM public.departments WHERE id = 'dept-mech' OR code = 'MECH');
+
+INSERT INTO public.departments (id, code, name, school)
+SELECT 'dept-som', 'SOM', 'School of Management', 'School of Management (SOM)'
+WHERE NOT EXISTS (SELECT 1 FROM public.departments WHERE id = 'dept-som' OR code = 'SOM');
 
 INSERT INTO public.fields (id, name, department_id)
-VALUES 
-  ('fld-ai-ds', 'Artificial Intelligence & Data Science', 'dept-cse'),
-  ('fld-cyber-iot', 'Cyber Security & IoT', 'dept-cse'),
-  ('fld-petro', 'Petrochemical & Process Engineering', 'dept-chem'),
-  ('fld-fintech', 'FinTech & Business Analytics', 'dept-som'),
-  ('fld-robotics', 'Robotics & Industrial Automation', 'dept-mech')
-ON CONFLICT (id) DO NOTHING;
+SELECT 'fld-ai-ds', 'Artificial Intelligence & Data Science', 'dept-cse'
+WHERE NOT EXISTS (SELECT 1 FROM public.fields WHERE id = 'fld-ai-ds');
 
--- Official Accounts
+INSERT INTO public.fields (id, name, department_id)
+SELECT 'fld-cyber-iot', 'Cyber Security & IoT', 'dept-cse'
+WHERE NOT EXISTS (SELECT 1 FROM public.fields WHERE id = 'fld-cyber-iot');
+
+INSERT INTO public.fields (id, name, department_id)
+SELECT 'fld-petro', 'Petrochemical & Process Engineering', 'dept-chem'
+WHERE NOT EXISTS (SELECT 1 FROM public.fields WHERE id = 'fld-petro');
+
+INSERT INTO public.fields (id, name, department_id)
+SELECT 'fld-fintech', 'FinTech & Business Analytics', 'dept-som'
+WHERE NOT EXISTS (SELECT 1 FROM public.fields WHERE id = 'fld-fintech');
+
+INSERT INTO public.fields (id, name, department_id)
+SELECT 'fld-robotics', 'Robotics & Industrial Automation', 'dept-mech'
+WHERE NOT EXISTS (SELECT 1 FROM public.fields WHERE id = 'fld-robotics');
+
+-- Official Accounts (Safe Insert)
 INSERT INTO public.accounts (id, roll_no, email, password_hash, mobile_number, role, department, semester, avatar, is_verified)
-VALUES
-  ('u-ananya', 'DEAN-001', 'admin.dean@gsfcuniversity.ac.in', '9558413347@Om', '+91 95584 13347', 'admin', 'Student Affairs & Academic Governance', 0, 'AS', true),
-  ('u-tpc', 'TPC-001', 'tpc.admin@gsfcuniversity.ac.in', '7043313347@Om', '+91 70433 13347', 'organizer', 'Training & Placement Cell / Event Convener', 0, 'RM', true),
-  ('fac-1', 'FAC-001', 'faculty.mentor@gsfcuniversity.ac.in', '9558413347@Om', '+91 98765 00001', 'faculty_mentor', 'Computer Science & Engineering', 0, 'KJ', true),
-  ('fac-2', 'FAC-002', 'internship.mentor@gsfcuniversity.ac.in', '9558413347@Om', '+91 98765 00002', 'internship_mentor', 'Chemical & Petrochemical Eng', 0, 'SD', true),
-  ('u-management', 'MGT-001', 'management.admin@gsfcuniversity.ac.in', '9558413347@Om', '+91 98765 00003', 'management', 'Institutional Governance', 0, 'SP', true)
-ON CONFLICT (id) DO NOTHING;
+SELECT 'u-ananya', 'DEAN-001', 'admin.dean@gsfcuniversity.ac.in', '9558413347@Om', '+91 95584 13347', 'admin', 'Student Affairs & Academic Governance', 0, 'AS', true
+WHERE NOT EXISTS (SELECT 1 FROM public.accounts WHERE email = 'admin.dean@gsfcuniversity.ac.in' OR roll_no = 'DEAN-001' OR id = 'u-ananya');
 
--- 5 Test Students
+INSERT INTO public.accounts (id, roll_no, email, password_hash, mobile_number, role, department, semester, avatar, is_verified)
+SELECT 'u-tpc', 'TPC-001', 'tpc.admin@gsfcuniversity.ac.in', '7043313347@Om', '+91 70433 13347', 'organizer', 'Training & Placement Cell / Event Convener', 0, 'RM', true
+WHERE NOT EXISTS (SELECT 1 FROM public.accounts WHERE email = 'tpc.admin@gsfcuniversity.ac.in' OR roll_no = 'TPC-001' OR id = 'u-tpc');
+
+INSERT INTO public.accounts (id, roll_no, email, password_hash, mobile_number, role, department, semester, avatar, is_verified)
+SELECT 'fac-1', 'FAC-001', 'faculty.mentor@gsfcuniversity.ac.in', '9558413347@Om', '+91 98765 00001', 'faculty_mentor', 'Computer Science & Engineering', 0, 'KJ', true
+WHERE NOT EXISTS (SELECT 1 FROM public.accounts WHERE email = 'faculty.mentor@gsfcuniversity.ac.in' OR roll_no = 'FAC-001' OR id = 'fac-1');
+
+INSERT INTO public.accounts (id, roll_no, email, password_hash, mobile_number, role, department, semester, avatar, is_verified)
+SELECT 'fac-2', 'FAC-002', 'internship.mentor@gsfcuniversity.ac.in', '9558413347@Om', '+91 98765 00002', 'internship_mentor', 'Chemical & Petrochemical Eng', 0, 'SD', true
+WHERE NOT EXISTS (SELECT 1 FROM public.accounts WHERE email = 'internship.mentor@gsfcuniversity.ac.in' OR roll_no = 'FAC-002' OR id = 'fac-2');
+
+INSERT INTO public.accounts (id, roll_no, email, password_hash, mobile_number, role, department, semester, avatar, is_verified)
+SELECT 'u-management', 'MGT-001', 'management.admin@gsfcuniversity.ac.in', '9558413347@Om', '+91 98765 00003', 'management', 'Institutional Governance', 0, 'SP', true
+WHERE NOT EXISTS (SELECT 1 FROM public.accounts WHERE email = 'management.admin@gsfcuniversity.ac.in' OR roll_no = 'MGT-001' OR id = 'u-management');
+
+-- 5 Test Students (Safe Insert)
 INSERT INTO public.new_registered_students (id, full_name, mobile_number, roll_no, email, school, department, degree, semester, residence_type, hostel_block_or_bus_route, clubs_interested, id_card_uploaded, is_locked, verified_by_university, is_verified)
-VALUES
-  ('stu-01', 'Aarav Mehta', '+91 98765 43210', '24BT04171', '24bt04171@gsfcuniversity.ac.in', 'School of Technology (SOT)', 'Computer Science & Engineering', 'B.Tech Computer Science & Engineering', 6, 'dayscholar', 'Route 4 - Alkapuri', ARRAY['AI & Robotics Club', 'Coding Club'], true, true, true, true),
-  ('stu-02', 'Diya Patel', '+91 98765 43211', '24BT04182', '24bt04182@gsfcuniversity.ac.in', 'School of Technology (SOT)', 'Chemical & Petrochemical Eng', 'B.Tech Chemical Engineering', 6, 'hostel', 'Kasturba Girls Hostel Block B', ARRAY['Green Tech Club'], true, true, true, true),
-  ('stu-03', 'Rohan Shah', '+91 98765 43212', '24BT04195', '24bt04195@gsfcuniversity.ac.in', 'School of Technology (SOT)', 'Computer Science & Engineering', 'B.Tech Computer Science & Engineering (IoT)', 4, 'dayscholar', 'Route 12 - Manjalpur', ARRAY['Cyber Security Cell'], true, true, true, true),
-  ('stu-04', 'Ananya Joshi', '+91 98765 43213', '24BB01045', '24bb01045@gsfcuniversity.ac.in', 'School of Management (SOM)', 'School of Management', 'BBA (Finance & Data Analytics)', 4, 'dayscholar', 'Route 8 - Sama', ARRAY['Finance & FinTech Club'], true, true, true, true),
-  ('stu-05', 'Harshil Trivedi', '+91 98765 43214', '24BT04210', '24bt04210@gsfcuniversity.ac.in', 'School of Technology (SOT)', 'Mechanical & Automation Eng', 'B.Tech Mechanical Engineering', 6, 'hostel', 'Vikram Sarabhai Boys Hostel Room 104', ARRAY['Robotics Club'], true, true, true, true)
-ON CONFLICT (roll_no) DO NOTHING;
+SELECT 'stu-01', 'Aarav Mehta', '+91 98765 43210', '24BT04171', '24bt04171@gsfcuniversity.ac.in', 'School of Technology (SOT)', 'Computer Science & Engineering', 'B.Tech Computer Science & Engineering', 6, 'dayscholar', 'Route 4 - Alkapuri', ARRAY['AI & Robotics Club', 'Coding Club'], true, true, true, true
+WHERE NOT EXISTS (SELECT 1 FROM public.new_registered_students WHERE roll_no = '24BT04171' OR email = '24bt04171@gsfcuniversity.ac.in' OR id = 'stu-01');
 
--- Initial Faculty Mentor Allocations
+INSERT INTO public.new_registered_students (id, full_name, mobile_number, roll_no, email, school, department, degree, semester, residence_type, hostel_block_or_bus_route, clubs_interested, id_card_uploaded, is_locked, verified_by_university, is_verified)
+SELECT 'stu-02', 'Diya Patel', '+91 98765 43211', '24BT04182', '24bt04182@gsfcuniversity.ac.in', 'School of Technology (SOT)', 'Chemical & Petrochemical Eng', 'B.Tech Chemical Engineering', 6, 'hostel', 'Kasturba Girls Hostel Block B', ARRAY['Green Tech Club'], true, true, true, true
+WHERE NOT EXISTS (SELECT 1 FROM public.new_registered_students WHERE roll_no = '24BT04182' OR email = '24bt04182@gsfcuniversity.ac.in' OR id = 'stu-02');
+
+INSERT INTO public.new_registered_students (id, full_name, mobile_number, roll_no, email, school, department, degree, semester, residence_type, hostel_block_or_bus_route, clubs_interested, id_card_uploaded, is_locked, verified_by_university, is_verified)
+SELECT 'stu-03', 'Rohan Shah', '+91 98765 43212', '24BT04195', '24bt04195@gsfcuniversity.ac.in', 'School of Technology (SOT)', 'Computer Science & Engineering', 'B.Tech Computer Science & Engineering (IoT)', 4, 'dayscholar', 'Route 12 - Manjalpur', ARRAY['Cyber Security Cell'], true, true, true, true
+WHERE NOT EXISTS (SELECT 1 FROM public.new_registered_students WHERE roll_no = '24BT04195' OR email = '24bt04195@gsfcuniversity.ac.in' OR id = 'stu-03');
+
+INSERT INTO public.new_registered_students (id, full_name, mobile_number, roll_no, email, school, department, degree, semester, residence_type, hostel_block_or_bus_route, clubs_interested, id_card_uploaded, is_locked, verified_by_university, is_verified)
+SELECT 'stu-04', 'Ananya Joshi', '+91 98765 43213', '24BB01045', '24bb01045@gsfcuniversity.ac.in', 'School of Management (SOM)', 'School of Management', 'BBA (Finance & Data Analytics)', 4, 'dayscholar', 'Route 8 - Sama', ARRAY['Finance & FinTech Club'], true, true, true, true
+WHERE NOT EXISTS (SELECT 1 FROM public.new_registered_students WHERE roll_no = '24BB01045' OR email = '24bb01045@gsfcuniversity.ac.in' OR id = 'stu-04');
+
+INSERT INTO public.new_registered_students (id, full_name, mobile_number, roll_no, email, school, department, degree, semester, residence_type, hostel_block_or_bus_route, clubs_interested, id_card_uploaded, is_locked, verified_by_university, is_verified)
+SELECT 'stu-05', 'Harshil Trivedi', '+91 98765 43214', '24BT04210', '24bt04210@gsfcuniversity.ac.in', 'School of Technology (SOT)', 'Mechanical & Automation Eng', 'B.Tech Mechanical Engineering', 6, 'hostel', 'Vikram Sarabhai Boys Hostel Room 104', ARRAY['Robotics Club'], true, true, true, true
+WHERE NOT EXISTS (SELECT 1 FROM public.new_registered_students WHERE roll_no = '24BT04210' OR email = '24bt04210@gsfcuniversity.ac.in' OR id = 'stu-05');
+
+-- Initial Faculty Mentor Allocations (Safe Insert)
 INSERT INTO public.faculty_mentor_assignments (id, faculty_id, student_id, academic_year, semester, department, field, assigned_by, status, notes)
-VALUES
-  ('fma-01', 'fac-1', 'stu-01', '2025-2026', 6, 'Computer Science & Engineering', 'Artificial Intelligence & Data Science', 'Institutional Management Portal', 'active', 'Semester 6 Capstone Project & AI Research Mentorship'),
-  ('fma-02', 'fac-2', 'stu-02', '2025-2026', 6, 'Chemical & Petrochemical Eng', 'Petrochemical & Process Engineering', 'Institutional Management Portal', 'active', 'GSFC Fertilizernagar Plant Process Safety Cohort'),
-  ('fma-03', 'u-tpc', 'stu-03', '2025-2026', 4, 'Computer Science & Engineering', 'Cyber Security & IoT', 'Institutional Management Portal', 'active', 'Placement Readiness & IoT Infrastructure Mentorship')
-ON CONFLICT (id) DO NOTHING;
+SELECT 'fma-01', 'fac-1', 'stu-01', '2025-2026', 6, 'Computer Science & Engineering', 'Artificial Intelligence & Data Science', 'Institutional Management Portal', 'active', 'Semester 6 Capstone Project & AI Research Mentorship'
+WHERE NOT EXISTS (SELECT 1 FROM public.faculty_mentor_assignments WHERE id = 'fma-01');
 
--- Initial Mentorship Tasks
+INSERT INTO public.faculty_mentor_assignments (id, faculty_id, student_id, academic_year, semester, department, field, assigned_by, status, notes)
+SELECT 'fma-02', 'fac-2', 'stu-02', '2025-2026', 6, 'Chemical & Petrochemical Eng', 'Petrochemical & Process Engineering', 'Institutional Management Portal', 'active', 'GSFC Fertilizernagar Plant Process Safety Cohort'
+WHERE NOT EXISTS (SELECT 1 FROM public.faculty_mentor_assignments WHERE id = 'fma-02');
+
+INSERT INTO public.faculty_mentor_assignments (id, faculty_id, student_id, academic_year, semester, department, field, assigned_by, status, notes)
+SELECT 'fma-03', 'u-tpc', 'stu-03', '2025-2026', 4, 'Computer Science & Engineering', 'Cyber Security & IoT', 'Institutional Management Portal', 'active', 'Placement Readiness & IoT Infrastructure Mentorship'
+WHERE NOT EXISTS (SELECT 1 FROM public.faculty_mentor_assignments WHERE id = 'fma-03');
+
+-- Initial Mentorship Tasks (Safe Insert)
 INSERT INTO public.mentorship_tasks (id, title, description, assigned_date, due_date, priority, status, student_id, mentor_id, submission_text, feedback)
-VALUES
-  ('mt-01', 'Capstone Project Synopsis & Architecture Survey', 'Submit 5-page synopsis detailing model pipeline for Edge AI traffic optimization using YOLOv11 and TensorRT.', '2026-09-10', '2026-10-15', 'high', 'Submitted', 'stu-01', 'fac-1', 'Uploaded draft synopsis on Edge AI Real-Time Traffic Optimization with YOLOv11 & TensorRT benchmarks.', 'Good work Aarav. Focus on section 3 benchmarking with TensorRT before presentation.'),
-  ('mt-02', 'Chemical Plant Process Safety & Emission Audit', 'Review standard operating procedures (SOPs) for the ammonia reactor plant and prepare hazard analysis report.', '2026-09-15', '2026-10-20', 'urgent', 'Pending', 'stu-02', 'fac-2', null, null),
-  ('mt-03', 'Secure MQTT Broker TLS Configuration', 'Configure Mosquitto broker with TLS certificates and test payload encryption with ESP32 edge sensors.', '2026-09-05', '2026-09-30', 'medium', 'Completed', 'stu-03', 'u-tpc', 'Configured Mosquitto MQTT broker with mTLS x509 certs and tested packet loss.', 'Excellent implementation of mutual authentication.')
-ON CONFLICT (id) DO NOTHING;
+SELECT 'mt-01', 'Capstone Project Synopsis & Architecture Survey', 'Submit 5-page synopsis detailing model pipeline for Edge AI traffic optimization using YOLOv11 and TensorRT.', '2026-09-10', '2026-10-15', 'high', 'Submitted', 'stu-01', 'fac-1', 'Uploaded draft synopsis on Edge AI Real-Time Traffic Optimization with YOLOv11 & TensorRT benchmarks.', 'Good work Aarav. Focus on section 3 benchmarking with TensorRT before presentation.'
+WHERE NOT EXISTS (SELECT 1 FROM public.mentorship_tasks WHERE id = 'mt-01');
 
--- Initial Mentor Messages
+INSERT INTO public.mentorship_tasks (id, title, description, assigned_date, due_date, priority, status, student_id, mentor_id, submission_text, feedback)
+SELECT 'mt-02', 'Chemical Plant Process Safety & Emission Audit', 'Review standard operating procedures (SOPs) for the ammonia reactor plant and prepare hazard analysis report.', '2026-09-15', '2026-10-20', 'urgent', 'Pending', 'stu-02', 'fac-2', null, null
+WHERE NOT EXISTS (SELECT 1 FROM public.mentorship_tasks WHERE id = 'mt-02');
+
+INSERT INTO public.mentorship_tasks (id, title, description, assigned_date, due_date, priority, status, student_id, mentor_id, submission_text, feedback)
+SELECT 'mt-03', 'Secure MQTT Broker TLS Configuration', 'Configure Mosquitto broker with TLS certificates and test payload encryption with ESP32 edge sensors.', '2026-09-05', '2026-09-30', 'medium', 'Completed', 'stu-03', 'u-tpc', 'Configured Mosquitto MQTT broker with mTLS x509 certs and tested packet loss.', 'Excellent implementation of mutual authentication.'
+WHERE NOT EXISTS (SELECT 1 FROM public.mentorship_tasks WHERE id = 'mt-03');
+
+-- Initial Mentor Messages (Safe Insert)
 INSERT INTO public.mentor_messages (id, sender_id, sender_name, sender_role, receiver_id, student_id, faculty_id, subject, message, priority, is_read)
-VALUES
-  ('msg-01', 'stu-01', 'Aarav Mehta', 'student', 'fac-1', 'stu-01', 'fac-1', 'Draft Synopsis Review for Edge AI Traffic Model', 'Respected Dr. Joshi, I have uploaded the draft synopsis in the portal. Please let me know if any methodology changes are required.', 'high', true),
-  ('msg-02', 'fac-1', 'Dr. K. N. Joshi', 'mentor', 'stu-01', 'stu-01', 'fac-1', 'Re: Draft Synopsis Review for Edge AI Traffic Model', 'Aarav, the synopsis looks promising. Please make sure to include the hardware specifications of the Jetson Orin Nano module in Section 4.', 'medium', false),
-  ('msg-03', 'stu-02', 'Diya Patel', 'student', 'fac-2', 'stu-02', 'fac-2', 'GSFC Fertilizernagar Plant Visit Permission', 'Respected Ma''am, does the chemical engineering department require a signed hard copy of the parent consent form for the industrial visit?', 'medium', true)
-ON CONFLICT (id) DO NOTHING;
+SELECT 'msg-01', 'stu-01', 'Aarav Mehta', 'student', 'fac-1', 'stu-01', 'fac-1', 'Draft Synopsis Review for Edge AI Traffic Model', 'Respected Dr. Joshi, I have uploaded the draft synopsis in the portal. Please let me know if any methodology changes are required.', 'high', true
+WHERE NOT EXISTS (SELECT 1 FROM public.mentor_messages WHERE id = 'msg-01');
+
+INSERT INTO public.mentor_messages (id, sender_id, sender_name, sender_role, receiver_id, student_id, faculty_id, subject, message, priority, is_read)
+SELECT 'msg-02', 'fac-1', 'Dr. K. N. Joshi', 'mentor', 'stu-01', 'stu-01', 'fac-1', 'Re: Draft Synopsis Review for Edge AI Traffic Model', 'Aarav, the synopsis looks promising. Please make sure to include the hardware specifications of the Jetson Orin Nano module in Section 4.', 'medium', false
+WHERE NOT EXISTS (SELECT 1 FROM public.mentor_messages WHERE id = 'msg-02');
+
+INSERT INTO public.mentor_messages (id, sender_id, sender_name, sender_role, receiver_id, student_id, faculty_id, subject, message, priority, is_read)
+SELECT 'msg-03', 'stu-02', 'Diya Patel', 'student', 'fac-2', 'stu-02', 'fac-2', 'GSFC Fertilizernagar Plant Visit Permission', 'Respected Ma''am, does the chemical engineering department require a signed hard copy of the parent consent form for the industrial visit?', 'medium', true
+WHERE NOT EXISTS (SELECT 1 FROM public.mentor_messages WHERE id = 'msg-03');
 
 -- ==============================================================================
 -- END OF SUPABASE COMPLETE SETUP
