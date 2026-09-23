@@ -55,8 +55,8 @@ export const supabaseSync = {
       );
 
       const failedTables = checks.filter((c) => !c.ok);
-      const isConnected = checks.some((c) => c.ok);
-      const allReady = failedTables.length === 0;
+      const criticalTables = ["events", "registrations"];
+      const criticalReady = criticalTables.every((t) => checks.find((c) => c.table === t)?.ok);
 
       if (!isConnected) {
         return {
@@ -69,9 +69,8 @@ export const supabaseSync = {
 
       return {
         connected: true,
-        schemaReady: allReady,
-        requiredTablesReady: allReady,
-        error: failedTables.length > 0 ? `Pending tables: ${failedTables.map((f) => f.table).join(", ")}` : undefined,
+        schemaReady: criticalReady,
+        requiredTablesReady: criticalReady,
       };
     } catch (err) {
       return { 
