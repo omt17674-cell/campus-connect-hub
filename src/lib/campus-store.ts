@@ -2531,6 +2531,14 @@ export const campusStore = {
     const event = state.events.find((e) => e.id === eventId);
     if (!event) return { success: false, message: "Event not found" };
 
+    const allowedRadius = event.allowedRadiusMeters || 350;
+    if (locationData && typeof locationData.distanceMeters === "number" && locationData.distanceMeters > allowedRadius) {
+      return {
+        success: false,
+        message: `Attendance Rejected: You are ${locationData.distanceMeters}m away from ${event.venue}. Attendance is strictly restricted to within ${allowedRadius}m of the event destination.`,
+      };
+    }
+
     const now = new Date().toISOString();
     const safeRoll = (state.currentUser.rollNo || "0000").replace(/[^a-zA-Z0-9]/g, "");
     const certId = `GSFC-CERT-${event.id.replace(/[^a-zA-Z0-9]/g, "").toUpperCase()}-${(safeRoll.slice(-4) || "0000")}-${Date.now().toString(36).toUpperCase()}`;
@@ -2644,6 +2652,14 @@ export const campusStore = {
     const state = campusStore.getState();
     const event = state.events.find((e) => e.id === eventId);
     if (!event) return { success: false, message: "Event not found" };
+
+    const allowedRadius = event.allowedRadiusMeters || 350;
+    if (locationData && typeof locationData.distanceMeters === "number" && locationData.distanceMeters > allowedRadius) {
+      return {
+        success: false,
+        message: `Punch-Out Rejected: You are ${locationData.distanceMeters}m away from ${event.venue}. Exit punch requires you to be within ${allowedRadius}m of the event destination.`,
+      };
+    }
 
     const now = new Date().toISOString();
     const existingRecord = state.attendanceRecords.find(

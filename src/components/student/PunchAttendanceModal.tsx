@@ -132,13 +132,22 @@ export function PunchAttendanceModal({
   // Handle Punch In
   const handlePunchIn = () => {
     if (locationStatus !== "acquired" || !locationAccuracy || locationAccuracy > MAX_ACCEPTABLE_ACCURACY_METERS) {
-      setStatusMessage(
+      const msg =
         locationAccuracy && locationAccuracy > MAX_REJECTABLE_ACCURACY_METERS
           ? "Unable to obtain a sufficiently accurate GPS fix. Please move to an open area and try again."
-          : `Location accuracy must be ±${MAX_ACCEPTABLE_ACCURACY_METERS}m or better before attendance can be recorded.`,
-      );
+          : `Location accuracy must be ±${MAX_ACCEPTABLE_ACCURACY_METERS}m or better before attendance can be recorded.`;
+      setStatusMessage(msg);
+      toast.error(msg);
       return;
     }
+
+    if (!isInsideGeofence) {
+      const errMsg = `❌ Geofence Blocked: You are ${currentDistanceMeters}m away from destination (${event.venue}). Attendance requires you to be within ${allowedRadius}m of the venue.`;
+      setStatusMessage(errMsg);
+      toast.error(`Outside Venue Radius: You are ${currentDistanceMeters}m away (max allowed: ${allowedRadius}m)`);
+      return;
+    }
+
     setIsPunching(true);
     setTimeout(() => {
       const res = campusStore.punchIn(event.id, {
@@ -160,9 +169,11 @@ export function PunchAttendanceModal({
           });
         } catch {}
         setStatusMessage(`✅ Punch-In confirmed at your exact location: ${locationDetails?.formattedAddress || "GSFC Campus"} (${currentDistanceMeters}m from venue).`);
+        toast.success("Punch-In confirmed successfully!");
         if (onSuccess) onSuccess();
       } else {
         setStatusMessage(res.message);
+        toast.error(res.message);
       }
     }, 400);
   };
@@ -170,9 +181,19 @@ export function PunchAttendanceModal({
   // Handle Punch Out
   const handlePunchOut = () => {
     if (locationStatus !== "acquired" || !locationAccuracy || locationAccuracy > MAX_ACCEPTABLE_ACCURACY_METERS) {
-      setStatusMessage(`Location accuracy must be ±${MAX_ACCEPTABLE_ACCURACY_METERS}m or better before attendance can be recorded.`);
+      const msg = `Location accuracy must be ±${MAX_ACCEPTABLE_ACCURACY_METERS}m or better before attendance can be recorded.`;
+      setStatusMessage(msg);
+      toast.error(msg);
       return;
     }
+
+    if (!isInsideGeofence) {
+      const errMsg = `❌ Geofence Blocked: You are ${currentDistanceMeters}m away from destination (${event.venue}). Punch-out requires you to be within ${allowedRadius}m of the venue.`;
+      setStatusMessage(errMsg);
+      toast.error(`Outside Venue Radius: You are ${currentDistanceMeters}m away (max allowed: ${allowedRadius}m)`);
+      return;
+    }
+
     setIsPunching(true);
     setTimeout(() => {
       const res = campusStore.punchOut(event.id, {
@@ -194,7 +215,11 @@ export function PunchAttendanceModal({
           });
         } catch {}
         setStatusMessage(`✅ Punch-Out confirmed at your exact location: ${locationDetails?.formattedAddress || "GSFC Campus"}.`);
+        toast.success("Punch-Out confirmed successfully!");
         if (onSuccess) onSuccess();
+      } else {
+        setStatusMessage(res.message);
+        toast.error(res.message);
       }
     }, 400);
   };
@@ -281,6 +306,21 @@ export function PunchAttendanceModal({
           />
         </div>
 
+        {/* Geofence Outside Radius Warning Banner */}
+        {!isInsideGeofence && locationStatus === "acquired" && (
+          <div className="mt-3 flex items-start gap-2.5 rounded-2xl border border-rose-500/40 bg-rose-500/10 p-3 text-xs text-rose-700 dark:text-rose-300 animate-in fade-in">
+            <AlertTriangle className="size-4.5 shrink-0 text-rose-600 mt-0.5" />
+            <div className="space-y-1">
+              <p className="font-black text-rose-800 dark:text-rose-200">
+                Outside Event Destination ({currentDistanceMeters}m away)
+              </p>
+              <p className="text-[11px] text-rose-600/90 dark:text-rose-300/90 leading-relaxed">
+                You are currently <strong>{currentDistanceMeters}m</strong> away from <strong>{event.venue}</strong>. Attendance punch is strictly restricted to within <strong>{allowedRadius}m</strong> of the venue. You cannot punch attendance away from destination. Please arrive at the venue and click <em>Refresh Fix</em>.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Status Alert Message */}
         {statusMessage && (
           <div className="mt-3 rounded-xl border border-blue-500/30 bg-blue-500/10 p-2.5 text-center text-xs font-bold text-blue-700 dark:text-blue-300 animate-in fade-in">
@@ -296,32 +336,49 @@ export function PunchAttendanceModal({
               "rounded-2xl border p-4 text-center transition-all",
               isPunchedIn
                 ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                : !isInsideGeofence
+                ? "border-rose-500/30 bg-rose-500/5"
                 : "border-border bg-card/60"
             )}
           >
-            <div className="mx-auto flex size-10 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-600 mb-2">
+            <div className={cn(
+              "mx-auto flex size-10 items-center justify-center rounded-xl mb-2",
+              isPunchedIn
+                ? "bg-emerald-500/15 text-emerald-600"
+                : !isInsideGeofence
+                ? "bg-rose-500/15 text-rose-600"
+                : "bg-emerald-500/15 text-emerald-600"
+            )}>
               <LogIn className="size-5" />
             </div>
             <h4 className="font-bold text-sm">Step 1: Punch In</h4>
             <p className="text-[11px] text-muted-foreground mt-0.5">
               {isPunchedIn
                 ? `Entry Recorded (${registration?.punchInTime?.slice(11, 16) || "Verified"})`
+                : !isInsideGeofence
+                ? `Requires presence at ${event.venue}`
                 : "Mark entry when arriving at venue"}
             </p>
 
             <Button
               onClick={handlePunchIn}
-              disabled={isPunchedIn || isPunching}
+              disabled={isPunchedIn || isPunching || !isInsideGeofence || locationStatus !== "acquired"}
               className={cn(
-                "mt-3 w-full rounded-xl text-xs font-bold shadow-md",
+                "mt-3 w-full rounded-xl text-xs font-bold shadow-md transition-all",
                 isPunchedIn
                   ? "bg-emerald-600 text-white cursor-default"
+                  : !isInsideGeofence
+                  ? "bg-slate-300 dark:bg-slate-700 text-slate-500 dark:text-slate-400 cursor-not-allowed shadow-none border border-border/60"
                   : "bg-emerald-600 text-white hover:bg-emerald-700"
               )}
             >
               {isPunchedIn ? (
                 <>
                   <CheckCircle2 className="mr-1.5 size-4" /> Entry Verified
+                </>
+              ) : !isInsideGeofence ? (
+                <>
+                  <AlertTriangle className="mr-1.5 size-3.5 text-amber-500" /> Outside Venue ({currentDistanceMeters}m)
                 </>
               ) : (
                 <>
@@ -339,16 +396,27 @@ export function PunchAttendanceModal({
                 ? "border-blue-500/50 bg-blue-500/10 text-blue-700 dark:text-blue-300"
                 : !isPunchedIn
                 ? "border-border/40 bg-card/30 opacity-60"
+                : !isInsideGeofence
+                ? "border-rose-500/30 bg-rose-500/5"
                 : "border-amber-500/50 bg-amber-500/10"
             )}
           >
-            <div className="mx-auto flex size-10 items-center justify-center rounded-xl bg-amber-500/15 text-amber-600 mb-2">
+            <div className={cn(
+              "mx-auto flex size-10 items-center justify-center rounded-xl mb-2",
+              isFullyAttended
+                ? "bg-blue-500/15 text-blue-600"
+                : !isInsideGeofence && isPunchedIn
+                ? "bg-rose-500/15 text-rose-600"
+                : "bg-amber-500/15 text-amber-600"
+            )}>
               <LogOut className="size-5" />
             </div>
             <h4 className="font-bold text-sm">Step 2: Punch Out</h4>
             <p className="text-[11px] text-muted-foreground mt-0.5">
               {isFullyAttended
                 ? `Completed (${registration?.punchOutTime?.slice(11, 16) || "Done"})`
+                : isPunchedIn && !isInsideGeofence
+                ? `Must be within ${allowedRadius}m of venue`
                 : isPunchedIn
                 ? "Mark exit when session finishes"
                 : "Punch In first to unlock"}
@@ -356,11 +424,13 @@ export function PunchAttendanceModal({
 
             <Button
               onClick={handlePunchOut}
-              disabled={!isPunchedIn || isFullyAttended || isPunching}
+              disabled={!isPunchedIn || isFullyAttended || isPunching || !isInsideGeofence || locationStatus !== "acquired"}
               className={cn(
-                "mt-3 w-full rounded-xl text-xs font-bold shadow-md",
+                "mt-3 w-full rounded-xl text-xs font-bold shadow-md transition-all",
                 isFullyAttended
                   ? "bg-blue-600 text-white cursor-default"
+                  : !isInsideGeofence && isPunchedIn
+                  ? "bg-slate-300 dark:bg-slate-700 text-slate-500 dark:text-slate-400 cursor-not-allowed shadow-none border border-border/60"
                   : isPunchedIn
                   ? "bg-amber-600 text-white hover:bg-amber-700"
                   : "bg-slate-400 text-white"
@@ -369,6 +439,10 @@ export function PunchAttendanceModal({
               {isFullyAttended ? (
                 <>
                   <CheckCircle2 className="mr-1.5 size-4" /> Full Session Confirmed
+                </>
+              ) : !isInsideGeofence && isPunchedIn ? (
+                <>
+                  <AlertTriangle className="mr-1.5 size-3.5 text-amber-500" /> Outside Venue ({currentDistanceMeters}m)
                 </>
               ) : (
                 <>
