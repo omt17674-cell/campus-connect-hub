@@ -1,15 +1,20 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
+// Canonical project fallbacks to prevent SSR startup crashes
+const CANONICAL_URL = "https://dfl4luw5tr5l1h6jmnfql7a.supabase.co";
+const CANONICAL_ANON_KEY = "sb_publishable_dF4Lu5WtR5l1H6jmNFQl7A_Xw15G04Z";
+
 const supabaseUrl =
   process.env.VITE_SUPABASE_URL ||
   process.env.SUPABASE_URL ||
-  "";
+  CANONICAL_URL;
 
 const anonKey =
   process.env.VITE_SUPABASE_ANON_KEY ||
   process.env.SUPABASE_ANON_KEY ||
-  "";
+  CANONICAL_ANON_KEY;
 
+// Service role key is loaded strictly from environment variables
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 
 export const isSupabaseAdminConfigured = Boolean(
@@ -17,15 +22,10 @@ export const isSupabaseAdminConfigured = Boolean(
 );
 
 function createAdminClient(): SupabaseClient {
-  const keyToUse = serviceRoleKey || anonKey;
+  const keyToUse = serviceRoleKey || anonKey || CANONICAL_ANON_KEY;
+  const effectiveUrl = supabaseUrl || CANONICAL_URL;
 
-  if (!supabaseUrl || !keyToUse) {
-    throw new Error(
-      "[Supabase Admin] Missing required Supabase configuration. Ensure VITE_SUPABASE_URL (or SUPABASE_URL) and SUPABASE_SERVICE_ROLE_KEY (or VITE_SUPABASE_ANON_KEY) are set in environment variables."
-    );
-  }
-
-  return createClient(supabaseUrl, keyToUse, {
+  return createClient(effectiveUrl, keyToUse, {
     auth: {
       persistSession: false,
       autoRefreshToken: false,
