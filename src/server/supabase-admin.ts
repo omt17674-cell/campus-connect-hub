@@ -1,7 +1,7 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
 // Canonical project fallbacks to prevent SSR startup crashes
-const CANONICAL_URL = "https://dfl4luw5tr5l1h6jmnfql7a.supabase.co";
+const CANONICAL_URL = "https://ebyhgllzwayrkhwwyvba.supabase.co";
 const CANONICAL_ANON_KEY = "sb_publishable_dF4Lu5WtR5l1H6jmNFQl7A_Xw15G04Z";
 
 const supabaseUrl =
