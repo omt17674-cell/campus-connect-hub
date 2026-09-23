@@ -35,7 +35,7 @@ interface FacultyMentorDashboardProps {
 
 export function FacultyMentorDashboard({ state }: FacultyMentorDashboardProps) {
   const user = state?.currentUser;
-  const facultyId = user?.id || user?.email || "u-tpc";
+  const facultyId = user?.email || user?.id || "fac-1";
   const [activeTab, setActiveTab] = useState<"students" | "tasks" | "messages" | "alerts">("students");
 
   const [assignments, setAssignments] = useState<FacultyMentorAssignment[]>([]);
@@ -68,14 +68,15 @@ export function FacultyMentorDashboard({ state }: FacultyMentorDashboardProps) {
 
   useEffect(() => {
     loadFacultyData();
-  }, [facultyId]);
+  }, [facultyId, user?.email, user?.id]);
 
   const loadFacultyData = async () => {
     setLoading(true);
+    const activeFacultyKey = user?.email || user?.id || facultyId;
     const [fmaRes, tasksRes, msgRes] = await Promise.all([
-      apiClient.getFacultyMentorAssignments({ facultyId }),
-      apiClient.getMentorshipTasks({ mentorId: facultyId }),
-      apiClient.getMentorMessages({ facultyId }),
+      apiClient.getFacultyMentorAssignments({ facultyId: activeFacultyKey }),
+      apiClient.getMentorshipTasks({ mentorId: activeFacultyKey }),
+      apiClient.getMentorMessages({ facultyId: activeFacultyKey }),
     ]);
 
     if (fmaRes?.assignments) setAssignments(fmaRes.assignments);

@@ -214,44 +214,54 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
     const cleanPass = password.trim();
 
     // ─────────────────────────────────────────────────────────────────────
-    // DEMO / OFFICIAL PORTAL ACCOUNTS: Fast login for admin/TPC/Mentors & students
+    // DEMO / OFFICIAL PORTAL ACCOUNTS: Fast login for admin/TPC/Mentors & test students
     // ─────────────────────────────────────────────────────────────────────
-    const DEMO_ACCOUNTS: Record<string, { role: UserRole; name: string; dept: string; pass: string }> = {
-      "admin.dean@gsfcuniversity.ac.in": { role: "admin",     name: "Dr. Ananya Sharma (Dean)", dept: "Administration",                  pass: "9558413347@Om" },
-      "tpc.admin@gsfcuniversity.ac.in":  { role: "organizer", name: "Prof. Rajiv Mehta (TPC Head)", dept: "Training & Placement Cell",  pass: "7043313347@Om"   },
+    const DEMO_ACCOUNTS: Record<string, { role: UserRole; name: string; dept: string; pass: string; rollNo?: string; sem?: number }> = {
+      "admin.dean@gsfcuniversity.ac.in": { role: "admin", name: "Dr. Ananya Sharma (Dean)", dept: "Student Affairs & Academic Governance", pass: "9558413347@Om" },
+      "tpc.admin@gsfcuniversity.ac.in": { role: "organizer", name: "Prof. Rajiv Mehta (TPC Head)", dept: "Training & Placement Cell / Event Convener", pass: "7043313347@Om" },
       "faculty.mentor@gsfcuniversity.ac.in": { role: "faculty_mentor", name: "Dr. K. N. Joshi (Faculty Mentor)", dept: "Computer Science & Engineering", pass: "9558413347@Om" },
       "internship.mentor@gsfcuniversity.ac.in": { role: "internship_mentor", name: "Prof. Sneha Dave (Internship Mentor)", dept: "Chemical & Petrochemical Eng", pass: "9558413347@Om" },
       "management.admin@gsfcuniversity.ac.in": { role: "management", name: "Dr. S. K. Patel (Management Head)", dept: "Institutional Governance", pass: "9558413347@Om" },
+      // Test Students
+      "24bt04171@gsfcuniversity.ac.in": { role: "student", name: "Aarav Mehta", dept: "Computer Science & Engineering", rollNo: "24BT04171", sem: 6, pass: "9558413347@Om" },
+      "24bt04182@gsfcuniversity.ac.in": { role: "student", name: "Diya Patel", dept: "Chemical & Petrochemical Eng", rollNo: "24BT04182", sem: 6, pass: "9558413347@Om" },
+      "24bt04195@gsfcuniversity.ac.in": { role: "student", name: "Rohan Shah", dept: "Computer Science & Engineering", rollNo: "24BT04195", sem: 4, pass: "9558413347@Om" },
+      "24bb01045@gsfcuniversity.ac.in": { role: "student", name: "Ananya Joshi", dept: "School of Management", rollNo: "24BB01045", sem: 4, pass: "9558413347@Om" },
+      "24bt04210@gsfcuniversity.ac.in": { role: "student", name: "Harshil Trivedi", dept: "Mechanical & Automation Eng", rollNo: "24BT04210", sem: 6, pass: "9558413347@Om" },
     };
     const demoKey = Object.keys(DEMO_ACCOUNTS).find(
-      k => k === cleanEmail || k.split("@")[0].toLowerCase() === cleanInput.toLowerCase()
+      k =>
+        k === cleanEmail ||
+        k.split("@")[0].toLowerCase() === cleanInput.toLowerCase() ||
+        DEMO_ACCOUNTS[k].rollNo?.toLowerCase() === cleanInput.toLowerCase()
     );
     if (demoKey) {
       const demo = DEMO_ACCOUNTS[demoKey];
       if (cleanPass === demo.pass) {
+        const studentRoll = demo.rollNo || (demo.role === "admin" ? "DEAN-001" : demo.role === "organizer" ? "TPC-001" : "FAC-001");
         const demoAccount: CampusAccount = {
           role: demo.role,
-          roleTitle: demo.role === "admin" ? "Administration (Dean & Academic Governance)" : "Placement Faculty Coordinator",
-          roleBadge: demo.role === "admin" ? "DEAN-001" : "TPC-001",
+          roleTitle: demo.role === "admin" ? "Administration (Dean & Academic Governance)" : demo.role === "student" ? "GSFC Student" : demo.role === "faculty_mentor" ? "Faculty Mentor" : "Institutional Officer",
+          roleBadge: studentRoll,
           name: demo.name,
-          idOrRoll: demo.role === "admin" ? "DEAN-001" : "TPC-001",
+          idOrRoll: studentRoll,
           email: demoKey,
           password: demo.pass,
           profile: {
-            id: `u-${demo.role}-demo`,
+            id: `u-${studentRoll.toLowerCase()}`,
             name: demo.name,
-            rollNo: demo.role === "admin" ? "DEAN-001" : "TPC-001",
+            rollNo: studentRoll,
             email: demoKey,
             role: demo.role,
             department: demo.dept,
-            school: "GSFC University",
-            degree: "",
-            semester: 0,
+            school: demo.dept.includes("Management") ? "School of Management (SOM)" : "School of Technology (SOT)",
+            degree: demo.role === "student" ? (demo.dept.includes("Management") ? "BBA" : "B.Tech") : "",
+            semester: demo.sem || (demo.role === "student" ? 6 : 0),
             residenceType: "dayscholar",
-            attendanceRate: 100,
-            points: 500,
-            streakDays: 30,
-            volunteerHours: 100,
+            attendanceRate: 94,
+            points: 1250,
+            streakDays: 14,
+            volunteerHours: 35,
             badges: ["b1", "b2", "b3"],
             avatar: demo.name.slice(0, 2).toUpperCase(),
             isVerified: true,
@@ -613,14 +623,16 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
       const resData = await res.json().catch(() => null);
 
       if (!res.ok) {
-        setIsVerifyingRegOtp(false);
-        setRegSubmitting(false);
-        const errMsg =
-          res.status === 409
-            ? `⚠️ Identity Locked: Student ${cleanRoll} is already registered in Supabase.`
-            : resData?.message || `Registration failed on Supabase backend (HTTP ${res.status}).`;
-        setStatusMessage({ text: errMsg, type: "error" });
-        return;
+        if (res.status === 409) {
+          setIsVerifyingRegOtp(false);
+          setRegSubmitting(false);
+          setStatusMessage({
+            text: `⚠️ Identity Locked: Student ${cleanRoll} is already registered. Please sign in with your password.`,
+            type: "error",
+          });
+          return;
+        }
+        console.warn("[Registration] Server returned non-200 (falling back to local storage registration):", res.status, resData);
       }
 
       const initials = regFullName
@@ -1021,6 +1033,71 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
                       <span>Login with Password</span>
                     )}
                   </Button>
+
+                  {/* 1-Click Fast Test Profiles */}
+                  <div className="pt-2 border-t border-slate-200/80">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5 flex items-center justify-between">
+                      <span>⚡ 1-Click Test Profiles</span>
+                      <span className="text-[9px] font-mono text-slate-400">All Modules</span>
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedRole("management");
+                          setIdentifier("management.admin@gsfcuniversity.ac.in");
+                          setPassword("9558413347@Om");
+                        }}
+                        className="rounded-lg border border-border/80 bg-slate-100 hover:bg-slate-200 px-2 py-1 text-[10px] font-bold text-slate-800 transition-colors"
+                      >
+                        🏛️ Management
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedRole("faculty_mentor");
+                          setIdentifier("faculty.mentor@gsfcuniversity.ac.in");
+                          setPassword("9558413347@Om");
+                        }}
+                        className="rounded-lg border border-border/80 bg-slate-100 hover:bg-slate-200 px-2 py-1 text-[10px] font-bold text-slate-800 transition-colors"
+                      >
+                        👨‍🏫 Dr. Joshi (Mentor)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedRole("student");
+                          setIdentifier("24BT04171");
+                          setPassword("9558413347@Om");
+                        }}
+                        className="rounded-lg border border-border/80 bg-emerald-50 hover:bg-emerald-100 border-emerald-200 px-2 py-1 text-[10px] font-bold text-emerald-800 transition-colors"
+                      >
+                        🎓 Aarav (Assigned)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedRole("student");
+                          setIdentifier("24BB01045");
+                          setPassword("9558413347@Om");
+                        }}
+                        className="rounded-lg border border-border/80 bg-amber-50 hover:bg-amber-100 border-amber-200 px-2 py-1 text-[10px] font-bold text-amber-800 transition-colors"
+                      >
+                        🎓 Ananya (Unassigned)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedRole("internship_mentor");
+                          setIdentifier("internship.mentor@gsfcuniversity.ac.in");
+                          setPassword("9558413347@Om");
+                        }}
+                        className="rounded-lg border border-border/80 bg-slate-100 hover:bg-slate-200 px-2 py-1 text-[10px] font-bold text-slate-800 transition-colors"
+                      >
+                        💼 Prof. Dave (Intern Mentor)
+                      </button>
+                    </div>
+                  </div>
                 </form>
               ) : (
                 <form onSubmit={handleVerifyLoginOtp} className="space-y-3.5">

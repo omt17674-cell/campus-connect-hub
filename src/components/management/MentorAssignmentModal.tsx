@@ -29,6 +29,8 @@ interface MentorAssignmentModalProps {
   onSuccess: () => void;
   students: NewRegisteredStudent[];
   facultyList: Array<{ id: string; name: string; department?: string; email?: string }>;
+  initialStudentId?: string;
+  initialFacultyId?: string;
 }
 
 export function MentorAssignmentModal({
@@ -37,6 +39,8 @@ export function MentorAssignmentModal({
   onSuccess,
   students,
   facultyList,
+  initialStudentId,
+  initialFacultyId,
 }: MentorAssignmentModalProps) {
   const [assignmentMode, setAssignmentMode] = useState<"single" | "bulk">("single");
 
@@ -46,8 +50,8 @@ export function MentorAssignmentModal({
   const [fields, setFields] = useState<FieldMaster[]>([]);
 
   // Form State
-  const [selectedFaculty, setSelectedFaculty] = useState("");
-  const [selectedStudent, setSelectedStudent] = useState("");
+  const [selectedFaculty, setSelectedFaculty] = useState(initialFacultyId || "");
+  const [selectedStudent, setSelectedStudent] = useState(initialStudentId || "");
   const [selectedBulkStudents, setSelectedBulkStudents] = useState<string[]>([]);
   const [selectedYear, setSelectedYear] = useState("2025-2026");
   const [selectedSemester, setSelectedSemester] = useState(6);
@@ -58,6 +62,17 @@ export function MentorAssignmentModal({
 
   useEffect(() => {
     if (!isOpen) return;
+    if (initialStudentId) {
+      setSelectedStudent(initialStudentId);
+      const stu = students.find((s) => s.id === initialStudentId || s.rollNo === initialStudentId);
+      if (stu) {
+        if (stu.department) setSelectedDept(stu.department);
+        if (stu.semester) setSelectedSemester(stu.semester);
+      }
+    }
+    if (initialFacultyId) {
+      setSelectedFaculty(initialFacultyId);
+    }
     apiClient.getMasterData().then((res) => {
       if (res?.success && res.data) {
         setAcademicYears(res.data.academicYears || []);
@@ -68,7 +83,16 @@ export function MentorAssignmentModal({
         }
       }
     });
-  }, [isOpen]);
+  }, [isOpen, initialStudentId, initialFacultyId]);
+
+  const handleStudentSelect = (stuId: string) => {
+    setSelectedStudent(stuId);
+    const stu = students.find((s) => s.id === stuId || s.rollNo === stuId);
+    if (stu) {
+      if (stu.department) setSelectedDept(stu.department);
+      if (stu.semester) setSelectedSemester(stu.semester);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -276,7 +300,7 @@ export function MentorAssignmentModal({
               <label className="text-[11px] font-bold text-muted-foreground">Select Student</label>
               <select
                 value={selectedStudent}
-                onChange={(e) => setSelectedStudent(e.target.value)}
+                onChange={(e) => handleStudentSelect(e.target.value)}
                 className="mt-1 w-full h-9 rounded-xl border border-border/80 bg-background px-3 text-xs font-semibold"
                 required
               >

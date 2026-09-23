@@ -53,24 +53,32 @@ export function StudentMentorshipHub({ state }: StudentMentorshipHubProps) {
 
   useEffect(() => {
     loadStudentMentorshipData();
-  }, [studentId]);
+  }, [studentId, user?.rollNo, user?.email]);
 
   const loadStudentMentorshipData = async () => {
-    if (!studentId) return;
+    const activeStudentKey = user?.rollNo || user?.id || user?.email || studentId;
+    if (!activeStudentKey) return;
     setLoading(true);
 
     const [fmaRes, imaRes, tasksRes, msgRes] = await Promise.all([
-      apiClient.getFacultyMentorAssignments({ studentId }),
+      apiClient.getFacultyMentorAssignments({ studentId: activeStudentKey }),
       apiClient.getInternshipMentorAssignments({}),
-      apiClient.getMentorshipTasks({ studentId }),
-      apiClient.getMentorMessages({ studentId }),
+      apiClient.getMentorshipTasks({ studentId: activeStudentKey }),
+      apiClient.getMentorMessages({ studentId: activeStudentKey }),
     ]);
 
     if (fmaRes?.assignments && fmaRes.assignments.length > 0) {
       setFacultyMentor(fmaRes.assignments[0]);
+    } else {
+      setFacultyMentor(null);
     }
     if (imaRes?.assignments) {
-      const match = imaRes.assignments.find((a: any) => a.studentId === studentId || a.studentRollNo === user?.rollNo);
+      const match = imaRes.assignments.find(
+        (a: any) =>
+          a.studentId === activeStudentKey ||
+          a.studentRollNo === user?.rollNo ||
+          (user?.rollNo && a.studentRollNo?.toLowerCase() === user.rollNo.toLowerCase())
+      );
       if (match) setInternshipMentor(match);
     }
     if (tasksRes?.tasks) {

@@ -64,17 +64,19 @@ export function ManagementDashboard({ state }: ManagementDashboardProps) {
 
   // Modals
   const [showAssignModal, setShowAssignModal] = useState(false);
+  const [selectedStudentForAssign, setSelectedStudentForAssign] = useState<string | undefined>(undefined);
+  const [selectedFacultyForAssign, setSelectedFacultyForAssign] = useState<string | undefined>(undefined);
   const [selectedStudentForHistory, setSelectedStudentForHistory] = useState<string | null>(null);
 
   const registeredStudents = state?.newRegisteredStudents || [];
 
   // Faculty list derived from accounts and campus state
   const facultyList = [
-    { id: "u-tpc", name: "Prof. Rajiv Mehta", department: "Training & Placement Cell / Event Convener", email: "tpc.admin@gsfcuniversity.ac.in", designation: "Associate Professor" },
-    { id: "u-ananya", name: "Dr. Ananya Sharma", department: "Student Affairs & Academic Governance", email: "admin.dean@gsfcuniversity.ac.in", designation: "Dean & Academic Head" },
     { id: "fac-1", name: "Dr. K. N. Joshi", department: "Computer Science & Engineering", email: "kn.joshi@gsfcuniversity.ac.in", designation: "Professor & HOD" },
     { id: "fac-2", name: "Prof. Sneha Dave", department: "Chemical & Petrochemical Eng", email: "sneha.dave@gsfcuniversity.ac.in", designation: "Assistant Professor" },
     { id: "fac-3", name: "Dr. Amit Trivedi", department: "School of Management", email: "amit.trivedi@gsfcuniversity.ac.in", designation: "Associate Professor" },
+    { id: "u-tpc", name: "Prof. Rajiv Mehta", department: "Training & Placement Cell / Event Convener", email: "tpc.admin@gsfcuniversity.ac.in", designation: "Associate Professor" },
+    { id: "u-ananya", name: "Dr. Ananya Sharma", department: "Student Affairs & Academic Governance", email: "admin.dean@gsfcuniversity.ac.in", designation: "Dean & Academic Head" },
   ];
 
   useEffect(() => {
@@ -95,6 +97,12 @@ export function ManagementDashboard({ state }: ManagementDashboardProps) {
       setAssignments(fmaRes.assignments);
     }
     setLoading(false);
+  };
+
+  const handleOpenAssignModal = (studentId?: string, facultyId?: string) => {
+    setSelectedStudentForAssign(studentId);
+    setSelectedFacultyForAssign(facultyId);
+    setShowAssignModal(true);
   };
 
   const filteredStudents = registeredStudents.filter((s) => {
@@ -320,34 +328,58 @@ export function ManagementDashboard({ state }: ManagementDashboardProps) {
                   <th className="pb-3">Roll Number</th>
                   <th className="pb-3">Department</th>
                   <th className="pb-3">Semester</th>
-                  <th className="pb-3">Verification</th>
+                  <th className="pb-3">Allocated Mentor</th>
                   <th className="pb-3 text-right pr-2">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/40">
-                {filteredStudents.map((stu) => (
-                  <tr key={stu.id} className="hover:bg-muted/40 transition-colors">
-                    <td className="py-3 pl-2 font-bold text-foreground">{stu.fullName}</td>
-                    <td className="py-3 font-mono">{stu.rollNo}</td>
-                    <td className="py-3">{stu.department}</td>
-                    <td className="py-3">Sem {stu.semester || 6}</td>
-                    <td className="py-3">
-                      <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-600">
-                        Verified
-                      </span>
-                    </td>
-                    <td className="py-3 text-right pr-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setSelectedStudentForHistory(stu.rollNo || stu.id)}
-                        className="h-7 rounded-xl text-xs gap-1 font-bold"
-                      >
-                        <Eye className="size-3" /> View 360° History
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
+                {filteredStudents.map((stu) => {
+                  const assignment = assignments.find(
+                    (a) =>
+                      a.status === "active" &&
+                      (a.studentId === stu.id || a.studentRollNo === stu.rollNo || (stu.rollNo && a.studentRollNo && a.studentRollNo.toLowerCase() === stu.rollNo.toLowerCase()))
+                  );
+                  return (
+                    <tr key={stu.id} className="hover:bg-muted/40 transition-colors">
+                      <td className="py-3 pl-2 font-bold text-foreground">{stu.fullName}</td>
+                      <td className="py-3 font-mono">{stu.rollNo}</td>
+                      <td className="py-3">{stu.department}</td>
+                      <td className="py-3">Sem {stu.semester || 6}</td>
+                      <td className="py-3">
+                        {assignment ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[10px] font-bold text-emerald-600">
+                            <UserCheck className="size-3" /> {assignment.facultyName || "Faculty Mentor"}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2.5 py-0.5 text-[10px] font-bold text-amber-600">
+                            <ShieldAlert className="size-3" /> Unassigned
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3 text-right pr-2">
+                        <div className="flex items-center justify-end gap-1.5">
+                          {!assignment && (
+                            <Button
+                              size="sm"
+                              onClick={() => handleOpenAssignModal(stu.id)}
+                              className="h-7 rounded-xl bg-[#1A3C6E] text-white text-[11px] gap-1 font-bold px-2.5 shadow-xs"
+                            >
+                              <UserPlus className="size-3" /> Allocate
+                            </Button>
+                          )}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setSelectedStudentForHistory(stu.rollNo || stu.id)}
+                            className="h-7 rounded-xl text-[11px] gap-1 font-bold px-2.5"
+                          >
+                            <Eye className="size-3" /> 360° History
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -371,44 +403,47 @@ export function ManagementDashboard({ state }: ManagementDashboardProps) {
                   <th className="pb-3 pl-2">Faculty Name</th>
                   <th className="pb-3">Designation</th>
                   <th className="pb-3">Department</th>
-                  <th className="pb-3">Capabilities</th>
+                  <th className="pb-3">Assigned Mentees</th>
                   <th className="pb-3 text-right pr-2">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/40">
-                {facultyList.map((fac) => (
-                  <tr key={fac.id} className="hover:bg-muted/40 transition-colors">
-                    <td className="py-3 pl-2">
-                      <p className="font-bold text-foreground">{fac.name}</p>
-                      <p className="text-[10px] text-muted-foreground font-mono">{fac.email}</p>
-                    </td>
-                    <td className="py-3">{fac.designation}</td>
-                    <td className="py-3">{fac.department}</td>
-                    <td className="py-3">
-                      <div className="flex flex-wrap gap-1">
-                        <span className="rounded-full bg-brand/10 px-2 py-0.5 text-[9px] font-bold text-brand">
-                          Faculty
+                {facultyList.map((fac) => {
+                  const facAssignments = assignments.filter(
+                    (a) =>
+                      a.status === "active" &&
+                      (a.facultyId === fac.id ||
+                        a.facultyEmail === fac.email ||
+                        (fac.id === "fac-1" && a.facultyName?.includes("Joshi")) ||
+                        (fac.id === "fac-2" && a.facultyName?.includes("Dave")) ||
+                        (fac.id === "u-tpc" && a.facultyName?.includes("Mehta")))
+                  );
+                  return (
+                    <tr key={fac.id} className="hover:bg-muted/40 transition-colors">
+                      <td className="py-3 pl-2">
+                        <p className="font-bold text-foreground">{fac.name}</p>
+                        <p className="text-[10px] text-muted-foreground font-mono">{fac.email}</p>
+                      </td>
+                      <td className="py-3">{fac.designation}</td>
+                      <td className="py-3">{fac.department}</td>
+                      <td className="py-3">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-blue-500/15 px-2.5 py-0.5 text-[10px] font-bold text-blue-600">
+                          <Users className="size-3" /> {facAssignments.length} Mentee{facAssignments.length === 1 ? "" : "s"}
                         </span>
-                        <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[9px] font-bold text-emerald-600">
-                          Faculty Mentor
-                        </span>
-                        <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[9px] font-bold text-amber-600">
-                          Internship Mentor
-                        </span>
-                      </div>
-                    </td>
-                    <td className="py-3 text-right pr-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setShowAssignModal(true)}
-                        className="h-7 rounded-xl text-xs gap-1 font-bold"
-                      >
-                        <UserPlus className="size-3" /> Assign Students
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="py-3 text-right pr-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleOpenAssignModal(undefined, fac.id)}
+                          className="h-7 rounded-xl text-xs gap-1 font-bold"
+                        >
+                          <UserPlus className="size-3" /> Assign Students
+                        </Button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -426,10 +461,10 @@ export function ManagementDashboard({ state }: ManagementDashboardProps) {
 
             <Button
               size="sm"
-              onClick={() => setShowAssignModal(true)}
+              onClick={() => handleOpenAssignModal()}
               className="rounded-xl bg-[#1A3C6E] text-white text-xs font-bold gap-1.5 h-8.5 shadow-md"
             >
-              <UserPlus className="size-3.5" /> Assign Mentors
+              <UserPlus className="size-3.5" /> Allocate Mentors
             </Button>
           </div>
 
@@ -440,6 +475,7 @@ export function ManagementDashboard({ state }: ManagementDashboardProps) {
                   <th className="pb-3 pl-2">Faculty Mentor</th>
                   <th className="pb-3">Student Mentee</th>
                   <th className="pb-3">Department & Semester</th>
+                  <th className="pb-3">Specialization Field</th>
                   <th className="pb-3">Academic Year</th>
                   <th className="pb-3">Status</th>
                   <th className="pb-3 text-right pr-2">Actions</th>
@@ -448,14 +484,20 @@ export function ManagementDashboard({ state }: ManagementDashboardProps) {
               <tbody className="divide-y divide-border/40">
                 {assignments.map((a) => (
                   <tr key={a.id} className="hover:bg-muted/40 transition-colors">
-                    <td className="py-3 pl-2 font-bold text-foreground">
-                      {a.facultyName || a.facultyId}
+                    <td className="py-3 pl-2">
+                      <p className="font-bold text-foreground">{a.facultyName || a.facultyId}</p>
+                      <p className="text-[10px] text-muted-foreground">{a.facultyDepartment}</p>
                     </td>
                     <td className="py-3">
                       <p className="font-semibold text-foreground">{a.studentName || a.studentId}</p>
                       <p className="text-[10px] text-muted-foreground font-mono">{a.studentRollNo || a.studentId}</p>
                     </td>
                     <td className="py-3">{a.department} (Sem {a.semester})</td>
+                    <td className="py-3">
+                      <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[10px] font-semibold text-foreground">
+                        {a.field || "General"}
+                      </span>
+                    </td>
                     <td className="py-3">{a.academicYear}</td>
                     <td className="py-3">
                       <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-600">
@@ -463,14 +505,24 @@ export function ManagementDashboard({ state }: ManagementDashboardProps) {
                       </span>
                     </td>
                     <td className="py-3 text-right pr-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setSelectedStudentForHistory(a.studentRollNo || a.studentId)}
-                        className="h-7 rounded-xl text-xs gap-1 font-bold"
-                      >
-                        <Eye className="size-3" /> History
-                      </Button>
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleOpenAssignModal(a.studentId, a.facultyId)}
+                          className="h-7 rounded-xl text-xs font-bold"
+                        >
+                          Reassign
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setSelectedStudentForHistory(a.studentRollNo || a.studentId)}
+                          className="h-7 rounded-xl text-xs gap-1 font-bold"
+                        >
+                          <Eye className="size-3" /> History
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -487,10 +539,16 @@ export function ManagementDashboard({ state }: ManagementDashboardProps) {
       {showAssignModal && (
         <MentorAssignmentModal
           isOpen={showAssignModal}
-          onClose={() => setShowAssignModal(false)}
+          onClose={() => {
+            setShowAssignModal(false);
+            setSelectedStudentForAssign(undefined);
+            setSelectedFacultyForAssign(undefined);
+          }}
           onSuccess={loadManagementData}
           students={registeredStudents}
           facultyList={facultyList}
+          initialStudentId={selectedStudentForAssign}
+          initialFacultyId={selectedFacultyForAssign}
         />
       )}
 
