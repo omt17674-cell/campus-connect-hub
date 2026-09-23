@@ -106,66 +106,54 @@ export function Header({
   };
 
   return (
-    <header className="rounded-3xl border border-border/80 bg-card/85 p-3.5 sm:p-4 shadow-xl shadow-brand/5 backdrop-blur-2xl flex flex-col gap-3">
+    <header className="rounded-3xl border border-border/80 bg-card/85 p-3 sm:p-4 shadow-xl shadow-brand/5 backdrop-blur-2xl flex flex-col gap-2.5 overflow-hidden w-full">
       {/* Top Header Row */}
-      <div className="flex items-center justify-between gap-3 flex-wrap lg:flex-nowrap">
+      <div className="flex items-center justify-between gap-2 min-w-0 w-full">
         {/* Official GSFC University Logo & App Brand */}
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex items-center gap-2.5 shrink-0 min-w-0">
           <div className="relative flex items-center justify-center rounded-2xl bg-white px-2 py-1 shadow-xs border border-border/60 shrink-0">
             <img
               src="/gsfc-logo.jpg"
               alt="GSFC University"
-              className="h-8 sm:h-9 w-auto object-contain"
+              className="h-7 sm:h-8.5 w-auto object-contain"
             />
           </div>
 
-          <div className="flex flex-col justify-center">
+          <div className="flex flex-col justify-center min-w-0">
             <div className="flex items-center gap-1.5">
-              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#1A3C6E] dark:text-[#F2A93B]">
+              <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.18em] text-[#1A3C6E] dark:text-[#F2A93B] truncate">
                 {t.universityName}
               </span>
-              <span className="rounded-full bg-[#F2A93B]/20 px-1.5 py-0.2 text-[8px] font-black uppercase text-[#1A3C6E] dark:text-[#F2A93B]">
+              <span className="rounded-full bg-[#F2A93B]/20 px-1.5 py-0.2 text-[8px] font-black uppercase text-[#1A3C6E] dark:text-[#F2A93B] shrink-0">
                 Vadodara
               </span>
             </div>
-            <div className="flex items-center gap-2">
-              <h1 className="font-display text-base sm:text-lg font-black tracking-tight text-foreground leading-none">
+            <div className="flex items-center gap-1.5">
+              <h1 className="font-display text-sm sm:text-base lg:text-lg font-black tracking-tight text-foreground leading-none truncate">
                 {t.appName}
               </h1>
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[9px] font-bold text-emerald-600 dark:text-emerald-400">
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-1.5 py-0.2 text-[8px] sm:text-[9px] font-bold text-emerald-600 dark:text-emerald-400 shrink-0">
                 <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live
               </span>
             </div>
           </div>
         </div>
 
-        {/* Action Controls - Perfectly aligned single-level cluster */}
-        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 flex-wrap justify-end">
-          {/* Unified Gate Pass Check-In */}
-          {onOpenUnifiedCheckIn && (
-            <Button
-              size="sm"
-              onClick={onOpenUnifiedCheckIn}
-              className="h-9 gap-1.5 rounded-full bg-gradient-to-r from-emerald-600 via-[#1A3C6E] to-[#0E2342] px-3 text-xs font-black text-white shadow-sm hover:opacity-95 hidden sm:flex"
-            >
-              <ScanBarcode className="size-3.5 text-[#F2A93B]" />
-              <span>Gate Check-In</span>
-            </Button>
-          )}
-
+        {/* Action Controls - Perfectly aligned, responsive cluster */}
+        <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
           {/* Digital Campus ID Card Button */}
           {onOpenDigitalId && (
             <Button
               variant="outline"
               size="sm"
               onClick={onOpenDigitalId}
-              className="h-9 gap-1.5 rounded-full border-[#F2A93B]/40 bg-[#F2A93B]/10 px-3 text-xs font-bold text-amber-600 dark:text-[#F2A93B] hover:bg-[#F2A93B]/20 transition-all shadow-xs"
+              className="h-8.5 gap-1.5 rounded-full border-[#F2A93B]/40 bg-[#F2A93B]/10 px-2.5 sm:px-3 text-xs font-bold text-amber-600 dark:text-[#F2A93B] hover:bg-[#F2A93B]/20 transition-all shadow-xs shrink-0"
               title="Open Holographic Digital Student ID Card"
             >
-              <ShieldCheck className="size-3.5 text-[#F2A93B]" />
-              <span>Digital ID</span>
+              <ShieldCheck className="size-3.5 text-[#F2A93B] shrink-0" />
+              <span className="hidden md:inline">Digital ID</span>
               {userRollSuffix && (
-                <span className="font-mono text-[10px] opacity-75">{userRollSuffix}</span>
+                <span className="font-mono text-[10px] opacity-80">{userRollSuffix}</span>
               )}
             </Button>
           )}
@@ -175,13 +163,11 @@ export function Header({
             <Button
               size="sm"
               onClick={onOpenAiAssistant}
-              className="h-9 gap-1.5 rounded-full bg-gradient-to-r from-[#1A3C6E] to-[#255294] border border-blue-400/30 px-3 text-xs font-bold text-white shadow-sm hover:brightness-110"
+              className="h-8.5 gap-1.5 rounded-full bg-gradient-to-r from-[#1A3C6E] to-[#255294] border border-blue-400/30 px-2.5 sm:px-3 text-xs font-bold text-white shadow-xs hover:brightness-110 shrink-0"
               title="Ask GSFC Campus AI Assistant"
             >
-              <span className="relative flex size-2">
-                <span className="relative inline-flex size-2 rounded-full bg-[#F2A93B]" />
-              </span>
-              <span>AI Copilot</span>
+              <Sparkles className="size-3.5 text-[#F2A93B] shrink-0" />
+              <span className="hidden md:inline">AI Copilot</span>
             </Button>
           )}
 
@@ -191,7 +177,7 @@ export function Header({
               variant="outline"
               size="sm"
               onClick={onOpenMobileInstall}
-              className="h-9 gap-1.5 rounded-full border-brand/30 bg-brand/5 px-2.5 text-xs font-bold text-brand hover:bg-brand/15 hidden xl:flex"
+              className="h-8.5 gap-1 rounded-full border-brand/30 bg-brand/5 px-2 text-xs font-bold text-brand hover:bg-brand/15 hidden xl:flex shrink-0"
             >
               <Smartphone className="size-3.5 text-[#F2A93B]" />
               <span>App</span>
@@ -199,7 +185,7 @@ export function Header({
           )}
 
           {/* Clean Vertical Divider */}
-          <div className="hidden sm:block h-5 w-px bg-border/70 mx-0.5" />
+          <div className="hidden sm:block h-4 w-px bg-border/70 mx-0.5" />
 
           {/* Language Selector */}
           <DropdownMenu>
@@ -207,10 +193,10 @@ export function Header({
               <Button
                 variant="outline"
                 size="sm"
-                className="h-9 gap-1.5 rounded-full border-border/70 bg-card/60 px-2.5 text-xs font-semibold backdrop-blur-lg hover:bg-card/90"
+                className="h-8.5 gap-1 rounded-full border-border/70 bg-card/60 px-2 text-xs font-semibold backdrop-blur-lg hover:bg-card/90 shrink-0"
               >
                 <Globe className="size-3.5 text-brand" />
-                <span className="uppercase font-bold">{state.language}</span>
+                <span className="uppercase font-bold text-[11px]">{state.language}</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-36 rounded-2xl p-1 shadow-lg">
@@ -244,14 +230,14 @@ export function Header({
             variant="ghost"
             size="icon"
             onClick={onOpenNotifications}
-            className="relative size-9 rounded-full text-foreground/80 hover:bg-card/70 shrink-0"
+            className="relative size-8.5 rounded-full text-foreground/80 hover:bg-card/70 shrink-0"
             aria-label="Notifications"
             title="Open Notifications"
           >
-            <Bell className="size-4" />
+            <Bell className="size-3.5" />
             {unreadCount > 0 && (
-              <span className="absolute right-1.5 top-1.5 flex size-2">
-                <span className="relative inline-flex size-2 rounded-full bg-[#F2A93B]" />
+              <span className="absolute right-1.5 top-1.5 flex size-1.5">
+                <span className="relative inline-flex size-1.5 rounded-full bg-[#F2A93B]" />
               </span>
             )}
           </Button>
@@ -262,16 +248,16 @@ export function Header({
             size="icon"
             onClick={handleToggleSound}
             className={cn(
-              "size-9 rounded-full text-foreground/80 hover:bg-card/70 transition-colors shrink-0",
+              "size-8.5 rounded-full text-foreground/80 hover:bg-card/70 transition-colors shrink-0",
               !soundEnabled && "text-muted-foreground/60 opacity-70"
             )}
             aria-label={soundEnabled ? "Mute notification sounds" : "Unmute notification sounds"}
-            title={soundEnabled ? "Notification sound is ON (click to mute)" : "Notification sound is MUTED (click to enable)"}
+            title={soundEnabled ? "Notification sound is ON" : "Notification sound is MUTED"}
           >
             {soundEnabled ? (
-              <Volume2 className="size-4 text-emerald-500" />
+              <Volume2 className="size-3.5 text-emerald-500" />
             ) : (
-              <VolumeX className="size-4 text-muted-foreground" />
+              <VolumeX className="size-3.5 text-muted-foreground" />
             )}
           </Button>
 
@@ -280,18 +266,18 @@ export function Header({
             variant="ghost"
             size="icon"
             onClick={onToggleTheme}
-            className="size-9 rounded-full text-foreground/80 hover:bg-card/70 shrink-0"
+            className="size-8.5 rounded-full text-foreground/80 hover:bg-card/70 shrink-0"
             aria-label={isDark ? "Light mode" : "Dark mode"}
           >
-            {isDark ? <Sun className="size-4 text-[#F2A93B]" /> : <Moon className="size-4 text-brand" />}
+            {isDark ? <Sun className="size-3.5 text-[#F2A93B]" /> : <Moon className="size-3.5 text-brand" />}
           </Button>
 
           {/* Clean Vertical Divider */}
-          <div className="hidden md:block h-5 w-px bg-border/70 mx-0.5" />
+          <div className="hidden sm:block h-4 w-px bg-border/70 mx-0.5" />
 
-          {/* User Profile Pill & Sign Out */}
-          <div className="flex items-center gap-1.5 shrink-0">
-            <div className="hidden sm:flex items-center gap-2 rounded-full border border-border/70 bg-card/60 px-2.5 h-9 text-xs backdrop-blur-xl max-w-[200px] lg:max-w-[240px]">
+          {/* User Profile Pill & Integrated Sign Out Button */}
+          <div className="flex items-center gap-1 shrink-0 rounded-full border border-border/70 bg-card/60 p-0.5 backdrop-blur-xl">
+            <div className="flex items-center gap-1.5 px-2 py-0.5 max-w-[130px] sm:max-w-[160px] lg:max-w-[190px]">
               <div className="flex size-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand/10 font-display text-[10px] font-extrabold text-brand">
                 {user.avatar && (user.avatar.startsWith("http") || user.avatar.startsWith("data:") || user.avatar.startsWith("/")) ? (
                   <img src={user.avatar} alt={user.name} className="h-full w-full object-cover" />
@@ -299,7 +285,7 @@ export function Header({
                   (user.avatar || (user.name || "ST").slice(0, 2).toUpperCase())
                 )}
               </div>
-              <div className="text-left leading-tight truncate">
+              <div className="text-left leading-tight truncate hidden xs:block">
                 <p className="font-bold text-foreground truncate text-[11px]">{user.name}</p>
                 {user.rollNo && (
                   <p className="text-[9px] text-muted-foreground font-mono truncate">{user.rollNo}</p>
@@ -308,10 +294,10 @@ export function Header({
             </div>
 
             <Button
-              variant="outline"
+              variant="ghost"
               size="sm"
               onClick={() => campusStore.logout()}
-              className="h-9 gap-1.5 rounded-full border-border/70 bg-card/50 px-2.5 sm:px-3 text-xs font-bold text-muted-foreground hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30"
+              className="h-7.5 gap-1 rounded-full px-2 text-[11px] font-bold text-muted-foreground hover:bg-destructive/10 hover:text-destructive shrink-0"
               title="Sign Out / Switch Login Portal"
             >
               <LogOut className="size-3.5" />
@@ -325,40 +311,40 @@ export function Header({
       <div className="h-px w-full bg-border/50" />
 
       {/* Active Portal Scope Banner & Offline Status Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-2.5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         {/* Logged-In Portal Scope Badge */}
         <div className="flex items-center gap-2 min-w-0">
           {state.currentRole === "student" && (
-            <div className="flex items-center gap-2 rounded-xl bg-muted/50 px-3 py-1 text-xs">
-              <div className="flex size-5 items-center justify-center rounded-full bg-[#1A3C6E] text-white shrink-0">
-                <Users className="size-3" />
+            <div className="flex items-center gap-2 rounded-xl bg-muted/50 px-2.5 py-1 text-xs min-w-0">
+              <div className="flex size-4.5 items-center justify-center rounded-full bg-[#1A3C6E] text-white shrink-0">
+                <Users className="size-2.5" />
               </div>
-              <span className="text-xs font-black text-foreground shrink-0">Student Portal</span>
-              <span className="rounded-md bg-brand/10 px-2 py-0.5 text-[10px] font-bold text-brand truncate max-w-[200px] sm:max-w-xs">
+              <span className="text-[11px] font-black text-foreground shrink-0">Student Portal</span>
+              <span className="rounded-md bg-brand/10 px-1.5 py-0.2 text-[9px] sm:text-[10px] font-bold text-brand truncate max-w-[180px] sm:max-w-xs">
                 {user.department || "Computer Science & Engineering"}
               </span>
             </div>
           )}
 
           {state.currentRole === "organizer" && (
-            <div className="flex items-center gap-2 rounded-xl bg-muted/50 px-3 py-1 text-xs">
-              <div className="flex size-5 items-center justify-center rounded-full bg-emerald-600 text-white shrink-0">
-                <UserCheck className="size-3" />
+            <div className="flex items-center gap-2 rounded-xl bg-muted/50 px-2.5 py-1 text-xs min-w-0">
+              <div className="flex size-4.5 items-center justify-center rounded-full bg-emerald-600 text-white shrink-0">
+                <UserCheck className="size-2.5" />
               </div>
-              <span className="text-xs font-black text-foreground shrink-0">Faculty & TPC Portal</span>
-              <span className="rounded-md bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 truncate">
+              <span className="text-[11px] font-black text-foreground shrink-0">Faculty & TPC Portal</span>
+              <span className="rounded-md bg-emerald-500/15 px-1.5 py-0.2 text-[9px] font-bold text-emerald-600 dark:text-emerald-400 truncate">
                 Event Convener
               </span>
             </div>
           )}
 
           {state.currentRole === "admin" && (
-            <div className="flex items-center gap-2 rounded-xl bg-muted/50 px-3 py-1 text-xs">
-              <div className="flex size-5 items-center justify-center rounded-full bg-amber-500 text-white shrink-0">
-                <ShieldCheck className="size-3" />
+            <div className="flex items-center gap-2 rounded-xl bg-muted/50 px-2.5 py-1 text-xs min-w-0">
+              <div className="flex size-4.5 items-center justify-center rounded-full bg-amber-500 text-white shrink-0">
+                <ShieldCheck className="size-2.5" />
               </div>
-              <span className="text-xs font-black text-foreground shrink-0">University Administration</span>
-              <span className="rounded-md bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400 truncate">
+              <span className="text-[11px] font-black text-foreground shrink-0">University Administration</span>
+              <span className="rounded-md bg-amber-500/15 px-1.5 py-0.2 text-[9px] font-bold text-amber-600 dark:text-amber-400 truncate">
                 Dean Governance
               </span>
             </div>
@@ -373,9 +359,9 @@ export function Header({
               variant="outline"
               onClick={handleSync}
               disabled={syncing}
-              className="h-7.5 gap-1.5 rounded-full border-amber-500/40 bg-amber-500/10 px-2.5 text-[11px] font-bold text-amber-600 hover:bg-amber-500/20 dark:text-amber-400"
+              className="h-7 gap-1.5 rounded-full border-amber-500/40 bg-amber-500/10 px-2 text-[10px] font-bold text-amber-600 hover:bg-amber-500/20 dark:text-amber-400"
             >
-              <RefreshCw className={cn("size-3", syncing && "animate-spin")} />
+              <RefreshCw className={cn("size-2.5", syncing && "animate-spin")} />
               <span>{t.common.syncNow} ({state.pendingCheckins.length})</span>
             </Button>
           )}
@@ -384,7 +370,7 @@ export function Header({
             type="button"
             onClick={toggleOfflineMode}
             className={cn(
-              "flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold backdrop-blur-xl transition-colors",
+              "flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] sm:text-[11px] font-semibold backdrop-blur-xl transition-colors",
               state.isOffline
                 ? "border-amber-500/50 bg-amber-500/15 text-amber-600 dark:text-amber-400"
                 : "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
