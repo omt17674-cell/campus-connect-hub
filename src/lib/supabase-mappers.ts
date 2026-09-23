@@ -129,6 +129,29 @@ export function serializeAttendanceForDb(att: Partial<AttendanceRecord>): any {
 }
 
 /**
+ * Map account object to exact columns supported by Supabase `accounts` table
+ * (id, roll_no, email, password_hash, role, department, semester, mobile_number, avatar, is_verified, created_at, updated_at)
+ */
+export function serializeAccountForDb(acc: any): any {
+  const cleanRoll = (acc.roll_no || acc.rollNo || acc.idOrRoll || "").trim().toUpperCase();
+  const id = acc.id || (cleanRoll ? `u-${cleanRoll.toLowerCase()}` : `u-student-${Date.now()}`);
+  return {
+    id,
+    roll_no: cleanRoll || "24BT04171",
+    email: acc.email || (cleanRoll ? `${cleanRoll.toLowerCase()}@gsfcuniversity.ac.in` : "student@gsfcuniversity.ac.in"),
+    password_hash: acc.password_hash || acc.passwordHash || "$2b$10$defaultHashPlaceholder",
+    role: acc.role || "student",
+    department: acc.department || "Computer Science & Engineering",
+    semester: typeof acc.semester === "number" ? acc.semester : 4,
+    mobile_number: acc.mobile_number || acc.mobileNumber || null,
+    avatar: acc.avatar || (cleanRoll ? cleanRoll.slice(0, 2).toUpperCase() : "ST"),
+    is_verified: acc.is_verified ?? acc.isVerified ?? true,
+    created_at: acc.created_at || acc.createdAt || new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+}
+
+/**
  * Map camelCase NewRegisteredStudent to snake_case Postgres columns
  */
 export function serializeStudentForDb(student: Partial<NewRegisteredStudent>): any {

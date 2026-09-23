@@ -20,6 +20,7 @@ import {
   ShieldCheck,
   UserCheck,
   Users,
+  Trash2,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -270,6 +271,38 @@ export function EventAttendanceViewer({
     generateEventAttendanceRosterPdf(activeEvent, filteredRoster, eventAttendanceRecords);
   };
 
+  // Permanently Delete Event
+  const handleDeleteEvent = () => {
+    if (!activeEvent) return;
+    setConfirmModal({
+      isOpen: true,
+      title: `Permanently Delete "${activeEvent.title}"?`,
+      subtitle: `${activeEvent.date} · ${activeEvent.venue} · ${eventRegistrations.length} Registered Attendees`,
+      badgeText: "Delete Event",
+      variant: "danger",
+      description: `Are you sure you want to permanently delete "${activeEvent.title}"? This will disband the event and purge all associated attendee rosters from the database.`,
+      bullets: [
+        "Permanently remove event from campus directory",
+        "Purge attendee registration list and check-in history",
+        "This administrative action cannot be undone"
+      ],
+      confirmText: "Permanently Delete",
+      cancelText: "Keep Event",
+      onConfirm: async () => {
+        const res = await campusStore.deleteEvent(activeEvent.id);
+        if (res.success) {
+          toast.success(res.message);
+          if (onSelectEventId) {
+            onSelectEventId("");
+          }
+        } else {
+          toast.error(res.message);
+        }
+        setConfirmModal(null);
+      },
+    });
+  };
+
   // Download Individual Student Certificate PDF
   const handleDownloadStudentCert = async (reg: Registration) => {
     if (!activeEvent) return;
@@ -469,6 +502,19 @@ export function EventAttendanceViewer({
             <FileSpreadsheet className="size-3.5 text-brand" />
             Export CSV
           </Button>
+
+          {activeEvent && (
+            <Button
+              onClick={handleDeleteEvent}
+              size="sm"
+              variant="outline"
+              className="h-9 gap-1.5 rounded-xl border-rose-200 text-xs font-bold text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:border-rose-900/50 dark:text-rose-400 dark:hover:bg-rose-950/40"
+              title="Permanently delete this event from the university portal"
+            >
+              <Trash2 className="size-3.5" />
+              Delete Event
+            </Button>
+          )}
         </div>
       </div>
 

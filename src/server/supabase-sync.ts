@@ -289,6 +289,25 @@ export const supabaseSync = {
     }
   },
 
+  async deleteEvent(eventId: string): Promise<boolean> {
+    try {
+      console.log('[EVENT_DELETE] DB_DELETE_START', { eventId });
+      // Delete associated registrations and attendance records
+      await supabaseAdmin.from("registrations").delete().eq("event_id", eventId);
+      await supabaseAdmin.from("attendance_records").delete().eq("event_id", eventId);
+      const { error } = await supabaseAdmin.from("events").delete().eq("id", eventId);
+      if (error) {
+        console.error('[EVENT_DELETE] DB_DELETE_ERROR', { error: error.message });
+        return false;
+      }
+      console.log('[EVENT_DELETE] DB_DELETE_SUCCESS', { eventId });
+      return true;
+    } catch (e) {
+      console.warn("Supabase delete event error:", e);
+      return false;
+    }
+  },
+
   // 2. Registrations CRUD
   async getRegistrations(eventId?: string): Promise<Registration[]> {
     try {
@@ -322,6 +341,22 @@ export const supabaseSync = {
 
   async saveRegistration(reg: Registration): Promise<boolean> {
     try {
+      if (reg.userId) {
+        const cleanRoll = (reg.userRollNo || reg.userId || "").trim().toUpperCase();
+        const accPayload = {
+          id: reg.userId,
+          roll_no: cleanRoll || "24BT04171",
+          email: (reg as any).userEmail || (cleanRoll ? `${cleanRoll.toLowerCase()}@gsfcuniversity.ac.in` : "student@gsfcuniversity.ac.in"),
+          role: "student",
+          department: reg.department || "Computer Science & Engineering",
+          semester: 4,
+          avatar: cleanRoll ? cleanRoll.slice(0, 2).toUpperCase() : "ST",
+          is_verified: true,
+          updated_at: new Date().toISOString(),
+        };
+        await supabaseAdmin.from("accounts").upsert(accPayload, { onConflict: "id" }).catch(() => {});
+      }
+
       const payload = {
         id: reg.id,
         event_id: reg.eventId,
@@ -396,10 +431,26 @@ export const supabaseSync = {
 
   async saveAttendance(att: AttendanceRecord): Promise<boolean> {
     try {
+      if (att.userId) {
+        const cleanRoll = (att.userRollNo || att.userId || "").trim().toUpperCase();
+        const accPayload = {
+          id: att.userId,
+          roll_no: cleanRoll || "24BT04171",
+          email: cleanRoll ? `${cleanRoll.toLowerCase()}@gsfcuniversity.ac.in` : "student@gsfcuniversity.ac.in",
+          role: "student",
+          department: att.department || "Computer Science & Engineering",
+          semester: 4,
+          avatar: cleanRoll ? cleanRoll.slice(0, 2).toUpperCase() : "ST",
+          is_verified: true,
+          updated_at: new Date().toISOString(),
+        };
+        await supabaseAdmin.from("accounts").upsert(accPayload, { onConflict: "id" }).catch(() => {});
+      }
+
       const payload = {
         id: att.id,
         event_id: att.eventId,
-        event_title: att.eventTitle,
+        event_title: att.eventTitle || "Campus Event",
         user_id: att.userId,
         user_name: att.userName,
         user_roll_no: att.userRollNo,
@@ -415,9 +466,9 @@ export const supabaseSync = {
         location_verified: att.locationVerified ?? true,
         synced: true,
       };
-      let { error } = await supabaseAdmin.from("attendance").upsert(payload);
+      let { error } = await supabaseAdmin.from("attendance_records").upsert(payload);
       if (error) {
-        const altRes = await supabaseAdmin.from("attendance_records").upsert(payload);
+        const altRes = await supabaseAdmin.from("attendance").upsert(payload);
         error = altRes.error;
       }
       return !error;
@@ -430,14 +481,14 @@ export const supabaseSync = {
   async getCertificateRecord(certId: string): Promise<AttendanceRecord | null> {
     try {
       let { data, error } = await supabaseAdmin
-        .from("attendance")
+        .from("attendance_records")
         .select("*")
         .ilike("certificate_id", certId.trim())
         .limit(1)
         .single();
       if (error) {
         const altRes = await supabaseAdmin
-          .from("attendance_records")
+          .from("attendance")
           .select("*")
           .ilike("certificate_id", certId.trim())
           .limit(1)
@@ -502,32 +553,33 @@ export const supabaseSync = {
     return null;
   },
 
-  async saveAccount(account: any): Promise<boolean> {
+  async saveAccount(account: any): Promise<{ success: boolean; message?: string }> {
     try {
+      const cleanRoll = (account.roll_no || account.rollNo || account.idOrRoll || "").trim().toUpperCase();
       const payload = {
-        id: account.id || `u-${account.roll_no?.toLowerCase() || Date.now()}`,
-        name: account.name,
-        roll_no: account.roll_no || account.idOrRoll,
-        email: account.email,
+        id: account.id || (cleanRoll ? `u-${cleanRoll.toLowerCase()}` : `u-${Date.now()}`),
+        roll_no: cleanRoll || "24BT04171",
+        email: account.email || (cleanRoll ? `${cleanRoll.toLowerCase()}@gsfcuniversity.ac.in` : "student@gsfcuniversity.ac.in"),
+        password_hash: account.password_hash || account.passwordHash || "$2b$10$defaultHashPlaceholder",
         role: account.role || "student",
         department: account.department || "Computer Science & Engineering",
-        semester: account.semester || 4,
-        year: account.year || 2,
-        attendance_percentage: account.attendance_percentage || account.attendanceRate || 100,
-        points: account.points || 100,
-        streak_days: account.streak_days || account.streakDays || 1,
-        volunteer_hours: account.volunteer_hours || account.volunteerHours || 0,
-        avatar: account.avatar || account.name?.slice(0, 2).toUpperCase() || "ST",
+        semester: typeof account.semester === "number" ? account.semester : 4,
         mobile_number: account.mobile_number || account.mobileNumber || null,
+        avatar: account.avatar || (cleanRoll ? cleanRoll.slice(0, 2).toUpperCase() : "ST"),
+        is_verified: account.is_verified ?? account.isVerified ?? true,
         updated_at: new Date().toISOString(),
       };
       const { error } = await supabaseAdmin
         .from("accounts")
-        .upsert(payload, { onConflict: "roll_no" });
-      return !error;
-    } catch (e) {
+        .upsert(payload, { onConflict: "id" });
+      if (error) {
+        console.warn("Supabase save account error:", error.message);
+        return { success: false, message: error.message };
+      }
+      return { success: true };
+    } catch (e: any) {
       console.warn("Supabase save account error:", e);
-      return false;
+      return { success: false, message: e?.message || String(e) };
     }
   },
 

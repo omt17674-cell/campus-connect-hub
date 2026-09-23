@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Award,
   Calendar,
@@ -7,8 +7,10 @@ import {
   Clock,
   Download,
   FileCheck,
+  Filter,
   Lock,
   MapPin,
+  RotateCcw,
   Search,
   Star,
   Users,
@@ -33,6 +35,8 @@ interface MyEventsViewProps {
 export function MyEventsView({ state, onSelectEvent, onOpenPunchModal }: MyEventsViewProps) {
   const [activeTab, setActiveTab] = useState<"registered" | "attended" | "past">("registered");
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [selectedDepartment, setSelectedDepartment] = useState<string>("all");
   const [feedbackEvent, setFeedbackEvent] = useState<CampusEvent | null>(null);
   const [downloadingCertId, setDownloadingCertId] = useState<string | null>(null);
 
@@ -152,13 +156,43 @@ export function MyEventsView({ state, onSelectEvent, onOpenPunchModal }: MyEvent
       ? attendedEvents
       : pastEvents;
 
-  const filteredList = currentList.filter(
-    (e) =>
-      e &&
-      ((e.title || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (e.category || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (e.department || "").toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  const departments = useMemo(() => {
+    const set = new Set<string>();
+    allEvents.forEach((e) => {
+      if (e.department) set.add(e.department);
+    });
+    return ["all", ...Array.from(set)];
+  }, [allEvents]);
+
+  const filteredList = currentList.filter((e) => {
+    if (!e) return false;
+    const matchesSearch =
+      (e.title || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (e.category || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (e.department || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (e.venue || "").toLowerCase().includes(searchQuery.toLowerCase());
+
+    const matchesCategory =
+      selectedCategory === "all" ||
+      (e.category && e.category.toLowerCase().includes(selectedCategory.toLowerCase()));
+
+    const matchesDept =
+      selectedDepartment === "all" ||
+      (e.department && e.department.toLowerCase() === selectedDepartment.toLowerCase());
+
+    return matchesSearch && matchesCategory && matchesDept;
+  });
+
+  const hasActiveFilters =
+    selectedCategory !== "all" ||
+    selectedDepartment !== "all" ||
+    searchQuery.trim().length > 0;
+
+  const handleResetFilters = () => {
+    setSelectedCategory("all");
+    setSelectedDepartment("all");
+    setSearchQuery("");
+  };
 
   const handleDownloadCertificate = async (event: CampusEvent) => {
     if (!event) {
@@ -284,15 +318,79 @@ export function MyEventsView({ state, onSelectEvent, onOpenPunchModal }: MyEvent
         </div>
       </div>
 
-      {/* Search Input */}
-      <div className="relative">
-        <Search className="absolute left-3.5 top-3 size-4 text-muted-foreground" />
-        <Input
-          placeholder="Filter your events by title, department, category..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="h-10 rounded-2xl border-border/70 bg-card/60 pl-10 text-xs backdrop-blur-xl"
-        />
+      {/* Search & Filter Bar */}
+      <div className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-card/60 p-3.5 backdrop-blur-xl">
+        <div className="relative">
+          <Search className="absolute left-3.5 top-3 size-4 text-muted-foreground" />
+          <Input
+            placeholder="Filter your events by title, department, category..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="h-10 rounded-xl border-border/70 bg-card/80 pl-10 text-xs backdrop-blur-xl"
+          />
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2.5 pt-1">
+          {/* Category Chips */}
+          <div className="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0">
+            {[
+              { id: "all", label: "All" },
+              { id: "tech", label: "Tech" },
+              { id: "cultural", label: "Cultural" },
+              { id: "sports", label: "Sports" },
+              { id: "academic", label: "Academic" },
+              { id: "workshop", label: "Workshops" },
+            ].map((cat) => (
+              <button
+                key={cat.id}
+                type="button"
+                onClick={() => setSelectedCategory(cat.id)}
+                className={cn(
+                  "shrink-0 rounded-lg px-2.5 py-1 text-xs font-bold transition-all",
+                  selectedCategory === cat.id
+                    ? "bg-[#1A3C6E] text-white shadow-xs"
+                    : "border border-border/70 bg-card text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {cat.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Department Filter */}
+          <div className="flex items-center gap-1.5 ml-auto sm:ml-0">
+            <span className="text-[11px] font-bold text-muted-foreground flex items-center gap-1">
+              <Filter className="size-3 text-brand" /> Dept:
+            </span>
+            <select
+              value={selectedDepartment}
+              onChange={(e) => setSelectedDepartment(e.target.value)}
+              className="h-7 rounded-lg border border-border/80 bg-card px-2 text-xs font-semibold text-foreground focus:border-brand focus:outline-none"
+            >
+              <option value="all">All Departments</option>
+              {departments
+                .filter((d) => d !== "all")
+                .map((dept) => (
+                  <option key={dept} value={dept}>
+                    {dept}
+                  </option>
+                ))}
+            </select>
+          </div>
+
+          {/* Reset Filters */}
+          {hasActiveFilters && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleResetFilters}
+              className="h-7 gap-1 rounded-lg text-[11px] font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 ml-auto"
+            >
+              <RotateCcw className="size-3" />
+              Reset Filters
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Events List */}

@@ -13,13 +13,10 @@ import {
   User,
   Camera,
   Phone,
-  Edit3,
   Building,
   Home,
   Bus,
   Users,
-  Save,
-  X,
   Lock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -34,10 +31,6 @@ interface ProfileViewProps {
 
 export function ProfileView({ state }: ProfileViewProps) {
   const [isChangePhotoOpen, setIsChangePhotoOpen] = useState(false);
-  const [isEditPhoneOpen, setIsEditPhoneOpen] = useState(false);
-  const [newPhoneInput, setNewPhoneInput] = useState("");
-  const [isSavingPhone, setIsSavingPhone] = useState(false);
-  const [phoneError, setPhoneError] = useState<string | null>(null);
   const [confirmResetOpen, setConfirmResetOpen] = useState(false);
 
   const user = state?.currentUser || {
@@ -89,38 +82,6 @@ export function ProfileView({ state }: ProfileViewProps) {
 
   const isPhotoUrl = (url?: string) =>
     Boolean(url && (url.startsWith("http") || url.startsWith("data:") || url.startsWith("/")));
-
-  const handleOpenEditPhone = () => {
-    setNewPhoneInput(currentMobile || "");
-    setPhoneError(null);
-    setIsEditPhoneOpen(true);
-  };
-
-  const handleSavePhone = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setPhoneError(null);
-    const cleanDigits = newPhoneInput.replace(/[^0-9]/g, "");
-    if (cleanDigits.length < 10) {
-      setPhoneError("Please enter a valid 10-digit mobile number.");
-      return;
-    }
-
-    setIsSavingPhone(true);
-    try {
-      const res = await campusStore.updateStudentMobileNumber(user.rollNo, cleanDigits);
-      if (res.success) {
-        toast.success("Mobile phone number updated successfully!");
-        setIsEditPhoneOpen(false);
-        setNewPhoneInput("");
-      } else {
-        setPhoneError(res.message || "Failed to update mobile number.");
-      }
-    } catch (err: any) {
-      setPhoneError(err?.message || "Failed to update mobile number.");
-    } finally {
-      setIsSavingPhone(false);
-    }
-  };
 
   const handleExportStudentRecord = () => {
     const records = state?.attendanceRecords || [];
@@ -174,92 +135,6 @@ export function ProfileView({ state }: ProfileViewProps) {
         userName={user.name}
       />
 
-      {/* Edit Mobile Phone Modal */}
-      {isEditPhoneOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-fade-in">
-          <div className="w-full max-w-md rounded-3xl border border-border/80 bg-card p-6 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-border/60 pb-4">
-              <div className="flex items-center gap-2.5">
-                <div className="flex size-9 items-center justify-center rounded-xl bg-brand/15 text-brand">
-                  <Phone className="size-4.5" />
-                </div>
-                <div>
-                  <h3 className="font-display text-base font-bold text-foreground">
-                    Update Contact Number
-                  </h3>
-                  <p className="text-xs text-muted-foreground">
-                    Student ID: {user.rollNo}
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setIsEditPhoneOpen(false)}
-                className="rounded-full p-1.5 text-muted-foreground hover:bg-muted transition-colors"
-              >
-                <X className="size-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSavePhone} className="mt-4 space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-foreground mb-1.5">
-                  Mobile Phone Number
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-2.5 text-xs font-bold text-muted-foreground">
-                    +91
-                  </span>
-                  <input
-                    type="tel"
-                    maxLength={10}
-                    placeholder="98765 43210"
-                    value={newPhoneInput}
-                    onChange={(e) => setNewPhoneInput(e.target.value.replace(/[^0-9]/g, ""))}
-                    className="h-10 w-full rounded-xl border border-input bg-background pl-12 pr-4 font-mono text-sm font-semibold text-foreground focus:border-brand focus:ring-1 focus:ring-brand outline-none"
-                    autoFocus
-                  />
-                </div>
-                <p className="mt-1 text-[11px] text-muted-foreground">
-                  Enter the 10-digit mobile number for 2FA and event alerts.
-                </p>
-              </div>
-
-              {phoneError && (
-                <div className="rounded-xl bg-destructive/10 p-2.5 text-xs font-medium text-destructive">
-                  {phoneError}
-                </div>
-              )}
-
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setIsEditPhoneOpen(false)}
-                  disabled={isSavingPhone}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  size="sm"
-                  disabled={isSavingPhone}
-                  className="gap-1.5 bg-brand text-brand-foreground hover:bg-brand/90"
-                >
-                  {isSavingPhone ? (
-                    <>Saving...</>
-                  ) : (
-                    <>
-                      <Save className="size-3.5" /> Save Number
-                    </>
-                  )}
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
       {/* Profile Header Card */}
       <div className="rounded-3xl border border-border/80 bg-card/60 p-6 shadow-xl shadow-brand/5 backdrop-blur-2xl">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
@@ -308,15 +183,6 @@ export function ProfileView({ state }: ProfileViewProps) {
             >
               <Camera className="size-3.5 text-[#F2A93B]" />
               Change Photo
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleOpenEditPhone}
-              className="h-9 gap-1.5 rounded-xl border-brand/40 text-xs font-bold text-brand hover:bg-brand/10"
-            >
-              <Phone className="size-3.5 text-brand" />
-              Edit Mobile Number
             </Button>
             <Button
               variant="outline"
@@ -433,23 +299,19 @@ export function ProfileView({ state }: ProfileViewProps) {
             </p>
           </div>
 
-          {/* Registered Mobile / Contact with Edit Action */}
+          {/* Locked Mobile / Contact */}
           <div className="rounded-2xl border border-border/70 bg-card/60 p-3.5 relative overflow-hidden">
             <div className="flex items-center justify-between text-xs text-muted-foreground">
               <span>Mobile Phone Number</span>
-              <button
-                onClick={handleOpenEditPhone}
-                className="flex items-center gap-1 text-[10px] font-bold text-brand hover:underline"
-                title="Edit mobile phone number"
-              >
-                <Edit3 className="size-2.5" /> Edit
-              </button>
+              <span className="flex items-center gap-1 text-[10px] font-bold text-amber-600 dark:text-amber-400">
+                🔒 Permanent Lock
+              </span>
             </div>
             <p className="mt-1.5 font-display text-sm font-black text-foreground">
               {formatPhoneNumber(currentMobile)}
             </p>
             <p className="mt-1 text-[10px] text-muted-foreground">
-              Registered contact number bound to this student profile.
+              Permanent identity record. To request an update, please contact the University Admin, TPC Admin, or Placement Coordinator.
             </p>
           </div>
         </div>
@@ -457,7 +319,7 @@ export function ProfileView({ state }: ProfileViewProps) {
         <div className="mt-4 rounded-2xl bg-amber-500/10 p-3 text-[11px] font-medium text-amber-800 dark:text-amber-200 flex items-start gap-2.5">
           <span className="text-sm">🛡️</span>
           <span>
-            <strong>University Policy Note:</strong> In accordance with GSFC University security rules, students cannot edit their registered <strong>Full Name</strong> or <strong>Enrolment Number</strong> directly. Contact numbers can be modified with the edit control above. For corrections to name or roll number, please contact the Office of the Registrar with official government identity proof.
+            <strong>University Policy Note:</strong> In accordance with GSFC University security rules, students cannot edit their registered <strong>Full Name</strong>, <strong>Enrolment Number</strong>, or <strong>Mobile Phone Number</strong> directly. For contact number changes, please contact the Admin, TPC Admin, or Placement Coordinator. For corrections to name or roll number, please contact the Office of the Registrar with official government identity proof.
           </span>
         </div>
       </div>

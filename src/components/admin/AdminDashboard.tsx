@@ -26,6 +26,7 @@ import {
   UserCheck,
   Users,
   XCircle,
+  Trash2,
 } from "lucide-react";
 import {
   BarChart,
@@ -281,6 +282,33 @@ export function AdminDashboard({ state, onOpenGateModal }: AdminDashboardProps) 
         },
       });
     }
+  };
+
+  const handleDeleteEvent = (event: CampusEvent) => {
+    setConfirmModal({
+      isOpen: true,
+      title: `Delete "${event.title}"?`,
+      subtitle: `${event.date} · ${event.venue} · ${event.registeredCount} Registered`,
+      badgeText: "Permanent Deletion",
+      variant: "danger",
+      description: `Are you sure you want to permanently delete "${event.title}"? This will remove the event, clear all student registrations, and cannot be undone.`,
+      bullets: [
+        "Permanently remove event from the university catalog",
+        "Clear all student registrations and attendance logs for this event",
+        "This action is permanent and irreversible"
+      ],
+      confirmText: "Delete Event",
+      cancelText: "Cancel",
+      onConfirm: async () => {
+        const res = await campusStore.deleteEvent(event.id);
+        if (res.success) {
+          toast.success(res.message);
+        } else {
+          toast.error(res.message);
+        }
+        setConfirmModal(null);
+      },
+    });
   };
 
   const filteredEvents = state.events.filter((evt) => {
@@ -762,6 +790,18 @@ export function AdminDashboard({ state, onOpenGateModal }: AdminDashboardProps) 
                           )}
                         </Button>
                       )}
+
+                      {/* Delete Event Action */}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleDeleteEvent(event)}
+                        className="h-9 gap-1 rounded-xl text-xs font-bold text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:text-rose-400 dark:hover:bg-rose-950/40"
+                        title="Permanently delete event"
+                      >
+                        <Trash2 className="size-3.5" />
+                        <span>Delete</span>
+                      </Button>
                     </div>
                   </div>
                 );
@@ -980,9 +1020,18 @@ export function AdminDashboard({ state, onOpenGateModal }: AdminDashboardProps) 
                       size="sm"
                       variant="outline"
                       onClick={() => handleReject(evt.id)}
-                      className="rounded-xl text-xs font-bold text-rose-600 hover:bg-rose-50"
+                      className="rounded-xl text-xs font-bold text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/40"
                     >
                       <XCircle className="mr-1 size-3.5" /> Reject
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => handleDeleteEvent(evt)}
+                      className="rounded-xl text-xs font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40"
+                      title="Permanently delete proposal"
+                    >
+                      <Trash2 className="size-3.5" />
                     </Button>
                   </div>
                 </div>

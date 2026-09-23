@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { CampusEvent, CampusState } from "@/lib/campus-store";
 import {
   Calendar,
@@ -14,6 +14,8 @@ import {
   ChevronRight,
   ShieldCheck,
   History,
+  Filter,
+  RotateCcw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,8 +29,20 @@ interface PastEventsViewProps {
   onSelectEvent: (event: CampusEvent) => void;
 }
 
+const CATEGORIES = [
+  { id: "all", label: "All Past" },
+  { id: "tech", label: "Tech" },
+  { id: "cultural", label: "Cultural" },
+  { id: "sports", label: "Sports" },
+  { id: "academic", label: "Academic & TPC" },
+  { id: "workshop", label: "Workshops" },
+];
+
 export function PastEventsView({ state, onSelectEvent }: PastEventsViewProps) {
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [selectedDepartment, setSelectedDepartment] = useState<string>("all");
+  const [attendanceFilter, setAttendanceFilter] = useState<"all" | "attended" | "not_attended">("all");
   const [downloadingCertId, setDownloadingCertId] = useState<string | null>(null);
 
   const currentUser = state.currentUser;
@@ -58,15 +72,61 @@ export function PastEventsView({ state, onSelectEvent }: PastEventsViewProps) {
     return e.date < todayStr || e.status === "completed";
   });
 
+  const departments = useMemo(() => {
+    const set = new Set<string>();
+    (pastEvents || []).forEach((e) => {
+      if (e.department) set.add(e.department);
+    });
+    return ["all", ...Array.from(set)];
+  }, [pastEvents]);
+
+  const isAttendedByStudent = (eventId: string) => {
+    const hasAtt = (state.attendanceRecords || []).some(
+      (a) => a.eventId === eventId && isStudentMatch(a.userId, a.userRollNo, a.userName)
+    );
+    if (hasAtt) return true;
+    return (state.registrations || []).some(
+      (r) => r.eventId === eventId && r.status === "attended" && isStudentMatch(r.userId, r.userRollNo, r.userName)
+    );
+  };
+
   const filteredEvents = pastEvents.filter((e) => {
     const query = searchQuery.toLowerCase();
-    return (
+    const matchesSearch =
       (e.title || "").toLowerCase().includes(query) ||
       (e.venue || "").toLowerCase().includes(query) ||
       (e.department || "").toLowerCase().includes(query) ||
-      (e.category || "").toLowerCase().includes(query)
-    );
+      (e.category || "").toLowerCase().includes(query);
+
+    const matchesCategory =
+      selectedCategory === "all" ||
+      (e.category && e.category.toLowerCase().includes(selectedCategory.toLowerCase()));
+
+    const matchesDept =
+      selectedDepartment === "all" ||
+      (e.department && e.department.toLowerCase() === selectedDepartment.toLowerCase());
+
+    const isAtt = isAttendedByStudent(e.id);
+    const matchesAttendance =
+      attendanceFilter === "all" ||
+      (attendanceFilter === "attended" && isAtt) ||
+      (attendanceFilter === "not_attended" && !isAtt);
+
+    return matchesSearch && matchesCategory && matchesDept && matchesAttendance;
   });
+
+  const hasActiveFilters =
+    selectedCategory !== "all" ||
+    selectedDepartment !== "all" ||
+    attendanceFilter !== "all" ||
+    searchQuery.trim().length > 0;
+
+  const handleResetFilters = () => {
+    setSelectedCategory("all");
+    setSelectedDepartment("all");
+    setAttendanceFilter("all");
+    setSearchQuery("");
+  };
 
   const getStudentEventStatus = (eventId: string) => {
     // 1. Check attendance record
@@ -182,16 +242,115 @@ export function PastEventsView({ state, onSelectEvent }: PastEventsViewProps) {
           </div>
         </div>
 
-        {/* Search Bar */}
-        <div className="mt-2 relative">
-          <Search className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            type="text"
-            placeholder="Search past events by title, venue, or department..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="h-10 rounded-2xl border-border/80 bg-background/80 pl-10 text-xs font-medium"
-          />
+        {/* Search Bar & Category Filter Bar */}
+        <div className="mt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="text"
+              placeholder="Search past events by title, venue, or department..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="h-10 rounded-2xl border-border/80 bg-background/80 pl-10 text-xs font-medium"
+            />
+          </div>
+
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+            {CATEGORIES.map((c) => (
+              <button
+                key={c.id}
+                onClick={() => setSelectedCategory(c.id)}
+                className={cn(
+                  "shrink-0 rounded-xl px-3 py-1.5 text-xs font-bold transition-all",
+                  selectedCategory === c.id
+                    ? "bg-[#1A3C6E] text-white shadow-xs"
+                    : "border border-border/70 bg-card text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {c.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Multi-criteria Filter Bar */}
+        <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-border/60 pt-3">
+          {/* Department Filter */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] font-bold text-muted-foreground flex items-center gap-1">
+              <Filter className="size-3 text-brand" /> Dept:
+            </span>
+            <select
+              value={selectedDepartment}
+              onChange={(e) => setSelectedDepartment(e.target.value)}
+              className="h-8 rounded-xl border border-border/80 bg-card px-2.5 text-xs font-semibold text-foreground focus:border-brand focus:outline-none"
+            >
+              <option value="all">All Departments</option>
+              {departments
+                .filter((d) => d !== "all")
+                .map((dept) => (
+                  <option key={dept} value={dept}>
+                    {dept}
+                  </option>
+                ))}
+            </select>
+          </div>
+
+          {/* Attendance Status Filter */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] font-bold text-muted-foreground">My Attendance:</span>
+            <div className="flex rounded-xl border border-border/70 bg-background/60 p-0.5">
+              <button
+                type="button"
+                onClick={() => setAttendanceFilter("all")}
+                className={cn(
+                  "rounded-lg px-2.5 py-1 text-[11px] font-bold transition-all",
+                  attendanceFilter === "all"
+                    ? "bg-[#1A3C6E] text-white shadow-xs"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                All Past
+              </button>
+              <button
+                type="button"
+                onClick={() => setAttendanceFilter("attended")}
+                className={cn(
+                  "rounded-lg px-2.5 py-1 text-[11px] font-bold transition-all",
+                  attendanceFilter === "attended"
+                    ? "bg-emerald-600 text-white shadow-xs"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                Attended (Certs Ready)
+              </button>
+              <button
+                type="button"
+                onClick={() => setAttendanceFilter("not_attended")}
+                className={cn(
+                  "rounded-lg px-2.5 py-1 text-[11px] font-bold transition-all",
+                  attendanceFilter === "not_attended"
+                    ? "bg-amber-600 text-white shadow-xs"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                Not Attended
+              </button>
+            </div>
+          </div>
+
+          {/* Reset Filters */}
+          {hasActiveFilters && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleResetFilters}
+              className="h-8 gap-1 rounded-xl text-[11px] font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 ml-auto"
+            >
+              <RotateCcw className="size-3" />
+              Reset Filters
+            </Button>
+          )}
         </div>
       </div>
 

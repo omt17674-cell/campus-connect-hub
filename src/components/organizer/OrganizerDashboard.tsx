@@ -11,6 +11,8 @@ import {
   TrendingUp,
   UserCheck,
   Users,
+  Trash2,
+  GraduationCap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CampusEvent } from "@/lib/types";
@@ -19,6 +21,7 @@ import { CreateEventModal } from "./CreateEventModal";
 import { LiveAttendanceModal } from "./LiveAttendanceModal";
 import { AttendeesManagerModal } from "./AttendeesManagerModal";
 import { EventAttendanceViewer } from "./EventAttendanceViewer";
+import { StudentRegistryViewer } from "@/components/admin/StudentRegistryViewer";
 import { ConfirmationModal, ConfirmationModalProps } from "@/components/ui/ConfirmationModal";
 import { campusStore } from "@/lib/campus-store";
 import { toast } from "sonner";
@@ -29,7 +32,7 @@ interface OrganizerDashboardProps {
 }
 
 export function OrganizerDashboard({ state }: OrganizerDashboardProps) {
-  const [activeTab, setActiveTab] = useState<"events" | "attendance_roster">("events");
+  const [activeTab, setActiveTab] = useState<"events" | "attendance_roster" | "students">("events");
   const [selectedRosterEventId, setSelectedRosterEventId] = useState<string | undefined>(undefined);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [liveEventModal, setLiveEventModal] = useState<CampusEvent | null>(null);
@@ -40,6 +43,33 @@ export function OrganizerDashboard({ state }: OrganizerDashboardProps) {
 
   const totalRegistrations = myEvents.reduce((acc, evt) => acc + (evt.registeredCount || 0), 0);
   const liveEventsCount = myEvents.filter((e) => e.status === "live").length;
+
+  const handleDeleteEvent = (event: CampusEvent) => {
+    setConfirmModal({
+      isOpen: true,
+      title: `Delete "${event.title}"?`,
+      subtitle: `${event.date} · ${event.venue} · ${event.registeredCount || 0} Registered Attendees`,
+      badgeText: "Delete Event",
+      variant: "danger",
+      description: `Are you sure you want to permanently delete "${event.title}"? This will disband the event and remove all registered participant lists.`,
+      bullets: [
+        "Permanently delete this event from the portal",
+        "Clear attendee registrations and check-in rosters",
+        "This action cannot be undone"
+      ],
+      confirmText: "Permanently Delete",
+      cancelText: "Keep Event",
+      onConfirm: async () => {
+        const res = await campusStore.deleteEvent(event.id);
+        if (res.success) {
+          toast.success(res.message);
+        } else {
+          toast.error(res.message);
+        }
+        setConfirmModal(null);
+      },
+    });
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -53,7 +83,7 @@ export function OrganizerDashboard({ state }: OrganizerDashboardProps) {
             Faculty & TPC Event Management Hub
           </h2>
           <p className="mt-1 text-xs text-muted-foreground">
-            Manage your faculty workshops, live Punch-in / Punch-out attendance, and event-by-event participant rosters
+            Manage your faculty workshops, live attendance sessions, student registry (mobile & identity updates), and delete or conclude events.
           </p>
         </div>
 
@@ -69,7 +99,7 @@ export function OrganizerDashboard({ state }: OrganizerDashboardProps) {
       </div>
 
       {/* Main Tab Switcher */}
-      <div className="flex items-center gap-2 rounded-2xl border border-border/70 bg-card/60 p-1.5 backdrop-blur-xl">
+      <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-border/70 bg-card/60 p-1.5 backdrop-blur-xl">
         <Button
           variant="ghost"
           size="sm"
@@ -99,9 +129,26 @@ export function OrganizerDashboard({ state }: OrganizerDashboardProps) {
           <UserCheck className="mr-1.5 size-3.5 text-[#F2A93B]" />
           Event-by-Event Attendance Roster
         </Button>
+
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setActiveTab("students")}
+          className={cn(
+            "rounded-xl text-xs font-bold",
+            activeTab === "students"
+              ? "bg-[#1A3C6E] text-white shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <GraduationCap className="mr-1.5 size-3.5 text-blue-400" />
+          Student Registry & Mobile Updates
+        </Button>
       </div>
 
-      {activeTab === "attendance_roster" ? (
+      {activeTab === "students" ? (
+        <StudentRegistryViewer state={state} />
+      ) : activeTab === "attendance_roster" ? (
         <EventAttendanceViewer
           state={state}
           selectedEventId={selectedRosterEventId}
@@ -301,6 +348,18 @@ export function OrganizerDashboard({ state }: OrganizerDashboardProps) {
                       >
                         <QrCode className="size-3.5 text-[#F2A93B]" />
                         {isLive ? "Live QR Display" : "Launch QR Check-in"}
+                      </Button>
+
+                      {/* Delete Event Action */}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleDeleteEvent(event)}
+                        className="h-9 gap-1.5 rounded-xl border-rose-200 text-xs font-bold text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:border-rose-900/50 dark:text-rose-400 dark:hover:bg-rose-950/40"
+                        title="Permanently delete event"
+                      >
+                        <Trash2 className="size-3.5" />
+                        <span>Delete</span>
                       </Button>
                     </div>
                   </div>

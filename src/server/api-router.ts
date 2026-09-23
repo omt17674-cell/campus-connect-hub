@@ -1287,6 +1287,23 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
     );
   }
 
+  // 5b. Events: Delete Event (Admin & Placement Coordinator)
+  if (path.startsWith("/api/events/") && method === "DELETE") {
+    const parts = path.split("/");
+    const eventId = parts[3];
+    if (!eventId) {
+      return jsonResponse({ success: false, message: "Missing event ID." }, 400);
+    }
+
+    console.log('[EVENT_DELETE] REQUEST_RECEIVED', { eventId });
+    const success = await supabaseSync.deleteEvent(eventId);
+    if (success) {
+      return jsonResponse({ success: true, message: "Event deleted successfully." });
+    } else {
+      return jsonResponse({ success: false, message: "Could not delete event from database." }, 500);
+    }
+  }
+
   // 6. Events: Register (Unique Constraint & Duplicate Protected)
   if (path === "/api/events/register" && method === "POST") {
     const body = await parseBody<{
@@ -1871,22 +1888,17 @@ ${clubs.map((c) => `- ${c.name} (${c.category}): ${c.description || "Active stud
       );
     }
 
-    // 3. Also create login account in Supabase accounts table with atomic rollback on failure
+    // 3. Also sync login account in Supabase accounts table
     try {
       const accountRes = await supabaseSync.saveAccount({
         id: `u-${cleanRoll.toLowerCase()}`,
-        name: newStudent.fullName,
         roll_no: cleanRoll,
         email: cleanEmail,
+        password_hash: body.password || "$2b$10$defaultHashPlaceholder",
         mobile_number: cleanMobile,
         role: "student",
         department: newStudent.department,
         semester: newStudent.semester,
-        year: Math.ceil(newStudent.semester / 2) || 2,
-        attendance_percentage: 100,
-        points: 100,
-        streak_days: 1,
-        volunteer_hours: 0,
         avatar: newStudent.fullName
           .split(" ")
           .map((n) => n[0])
@@ -1896,25 +1908,15 @@ ${clubs.map((c) => `- ${c.name} (${c.category}): ${c.description || "Active stud
         is_verified: true,
       });
 
-      if (!accountRes || !accountRes.success) {
-        throw new Error(accountRes?.message || "Failed to create corresponding student account");
+      if (accountRes && accountRes.success) {
+        console.log("[REGISTER] Student and account records created successfully");
+      } else {
+        console.warn("[REGISTER] Note: Secondary accounts table sync warning:", accountRes?.message);
       }
-
-      console.log("[REGISTER] Student and account records created successfully");
     } catch (secErr: any) {
-      console.error(
-        "[REGISTER] Secondary account sync failed, rolling back student record:",
-        secErr,
-      );
-      await supabaseSync.deleteStudent(cleanRoll);
-      return jsonResponse(
-        {
-          success: false,
-          code: "REGISTRATION_ROLLBACK",
-          message:
-            "Registration could not be completed atomically. The transaction was rolled back. Please try again.",
-        },
-        500,
+      console.warn(
+        "[REGISTER] Secondary account sync warning (non-blocking):",
+        secErr?.message || secErr,
       );
     }
 
@@ -1959,7 +1961,14 @@ ${clubs.map((c) => `- ${c.name} (${c.category}): ${c.description || "Active stud
       status,
     });
 
-    return jsonResponse({ success: true, ...result }, 200);
+    return jsonResponse(
+      {
+        success: true,
+        ...result,
+        totalPages: Math.ceil(result.total / pageSize) || 1,
+      },
+      200,
+    );
   }
 
   // Fetch all registered students directly from Supabase (legacy/compatibility endpoint)

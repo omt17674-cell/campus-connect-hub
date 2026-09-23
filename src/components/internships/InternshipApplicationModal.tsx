@@ -470,14 +470,21 @@ export function InternshipApplicationModal({
                 </div>
 
                 <div>
-                  <label className="text-[11px] font-bold text-muted-foreground">Mobile Number</label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-bold text-muted-foreground">Mobile Number</label>
+                    <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                      🔒 Verified Registry
+                    </span>
+                  </div>
                   <input
                     type="tel"
-                    required
+                    readOnly
                     value={mobileNumber}
-                    onChange={(e) => setMobileNumber(e.target.value)}
-                    className="mt-1 h-9 w-full rounded-xl border border-border bg-background px-3 text-xs font-medium text-foreground focus:border-brand focus:outline-none"
+                    className="mt-1 h-9 w-full rounded-xl border border-border/80 bg-muted/50 px-3 text-xs font-semibold text-foreground cursor-not-allowed select-all"
                   />
+                  <p className="mt-1 text-[10px] text-muted-foreground">
+                    To modify your registered contact number, please contact University Admin, TPC Admin, or Placement Coordinator.
+                  </p>
                 </div>
 
                 <div>

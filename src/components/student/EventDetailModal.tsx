@@ -13,6 +13,7 @@ import {
   Share2,
   Star,
   Users,
+  Trash2,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,7 @@ import { generateIcsFile, getGoogleCalendarUrl } from "@/lib/calendar-export";
 import { generateCertificatePdf } from "@/lib/certificate-generator";
 import { TeamRegisterModal } from "./TeamRegisterModal";
 import { FeedbackModal } from "./FeedbackModal";
+import { ConfirmationModal, ConfirmationModalProps } from "@/components/ui/ConfirmationModal";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -48,6 +50,37 @@ export function EventDetailModal({
   const [showTeamModal, setShowTeamModal] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [downloadingCert, setDownloadingCert] = useState(false);
+  const [confirmModal, setConfirmModal] = useState<Omit<ConfirmationModalProps, "onClose"> | null>(null);
+
+  const isAdminOrCoordinator = state.currentUser.role === "admin" || state.currentUser.role === "organizer";
+
+  const handleDeleteEvent = () => {
+    setConfirmModal({
+      isOpen: true,
+      title: `Delete "${event.title}"?`,
+      subtitle: `${event.date} · ${event.venue} · ${event.registeredCount || 0} Registered Attendees`,
+      badgeText: "Delete Event",
+      variant: "danger",
+      description: `Are you sure you want to permanently delete "${event.title}"? This will disband the event and purge all associated attendee rosters from the database.`,
+      bullets: [
+        "Permanently remove event from campus directory",
+        "Purge attendee registration list and check-in history",
+        "This administrative action cannot be undone"
+      ],
+      confirmText: "Permanently Delete",
+      cancelText: "Keep Event",
+      onConfirm: async () => {
+        const res = await campusStore.deleteEvent(event.id);
+        if (res.success) {
+          toast.success(res.message);
+          onClose();
+        } else {
+          toast.error(res.message);
+        }
+        setConfirmModal(null);
+      },
+    });
+  };
 
   const registration = state.registrations.find(
     (r) => r.eventId === event.id && r.userId === state.currentUser.id
@@ -332,6 +365,19 @@ export function EventDetailModal({
                 >
                   <Share2 className="size-3.5" />
                 </Button>
+
+                {isAdminOrCoordinator && (
+                  <Button
+                    onClick={handleDeleteEvent}
+                    variant="outline"
+                    size="sm"
+                    className="h-8 gap-1 rounded-xl border-rose-200 text-xs font-bold text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:border-rose-900/50 dark:text-rose-400 dark:hover:bg-rose-950/40"
+                    title="Permanently delete event"
+                  >
+                    <Trash2 className="size-3.5" />
+                    Delete
+                  </Button>
+                )}
               </div>
 
               {/* Registration & Check-in Controls */}
@@ -452,6 +498,22 @@ export function EventDetailModal({
         <FeedbackModal
           event={event}
           onClose={() => setShowFeedbackModal(false)}
+        />
+      )}
+
+      {confirmModal && (
+        <ConfirmationModal
+          isOpen={confirmModal.isOpen}
+          onClose={() => setConfirmModal(null)}
+          onConfirm={confirmModal.onConfirm}
+          title={confirmModal.title}
+          subtitle={confirmModal.subtitle}
+          description={confirmModal.description}
+          badgeText={confirmModal.badgeText}
+          bullets={confirmModal.bullets}
+          confirmText={confirmModal.confirmText}
+          cancelText={confirmModal.cancelText}
+          variant={confirmModal.variant}
         />
       )}
     </>

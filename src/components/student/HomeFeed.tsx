@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Calendar,
   Check,
   Clock,
   Flame,
+  Filter,
   MapPin,
+  RotateCcw,
   Search,
   Sparkles,
   Star,
@@ -34,6 +36,17 @@ const CATEGORIES: Array<"All" | EventCategory> = [
   "Workshop",
 ];
 
+const DEPARTMENTS = [
+  "All Departments",
+  "Computer Science & Engineering",
+  "Chemical Engineering",
+  "Mechanical Engineering",
+  "Biotechnology",
+  "Chemistry",
+  "School of Management",
+  "Fire Safety Engineering",
+];
+
 export function HomeFeed({
   state,
   onSelectEvent,
@@ -42,22 +55,85 @@ export function HomeFeed({
 }: HomeFeedProps) {
   const t = translations[state.language];
   const [selectedCategory, setSelectedCategory] = useState<"All" | EventCategory>("All");
+  const [selectedDepartment, setSelectedDepartment] = useState<string>("All Departments");
+  const [registrationFilter, setRegistrationFilter] = useState<"all" | "registered" | "open">("all");
+  const [timeframeFilter, setTimeframeFilter] = useState<"all" | "today" | "week" | "month">("all");
   const [searchQuery, setSearchQuery] = useState("");
+
+  const currentUser = state.currentUser;
+  const currentRoll = (currentUser.rollNo || "").trim().toLowerCase();
+  const currentUserId = (currentUser.id || "").trim();
+
+  const isUserRegistered = (eventId: string) => {
+    return (state.registrations || []).some(
+      (r) =>
+        r.eventId === eventId &&
+        (r.userId === currentUserId ||
+          (r.userRollNo && r.userRollNo.toLowerCase() === currentRoll) ||
+          (currentUser.email && (r as any).userEmail === currentUser.email))
+    );
+  };
 
   const activeEvents = state.events.filter(
     (e) => e.status === "upcoming" || e.status === "live"
   );
 
+  const todayStr = new Date().toISOString().split("T")[0];
+
   const filteredEvents = activeEvents.filter((event) => {
     const matchesCategory =
       selectedCategory === "All" || event.category === selectedCategory;
+
+    const matchesDepartment =
+      selectedDepartment === "All Departments" ||
+      (event.department || "").toLowerCase().includes(selectedDepartment.toLowerCase().slice(0, 5));
+
+    const isReg = isUserRegistered(event.id);
+    const matchesRegistration =
+      registrationFilter === "all" ||
+      (registrationFilter === "registered" && isReg) ||
+      (registrationFilter === "open" && !isReg);
+
+    let matchesTimeframe = true;
+    if (timeframeFilter === "today") {
+      matchesTimeframe = event.date === todayStr;
+    } else if (timeframeFilter === "week") {
+      const eventDate = new Date(event.date);
+      const today = new Date();
+      const nextWeek = new Date();
+      nextWeek.setDate(today.getDate() + 7);
+      matchesTimeframe = eventDate >= today && eventDate <= nextWeek;
+    } else if (timeframeFilter === "month") {
+      const eventDate = new Date(event.date);
+      const today = new Date();
+      const nextMonth = new Date();
+      nextMonth.setDate(today.getDate() + 30);
+      matchesTimeframe = eventDate >= today && eventDate <= nextMonth;
+    }
+
     const matchesSearch =
       event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       event.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
       event.department.toLowerCase().includes(searchQuery.toLowerCase()) ||
       event.venue.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesSearch;
+
+    return matchesCategory && matchesDepartment && matchesRegistration && matchesTimeframe && matchesSearch;
   });
+
+  const hasActiveFilters =
+    selectedCategory !== "All" ||
+    selectedDepartment !== "All Departments" ||
+    registrationFilter !== "all" ||
+    timeframeFilter !== "all" ||
+    searchQuery.trim().length > 0;
+
+  const handleResetFilters = () => {
+    setSelectedCategory("All");
+    setSelectedDepartment("All Departments");
+    setRegistrationFilter("all");
+    setTimeframeFilter("all");
+    setSearchQuery("");
+  };
 
   const liveEvents = filteredEvents.filter((e) => e.status === "live");
 
@@ -106,6 +182,112 @@ export function HomeFeed({
               {cat === "All" ? t.common.allCategories : cat}
             </button>
           ))}
+        </div>
+
+        {/* Multi-criteria Filter Controls Bar */}
+        <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-border/60 pt-3">
+          {/* Department Filter */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] font-bold text-muted-foreground flex items-center gap-1">
+              <Filter className="size-3 text-brand" /> Dept:
+            </span>
+            <select
+              value={selectedDepartment}
+              onChange={(e) => setSelectedDepartment(e.target.value)}
+              className="h-8 rounded-xl border border-border/80 bg-card px-2.5 text-xs font-semibold text-foreground focus:border-brand focus:outline-none"
+            >
+              {DEPARTMENTS.map((dept) => (
+                <option key={dept} value={dept}>
+                  {dept}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Registration Status Filter */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] font-bold text-muted-foreground">Status:</span>
+            <div className="flex rounded-xl border border-border/70 bg-background/60 p-0.5">
+              <button
+                type="button"
+                onClick={() => setRegistrationFilter("all")}
+                className={cn(
+                  "rounded-lg px-2.5 py-1 text-[11px] font-bold transition-all",
+                  registrationFilter === "all"
+                    ? "bg-[#1A3C6E] text-white shadow-xs"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                All
+              </button>
+              <button
+                type="button"
+                onClick={() => setRegistrationFilter("registered")}
+                className={cn(
+                  "rounded-lg px-2.5 py-1 text-[11px] font-bold transition-all",
+                  registrationFilter === "registered"
+                    ? "bg-emerald-600 text-white shadow-xs"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                My Registered
+              </button>
+              <button
+                type="button"
+                onClick={() => setRegistrationFilter("open")}
+                className={cn(
+                  "rounded-lg px-2.5 py-1 text-[11px] font-bold transition-all",
+                  registrationFilter === "open"
+                    ? "bg-[#F2A93B] text-[#1A3C6E] shadow-xs"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                Open to Join
+              </button>
+            </div>
+          </div>
+
+          {/* Timeframe Filter */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] font-bold text-muted-foreground flex items-center gap-1">
+              <Calendar className="size-3 text-[#F2A93B]" /> When:
+            </span>
+            <div className="flex rounded-xl border border-border/70 bg-background/60 p-0.5">
+              {[
+                { id: "all", label: "Anytime" },
+                { id: "today", label: "Today" },
+                { id: "week", label: "This Week" },
+                { id: "month", label: "This Month" },
+              ].map((tf) => (
+                <button
+                  key={tf.id}
+                  type="button"
+                  onClick={() => setTimeframeFilter(tf.id as any)}
+                  className={cn(
+                    "rounded-lg px-2 py-1 text-[11px] font-bold transition-all",
+                    timeframeFilter === tf.id
+                      ? "bg-[#1A3C6E] text-white shadow-xs"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {tf.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Reset Filters Button */}
+          {hasActiveFilters && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleResetFilters}
+              className="h-8 gap-1 rounded-xl text-[11px] font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 ml-auto"
+            >
+              <RotateCcw className="size-3" />
+              Reset Filters
+            </Button>
+          )}
         </div>
       </div>
 

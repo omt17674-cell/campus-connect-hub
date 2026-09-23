@@ -40,6 +40,7 @@ import {
   serializeRegistrationForDb,
   serializeAttendanceForDb,
   serializeStudentForDb,
+  serializeAccountForDb,
   serializeAnnouncementForDb,
   serializeInternshipForDb,
   deserializeInternshipFromDb,
@@ -1481,24 +1482,8 @@ export async function syncStateToSupabase(state: CampusState): Promise<void> {
       state.currentRole === "student"
     ) {
       const u = state.currentUser;
-      const dbAcc = {
-        id: `u-${u.rollNo.toLowerCase()}`,
-        name: u.name,
-        roll_no: u.rollNo,
-        email: u.email || `${u.rollNo.toLowerCase()}@gsfcuniversity.ac.in`,
-        role: "student",
-        department: u.department || "Computer Science & Engineering",
-        semester: u.semester || 4,
-        year: Math.ceil((u.semester || 4) / 2) || 2,
-        attendance_percentage: u.attendanceRate || 100,
-        points: u.points || 100,
-        streak_days: u.streakDays || 1,
-        volunteer_hours: u.volunteerHours || 0,
-        avatar: u.avatar || u.name?.slice(0, 2).toUpperCase() || "ST",
-        mobile_number: u.mobileNumber || null,
-        created_at: new Date().toISOString(),
-      };
-      await supabase.from("accounts").upsert(dbAcc, { onConflict: "roll_no" });
+      const dbAcc = serializeAccountForDb(u);
+      await supabase.from("accounts").upsert(dbAcc, { onConflict: "id" }).catch(() => {});
     }
   } catch (err) {
     logSupabaseError("background_sync", "all_tables", err);
@@ -1558,34 +1543,10 @@ export const campusStore = {
           return { success: false, message: stuErr.message };
         }
 
-        const initials =
-          student.fullName
-            .split(" ")
-            .map((n) => n[0])
-            .join("")
-            .toUpperCase()
-            .slice(0, 2) || "ST";
-
-        const dbAccount = {
-          id: `u-${student.rollNo.toLowerCase()}`,
-          name: student.fullName,
-          roll_no: student.rollNo,
-          email: student.email,
-          role: "student",
-          department: student.department,
-          semester: student.semester || 4,
-          year: Math.ceil((student.semester || 4) / 2) || 2,
-          attendance_percentage: 100,
-          points: 100,
-          streak_days: 1,
-          volunteer_hours: 0,
-          avatar: initials,
-          mobile_number: student.mobileNumber,
-          created_at: new Date().toISOString(),
-        };
+        const dbAccount = serializeAccountForDb(student);
         const { error: accErr } = await supabase
           .from("accounts")
-          .upsert(dbAccount, { onConflict: "roll_no" });
+          .upsert(dbAccount, { onConflict: "id" });
         if (accErr) {
           logSupabaseError("upsert", "accounts", accErr);
         }
@@ -3062,6 +3023,61 @@ export const campusStore = {
       }
     }
     return true;
+  },
+
+  async deleteEvent(eventId: string): Promise<{ success: boolean; message: string }> {
+    const state = campusStore.getState();
+    const event = state.events.find((e) => e.id === eventId);
+    const eventTitle = event?.title || "Event";
+
+    const previousState = {
+      events: [...state.events],
+      registrations: [...state.registrations],
+      attendanceRecords: [...state.attendanceRecords],
+      auditLogs: [...state.auditLogs],
+    };
+
+    // Optimistically remove from store
+    campusStore.setState((prev) => {
+      const audit: AuditLogEntry = {
+        id: `aud-${Date.now()}`,
+        action: "EVENT_DELETED",
+        performedBy: `${prev.currentUser.name} (${prev.currentUser.role})`,
+        target: eventTitle,
+        timestamp: new Date().toISOString().replace("T", " ").slice(0, 19),
+        details: `Event "${eventTitle}" (ID: ${eventId}) permanently deleted by ${prev.currentUser.name}`,
+      };
+      return {
+        events: prev.events.filter((e) => e.id !== eventId),
+        registrations: prev.registrations.filter((r) => r.eventId !== eventId),
+        attendanceRecords: prev.attendanceRecords.filter((a) => a.eventId !== eventId),
+        auditLogs: [audit, ...prev.auditLogs],
+      };
+    });
+
+    if (typeof window !== "undefined" && navigator.onLine) {
+      try {
+        const token = localStorage.getItem("authToken") || "";
+        const res = await fetch(`/api/events/${eventId}`, {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok && !data.success) {
+          console.warn("deleteEvent API error, rolling back", data);
+          campusStore.setState(() => previousState);
+          return { success: false, message: data.message || "Failed to delete event from database." };
+        }
+      } catch (err: any) {
+        logSupabaseError("delete_catch", "events", err);
+        campusStore.setState(() => previousState);
+        return { success: false, message: err?.message || "Network error deleting event." };
+      }
+    }
+
+    return { success: true, message: `Event "${eventTitle}" permanently deleted.` };
   },
 
   updateRegistrationStatus(registrationId: string, status: Registration["status"]) {
