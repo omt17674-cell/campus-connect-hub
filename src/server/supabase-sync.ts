@@ -55,6 +55,7 @@ export const supabaseSync = {
       );
 
       const failedTables = checks.filter((c) => !c.ok);
+      const isConnected = checks.some((c) => c.ok);
       const criticalTables = ["events", "registrations"];
       const criticalReady = criticalTables.every((t) => checks.find((c) => c.table === t)?.ok);
 
