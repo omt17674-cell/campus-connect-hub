@@ -8,6 +8,7 @@ import {
   CalendarDays,
   ChevronDown,
   Flame,
+  GraduationCap,
   History,
   QrCode,
   Radio,
