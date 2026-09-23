@@ -528,6 +528,33 @@ BEGIN
   END LOOP;
 END $$;
 
+-- Ensure schema & constraints are updated if tables were created previously
+ALTER TABLE IF EXISTS public.accounts ADD COLUMN IF NOT EXISTS roll_no TEXT;
+ALTER TABLE IF EXISTS public.accounts ADD COLUMN IF NOT EXISTS mobile_number TEXT;
+ALTER TABLE IF EXISTS public.accounts ADD COLUMN IF NOT EXISTS department TEXT;
+ALTER TABLE IF EXISTS public.accounts ADD COLUMN IF NOT EXISTS semester INT DEFAULT 0;
+ALTER TABLE IF EXISTS public.accounts ADD COLUMN IF NOT EXISTS avatar TEXT DEFAULT 'ST';
+ALTER TABLE IF EXISTS public.accounts ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT FALSE;
+ALTER TABLE IF EXISTS public.accounts DROP CONSTRAINT IF EXISTS accounts_role_check;
+ALTER TABLE IF EXISTS public.accounts ADD CONSTRAINT accounts_role_check 
+  CHECK (role IN ('student', 'faculty', 'faculty_mentor', 'internship_mentor', 'organizer', 'tpc', 'admin', 'dean', 'management', 'security', 'super_admin'));
+
+ALTER TABLE IF EXISTS public.faculty_mentor_assignments DROP CONSTRAINT IF EXISTS faculty_mentor_assignments_status_check;
+ALTER TABLE IF EXISTS public.faculty_mentor_assignments ADD CONSTRAINT faculty_mentor_assignments_status_check 
+  CHECK (status IN ('active', 'reassigned', 'completed', 'removed'));
+
+ALTER TABLE IF EXISTS public.mentorship_tasks DROP CONSTRAINT IF EXISTS mentorship_tasks_priority_check;
+ALTER TABLE IF EXISTS public.mentorship_tasks ADD CONSTRAINT mentorship_tasks_priority_check 
+  CHECK (priority IN ('low', 'medium', 'high', 'urgent'));
+
+ALTER TABLE IF EXISTS public.mentorship_tasks DROP CONSTRAINT IF EXISTS mentorship_tasks_status_check;
+ALTER TABLE IF EXISTS public.mentorship_tasks ADD CONSTRAINT mentorship_tasks_status_check 
+  CHECK (status IN ('Pending', 'In Progress', 'Submitted', 'Reviewed', 'Completed'));
+
+ALTER TABLE IF EXISTS public.mentor_messages DROP CONSTRAINT IF EXISTS mentor_messages_priority_check;
+ALTER TABLE IF EXISTS public.mentor_messages ADD CONSTRAINT mentor_messages_priority_check 
+  CHECK (priority IN ('low', 'medium', 'high', 'urgent'));
+
 -- ==============================================================================
 -- 7. PRE-SEEDED TEST DATA (MASTER DATA, FACULTY, STUDENTS & ASSIGNMENTS)
 -- ==============================================================================
