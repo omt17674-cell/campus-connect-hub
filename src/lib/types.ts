@@ -1,12 +1,17 @@
 export type UserRole =
   | "student"
   | "faculty"
+  | "faculty_mentor"
+  | "internship_mentor"
   | "organizer"
   | "tpc"
   | "admin"
   | "dean"
+  | "management"
   | "security"
   | "super_admin";
+
+export type FacultyCapability = "faculty" | "faculty_mentor" | "internship_mentor";
 
 
 export type Language = "en" | "gu" | "hi";
@@ -545,6 +550,204 @@ export interface InternshipNotification {
   message: string;
   isRead: boolean;
   createdAt: string;
+}
+
+// ==========================================
+// MASTER DATA SYSTEM TYPES
+// ==========================================
+
+export interface AcademicYearMaster {
+  id: string;
+  yearName: string; // e.g. "2025-2026"
+  isCurrent: boolean;
+  startDate?: string;
+  endDate?: string;
+  createdAt?: string;
+}
+
+export interface DepartmentMaster {
+  id: string;
+  code: string; // e.g. "CSE", "CHE"
+  name: string;
+  school: string; // e.g. "School of Technology"
+  createdAt?: string;
+}
+
+export interface CourseMaster {
+  id: string;
+  code: string; // e.g. "BTECH", "BBA"
+  name: string;
+  departmentId?: string;
+  durationYears: number;
+  createdAt?: string;
+}
+
+export interface BranchMaster {
+  id: string;
+  code: string;
+  name: string;
+  departmentId?: string;
+  createdAt?: string;
+}
+
+export interface SemesterMaster {
+  id: string;
+  semesterNumber: number; // 1 to 8
+  academicYearId?: string;
+  departmentId?: string;
+  field?: string;
+  createdAt?: string;
+}
+
+export interface FieldMaster {
+  id: string;
+  name: string; // e.g. "Artificial Intelligence", "Process Engineering"
+  departmentId?: string;
+  createdAt?: string;
+}
+
+export interface CompanyMaster {
+  id: string;
+  name: string;
+  industry: string;
+  contactPerson?: string;
+  contactEmail?: string;
+  phone?: string;
+  location?: string;
+  website?: string;
+  createdAt?: string;
+}
+
+// ==========================================
+// FACULTY & INTERNSHIP MENTORSHIP TYPES
+// ==========================================
+
+export interface FacultyMentorAssignment {
+  id: string;
+  facultyId: string;
+  facultyName?: string;
+  facultyEmail?: string;
+  facultyDepartment?: string;
+  facultyDesignation?: string;
+  studentId: string;
+  studentName?: string;
+  studentRollNo?: string;
+  studentEmail?: string;
+  academicYear: string;
+  semester: number;
+  department: string;
+  field?: string;
+  assignedBy: string;
+  assignedAt: string;
+  status: "active" | "reassigned" | "completed" | "removed";
+  notes?: string;
+}
+
+export interface InternshipMentorAssignment {
+  id: string;
+  facultyId: string;
+  facultyName?: string;
+  facultyEmail?: string;
+  studentId: string;
+  studentName?: string;
+  studentRollNo?: string;
+  internshipId?: string;
+  internshipTitle?: string;
+  companyName?: string;
+  academicYear: string;
+  semester: number;
+  department: string;
+  field?: string;
+  assignedBy: string;
+  assignedAt: string;
+  status: "active" | "completed" | "removed";
+  remarks?: string;
+}
+
+export interface MentorMessage {
+  id: string;
+  senderId: string;
+  senderName: string;
+  senderRole: "mentor" | "student" | "internship_mentor" | "management";
+  receiverId: string;
+  studentId: string;
+  facultyId: string;
+  subject: string;
+  message: string;
+  priority: "low" | "medium" | "high" | "urgent";
+  createdAt: string;
+  readAt?: string;
+  status: "sent" | "delivered" | "read";
+}
+
+export type MentorshipTaskStatus = "Pending" | "In Progress" | "Submitted" | "Completed" | "Overdue";
+
+export interface MentorshipTask {
+  id: string;
+  title: string;
+  description: string;
+  assignedDate: string;
+  dueDate: string;
+  priority: "low" | "medium" | "high" | "urgent";
+  studentId: string;
+  mentorId: string;
+  mentorName?: string;
+  studentName?: string;
+  studentRollNo?: string;
+  status: MentorshipTaskStatus;
+  feedback?: string;
+  submissionText?: string;
+  submittedAt?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface MentorshipNote {
+  id: string;
+  facultyId: string;
+  studentId: string;
+  title: string;
+  notes: string;
+  noteType: "general" | "academic" | "attendance" | "internship" | "disciplinary";
+  isConfidential: boolean;
+  createdAt: string;
+}
+
+export interface ManagementAuditLog {
+  id: string;
+  action: string;
+  actorId: string;
+  actorName: string;
+  targetType: string;
+  targetId?: string;
+  details?: string;
+  ipAddress?: string;
+  createdAt: string;
+}
+
+export interface UnifiedStudentHistory {
+  student: NewRegisteredStudent | UserProfile;
+  facultyMentor?: FacultyMentorAssignment;
+  internshipMentor?: InternshipMentorAssignment;
+  attendanceRate: number;
+  totalAttendanceRecords: number;
+  tasks: MentorshipTask[];
+  messages: MentorMessage[];
+  notes: MentorshipNote[];
+  internships: {
+    application?: InternshipApplication;
+    internship?: Internship;
+    attendance: InternshipAttendanceRecord[];
+    approvalLogs: InternshipApprovalRecord[];
+  }[];
+  academicSummary: {
+    currentSemester: number;
+    department: string;
+    school: string;
+    degree: string;
+    volunteerHours: number;
+    points: number;
+  };
 }
 
 

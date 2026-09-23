@@ -179,6 +179,15 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
     } else if (role === "organizer") {
       setIdentifier("tpc.admin@gsfcuniversity.ac.in");
       setPassword(""); // Password field kept empty for security
+    } else if (role === "faculty_mentor" || role === "faculty") {
+      setIdentifier("faculty.mentor@gsfcuniversity.ac.in");
+      setPassword("");
+    } else if (role === "internship_mentor") {
+      setIdentifier("internship.mentor@gsfcuniversity.ac.in");
+      setPassword("");
+    } else if (role === "management") {
+      setIdentifier("management.admin@gsfcuniversity.ac.in");
+      setPassword("");
     } else {
       setIdentifier("");
       setPassword("");
@@ -205,11 +214,14 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
     const cleanPass = password.trim();
 
     // ─────────────────────────────────────────────────────────────────────
-    // DEMO / OFFICIAL PORTAL ACCOUNTS: Fast login for admin/TPC & students
+    // DEMO / OFFICIAL PORTAL ACCOUNTS: Fast login for admin/TPC/Mentors & students
     // ─────────────────────────────────────────────────────────────────────
     const DEMO_ACCOUNTS: Record<string, { role: UserRole; name: string; dept: string; pass: string }> = {
       "admin.dean@gsfcuniversity.ac.in": { role: "admin",     name: "Dr. Ananya Sharma (Dean)", dept: "Administration",                  pass: "9558413347@Om" },
       "tpc.admin@gsfcuniversity.ac.in":  { role: "organizer", name: "Prof. Rajiv Mehta (TPC Head)", dept: "Training & Placement Cell",  pass: "7043313347@Om"   },
+      "faculty.mentor@gsfcuniversity.ac.in": { role: "faculty_mentor", name: "Dr. K. N. Joshi (Faculty Mentor)", dept: "Computer Science & Engineering", pass: "9558413347@Om" },
+      "internship.mentor@gsfcuniversity.ac.in": { role: "internship_mentor", name: "Prof. Sneha Dave (Internship Mentor)", dept: "Chemical & Petrochemical Eng", pass: "9558413347@Om" },
+      "management.admin@gsfcuniversity.ac.in": { role: "management", name: "Dr. S. K. Patel (Management Head)", dept: "Institutional Governance", pass: "9558413347@Om" },
     };
     const demoKey = Object.keys(DEMO_ACCOUNTS).find(
       k => k === cleanEmail || k.split("@")[0].toLowerCase() === cleanInput.toLowerCase()
@@ -901,6 +913,9 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
                   className="w-full appearance-none rounded-xl border border-slate-300 bg-slate-50/50 px-4 py-2.5 pr-10 text-xs font-bold text-slate-800 shadow-sm focus:border-[#1A3C6E] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1A3C6E]/20"
                 >
                   <option value="student">🎓 GSFC Student (Campus Candidate)</option>
+                  <option value="faculty_mentor">👨‍🏫 Faculty Mentorship (GSFC Faculty Mentor)</option>
+                  <option value="internship_mentor">💼 Internship Mentor (Industry & Academic Guides)</option>
+                  <option value="management">🏛️ Institutional Management & Governance</option>
                   <option value="admin">🏛️ TPC Admin (Dean & Academic Affairs)</option>
                   <option value="organizer">💼 Placement Faculty Coordinator (Training & Placement / Organizer)</option>
                 </select>

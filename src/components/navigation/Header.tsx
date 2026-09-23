@@ -326,6 +326,42 @@ export function Header({
             </div>
           )}
 
+          {state.currentRole === "faculty_mentor" && (
+            <div className="flex items-center gap-2 rounded-xl bg-muted/50 px-2.5 py-1 text-xs min-w-0">
+              <div className="flex size-4.5 items-center justify-center rounded-full bg-blue-600 text-white shrink-0">
+                <Users className="size-2.5" />
+              </div>
+              <span className="text-[11px] font-black text-foreground shrink-0">Faculty Mentorship Portal</span>
+              <span className="rounded-md bg-blue-500/15 px-1.5 py-0.2 text-[9px] font-bold text-blue-600 dark:text-blue-400 truncate">
+                Mentor Guidance
+              </span>
+            </div>
+          )}
+
+          {state.currentRole === "internship_mentor" && (
+            <div className="flex items-center gap-2 rounded-xl bg-muted/50 px-2.5 py-1 text-xs min-w-0">
+              <div className="flex size-4.5 items-center justify-center rounded-full bg-purple-600 text-white shrink-0">
+                <UserCheck className="size-2.5" />
+              </div>
+              <span className="text-[11px] font-black text-foreground shrink-0">Internship Mentorship Portal</span>
+              <span className="rounded-md bg-purple-500/15 px-1.5 py-0.2 text-[9px] font-bold text-purple-600 dark:text-purple-400 truncate">
+                Industry & Academic Guide
+              </span>
+            </div>
+          )}
+
+          {state.currentRole === "management" && (
+            <div className="flex items-center gap-2 rounded-xl bg-muted/50 px-2.5 py-1 text-xs min-w-0">
+              <div className="flex size-4.5 items-center justify-center rounded-full bg-indigo-600 text-white shrink-0">
+                <ShieldCheck className="size-2.5" />
+              </div>
+              <span className="text-[11px] font-black text-foreground shrink-0">Institutional Management</span>
+              <span className="rounded-md bg-indigo-500/15 px-1.5 py-0.2 text-[9px] font-bold text-indigo-600 dark:text-indigo-400 truncate">
+                Governance & Analytics
+              </span>
+            </div>
+          )}
+
           {state.currentRole === "organizer" && (
             <div className="flex items-center gap-2 rounded-xl bg-muted/50 px-2.5 py-1 text-xs min-w-0">
               <div className="flex size-4.5 items-center justify-center rounded-full bg-emerald-600 text-white shrink-0">

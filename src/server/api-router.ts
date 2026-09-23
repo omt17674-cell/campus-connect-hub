@@ -3,6 +3,18 @@ import { isSupabaseAdminConfigured, supabaseAdmin } from "./supabase-admin";
 import { confirmUserEmailInAuth } from "./postgres";
 import { sendRegistrationOTP, sendPasswordResetOTP, emailService } from "./emailService";
 import { validateQrPayload } from "../lib/qr-engine";
+import { mentorshipSync } from "./mentorship-sync";
+import { ensureMentorshipSchema } from "./mentorship-db-init";
+
+let mentorshipSchemaInitialized = false;
+function triggerSchemaInit() {
+  if (!mentorshipSchemaInitialized) {
+    mentorshipSchemaInitialized = true;
+    ensureMentorshipSchema().catch((err) =>
+      console.warn("[Mentorship DB Init] Startup warning:", err)
+    );
+  }
+}
 
 // ──────────────────────────────────────────────────────────────
 // Helper: Generate secure password
@@ -2409,6 +2421,183 @@ ${clubs.map((c) => `- ${c.name} (${c.category}): ${c.description || "Active stud
         500,
       );
     }
+  }
+
+  // ==============================================================================
+  // 30. MASTER DATA APIS (Supabase backed)
+  // ==============================================================================
+  if (path === "/api/master-data" && method === "GET") {
+    triggerSchemaInit();
+    const data = await mentorshipSync.getMasterData();
+    return jsonResponse({ success: true, data }, 200);
+  }
+
+  // ==============================================================================
+  // 31. FACULTY MENTOR ASSIGNMENTS
+  // ==============================================================================
+  if (path === "/api/mentorship/faculty/assignments" && method === "GET") {
+    triggerSchemaInit();
+    const facultyId = url.searchParams.get("facultyId") || undefined;
+    const studentId = url.searchParams.get("studentId") || undefined;
+    const academicYear = url.searchParams.get("academicYear") || undefined;
+    const semester = url.searchParams.get("semester") ? parseInt(url.searchParams.get("semester")!, 10) : undefined;
+    const department = url.searchParams.get("department") || undefined;
+    const status = url.searchParams.get("status") || undefined;
+
+    const assignments = await mentorshipSync.getFacultyMentorAssignments({
+      facultyId,
+      studentId,
+      academicYear,
+      semester,
+      department,
+      status,
+    });
+    return jsonResponse({ success: true, assignments }, 200);
+  }
+
+  if (path === "/api/mentorship/faculty/assign" && method === "POST") {
+    triggerSchemaInit();
+    const body = await parseBody<any>(request);
+    if (!body || !body.facultyId || !body.studentId || !body.academicYear || !body.semester || !body.department) {
+      return jsonResponse({ success: false, message: "Missing required assignment fields." }, 400);
+    }
+    const res = await mentorshipSync.assignFacultyMentor({
+      facultyId: body.facultyId,
+      studentId: body.studentId,
+      academicYear: body.academicYear,
+      semester: parseInt(body.semester, 10),
+      department: body.department,
+      field: body.field,
+      assignedBy: body.assignedBy || "Management",
+      notes: body.notes,
+    });
+    return jsonResponse(res, res.success ? 200 : 400);
+  }
+
+  if (path === "/api/mentorship/faculty/bulk-assign" && method === "POST") {
+    triggerSchemaInit();
+    const body = await parseBody<{ assignments: any[] }>(request);
+    if (!body || !Array.isArray(body.assignments)) {
+      return jsonResponse({ success: false, message: "Invalid assignments array." }, 400);
+    }
+    const res = await mentorshipSync.bulkAssignFacultyMentors(body.assignments);
+    return jsonResponse(res, res.success ? 200 : 400);
+  }
+
+  // ==============================================================================
+  // 32. INTERNSHIP MENTOR ASSIGNMENTS
+  // ==============================================================================
+  if (path === "/api/mentorship/internship/assignments" && method === "GET") {
+    triggerSchemaInit();
+    const facultyId = url.searchParams.get("facultyId") || undefined;
+    const academicYear = url.searchParams.get("academicYear") || undefined;
+    const semester = url.searchParams.get("semester") ? parseInt(url.searchParams.get("semester")!, 10) : undefined;
+    const department = url.searchParams.get("department") || undefined;
+    const field = url.searchParams.get("field") || undefined;
+
+    const assignments = await mentorshipSync.getInternshipMentorAssignments({
+      facultyId,
+      academicYear,
+      semester,
+      department,
+      field,
+    });
+    return jsonResponse({ success: true, assignments }, 200);
+  }
+
+  if (path === "/api/mentorship/internship/assign" && method === "POST") {
+    triggerSchemaInit();
+    const body = await parseBody<any>(request);
+    if (!body || !body.facultyId || !body.studentId || !body.academicYear || !body.semester || !body.department) {
+      return jsonResponse({ success: false, message: "Missing required fields." }, 400);
+    }
+    const res = await mentorshipSync.assignInternshipMentor({
+      facultyId: body.facultyId,
+      studentId: body.studentId,
+      internshipId: body.internshipId,
+      academicYear: body.academicYear,
+      semester: parseInt(body.semester, 10),
+      department: body.department,
+      field: body.field,
+      assignedBy: body.assignedBy || "Management",
+      remarks: body.remarks,
+    });
+    return jsonResponse(res, res.success ? 200 : 400);
+  }
+
+  // ==============================================================================
+  // 33. MENTORSHIP MESSAGES & COMMUNICATION
+  // ==============================================================================
+  if (path === "/api/mentorship/messages" && method === "GET") {
+    triggerSchemaInit();
+    const studentId = url.searchParams.get("studentId") || undefined;
+    const facultyId = url.searchParams.get("facultyId") || undefined;
+    const receiverId = url.searchParams.get("receiverId") || undefined;
+
+    const messages = await mentorshipSync.getMentorMessages({ studentId, facultyId, receiverId });
+    return jsonResponse({ success: true, messages }, 200);
+  }
+
+  if (path === "/api/mentorship/messages" && method === "POST") {
+    triggerSchemaInit();
+    const body = await parseBody<any>(request);
+    if (!body || !body.senderId || !body.receiverId || !body.subject || !body.message) {
+      return jsonResponse({ success: false, message: "Missing required message parameters." }, 400);
+    }
+    const res = await mentorshipSync.sendMentorMessage(body);
+    return jsonResponse(res, res.success ? 200 : 400);
+  }
+
+  // ==============================================================================
+  // 34. MENTORSHIP TASKS
+  // ==============================================================================
+  if (path === "/api/mentorship/tasks" && method === "GET") {
+    triggerSchemaInit();
+    const studentId = url.searchParams.get("studentId") || undefined;
+    const mentorId = url.searchParams.get("mentorId") || undefined;
+
+    const tasks = await mentorshipSync.getMentorshipTasks({ studentId, mentorId });
+    return jsonResponse({ success: true, tasks }, 200);
+  }
+
+  if (path === "/api/mentorship/tasks" && method === "POST") {
+    triggerSchemaInit();
+    const body = await parseBody<any>(request);
+    if (!body || !body.title || !body.description || !body.dueDate || !body.studentId || !body.mentorId) {
+      return jsonResponse({ success: false, message: "Missing required task properties." }, 400);
+    }
+    const res = await mentorshipSync.createMentorshipTask(body);
+    return jsonResponse(res, res.success ? 200 : 400);
+  }
+
+  if (path.startsWith("/api/mentorship/tasks/") && (method === "PATCH" || method === "PUT")) {
+    triggerSchemaInit();
+    const taskId = path.replace("/api/mentorship/tasks/", "");
+    const body = await parseBody<any>(request);
+    const res = await mentorshipSync.updateMentorshipTask(taskId, body || {});
+    return jsonResponse(res, res.success ? 200 : 400);
+  }
+
+  // ==============================================================================
+  // 35. UNIFIED STUDENT 360 HISTORY
+  // ==============================================================================
+  if (path.startsWith("/api/mentorship/student-history/") && method === "GET") {
+    triggerSchemaInit();
+    const studentId = decodeURIComponent(path.replace("/api/mentorship/student-history/", ""));
+    const history = await mentorshipSync.getUnifiedStudentHistory(studentId);
+    if (!history) {
+      return jsonResponse({ success: false, message: "Student record not found in system." }, 404);
+    }
+    return jsonResponse({ success: true, history }, 200);
+  }
+
+  // ==============================================================================
+  // 36. MANAGEMENT METRICS & AUDIT
+  // ==============================================================================
+  if (path === "/api/management/kpis" && method === "GET") {
+    triggerSchemaInit();
+    const kpis = await mentorshipSync.getManagementKPIs();
+    return jsonResponse({ success: true, kpis }, 200);
   }
 
   return jsonResponse({ error: "Route not found in GSFC API Gateway" }, 404);

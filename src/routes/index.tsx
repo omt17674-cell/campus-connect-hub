@@ -43,6 +43,10 @@ import { MobileInstallModal } from "@/components/mobile/MobileInstallModal";
 import { UnifiedAttendanceGateModal } from "@/components/attendance/UnifiedAttendanceGateModal";
 import { OrganizerDashboard } from "@/components/organizer/OrganizerDashboard";
 import { AdminDashboard } from "@/components/admin/AdminDashboard";
+import { StudentMentorshipHub } from "@/components/mentorship/StudentMentorshipHub";
+import { FacultyMentorDashboard } from "@/components/mentorship/FacultyMentorDashboard";
+import { InternshipMentorDashboard } from "@/components/mentorship/InternshipMentorDashboard";
+import { ManagementDashboard } from "@/components/management/ManagementDashboard";
 import { LoginPage } from "@/components/auth/LoginPage";
 import { CampusEvent } from "@/lib/types";
 import {
@@ -230,6 +234,9 @@ function CampusConnectApp() {
                     <DropdownMenuItem onClick={() => setStudentView("internships")} className="rounded-xl py-3 text-sm font-bold">
                       <Briefcase className="mr-2 size-4 text-[#F2A93B]" /> Internships
                     </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setStudentView("mentorship")} className="rounded-xl py-3 text-sm font-bold">
+                      <GraduationCap className="mr-2 size-4 text-emerald-500" /> My Mentorship
+                    </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => setStudentView("gamification")} className="rounded-xl py-3 text-sm font-bold">
                       <Trophy className="mr-2 size-4 text-[#F2A93B]" /> {t.nav.gamification}
                     </DropdownMenuItem>
@@ -391,6 +398,21 @@ function CampusConnectApp() {
                   <Button
                     variant="ghost"
                     size="sm"
+                    onClick={() => setStudentView("mentorship")}
+                    className={cn(
+                      "rounded-xl text-xs font-bold",
+                      studentView === "mentorship"
+                        ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <GraduationCap className="mr-1.5 size-3.5 text-emerald-500" />
+                    Mentorship
+                  </Button>
+
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={() => setStudentView("gamification")}
                     className={cn(
                       "rounded-xl text-xs font-bold",
@@ -501,6 +523,10 @@ function CampusConnectApp() {
                 <StudentInternshipsHub state={state} />
               )}
 
+              {studentView === "mentorship" && (
+                <StudentMentorshipHub state={state} />
+              )}
+
               {studentView === "gamification" && (
                 <GamificationView state={state} />
               )}
@@ -511,11 +537,23 @@ function CampusConnectApp() {
             </div>
           )}
 
+          {(state.currentRole === "faculty_mentor" || state.currentRole === "faculty") && (
+            <FacultyMentorDashboard state={state} />
+          )}
+
+          {state.currentRole === "internship_mentor" && (
+            <InternshipMentorDashboard state={state} />
+          )}
+
+          {(state.currentRole === "management" || state.currentRole === "super_admin") && (
+            <ManagementDashboard state={state} />
+          )}
+
           {state.currentRole === "organizer" && (
             <OrganizerDashboard state={state} />
           )}
 
-          {state.currentRole === "admin" && (
+          {(state.currentRole === "admin" || state.currentRole === "dean") && (
             <AdminDashboard
               state={state}
               onOpenGateModal={() => setShowGateModal(true)}

@@ -323,4 +323,232 @@ export const apiClient = {
     }
   },
 
+  // ==========================================
+  // MASTER DATA & MENTORSHIP CLIENT METHODS
+  // ==========================================
+  async getMasterData() {
+    try {
+      const res = await fetch("/api/master-data");
+      return await res.json();
+    } catch (e) {
+      return { success: false, error: String(e) };
+    }
+  },
+
+  async getFacultyMentorAssignments(filter?: {
+    facultyId?: string;
+    studentId?: string;
+    academicYear?: string;
+    semester?: number;
+    department?: string;
+    status?: string;
+  }) {
+    try {
+      const q = new URLSearchParams();
+      if (filter?.facultyId) q.set("facultyId", filter.facultyId);
+      if (filter?.studentId) q.set("studentId", filter.studentId);
+      if (filter?.academicYear) q.set("academicYear", filter.academicYear);
+      if (filter?.semester) q.set("semester", String(filter.semester));
+      if (filter?.department) q.set("department", filter.department);
+      if (filter?.status) q.set("status", filter.status);
+
+      const res = await fetch(`/api/mentorship/faculty/assignments?${q.toString()}`);
+      return await res.json();
+    } catch (e) {
+      return { success: false, assignments: [] };
+    }
+  },
+
+  async assignFacultyMentor(payload: {
+    facultyId: string;
+    studentId: string;
+    academicYear: string;
+    semester: number;
+    department: string;
+    field?: string;
+    assignedBy: string;
+    notes?: string;
+  }) {
+    try {
+      const res = await fetch("/api/mentorship/faculty/assign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      return await res.json();
+    } catch (e) {
+      return { success: false, message: "Network error assigning mentor." };
+    }
+  },
+
+  async bulkAssignFacultyMentors(assignments: any[]) {
+    try {
+      const res = await fetch("/api/mentorship/faculty/bulk-assign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ assignments }),
+      });
+      return await res.json();
+    } catch (e) {
+      return { success: false, message: "Network error bulk assigning mentors." };
+    }
+  },
+
+  async getInternshipMentorAssignments(filter?: {
+    facultyId?: string;
+    academicYear?: string;
+    semester?: number;
+    department?: string;
+    field?: string;
+  }) {
+    try {
+      const q = new URLSearchParams();
+      if (filter?.facultyId) q.set("facultyId", filter.facultyId);
+      if (filter?.academicYear) q.set("academicYear", filter.academicYear);
+      if (filter?.semester) q.set("semester", String(filter.semester));
+      if (filter?.department) q.set("department", filter.department);
+      if (filter?.field) q.set("field", filter.field);
+
+      const res = await fetch(`/api/mentorship/internship/assignments?${q.toString()}`);
+      return await res.json();
+    } catch (e) {
+      return { success: false, assignments: [] };
+    }
+  },
+
+  async assignInternshipMentor(payload: {
+    facultyId: string;
+    studentId: string;
+    internshipId?: string;
+    academicYear: string;
+    semester: number;
+    department: string;
+    field?: string;
+    assignedBy: string;
+    remarks?: string;
+  }) {
+    try {
+      const res = await fetch("/api/mentorship/internship/assign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      return await res.json();
+    } catch (e) {
+      return { success: false, message: "Network error assigning internship mentor." };
+    }
+  },
+
+  async getMentorMessages(params: {
+    studentId?: string;
+    facultyId?: string;
+    receiverId?: string;
+  }) {
+    try {
+      const q = new URLSearchParams();
+      if (params.studentId) q.set("studentId", params.studentId);
+      if (params.facultyId) q.set("facultyId", params.facultyId);
+      if (params.receiverId) q.set("receiverId", params.receiverId);
+
+      const res = await fetch(`/api/mentorship/messages?${q.toString()}`);
+      return await res.json();
+    } catch (e) {
+      return { success: false, messages: [] };
+    }
+  },
+
+  async sendMentorMessage(payload: {
+    senderId: string;
+    senderName: string;
+    senderRole: "mentor" | "student" | "internship_mentor" | "management";
+    receiverId: string;
+    studentId: string;
+    facultyId: string;
+    subject: string;
+    message: string;
+    priority?: "low" | "medium" | "high" | "urgent";
+  }) {
+    try {
+      const res = await fetch("/api/mentorship/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      return await res.json();
+    } catch (e) {
+      return { success: false, message: "Network error sending message." };
+    }
+  },
+
+  async getMentorshipTasks(filter: {
+    studentId?: string;
+    mentorId?: string;
+  }) {
+    try {
+      const q = new URLSearchParams();
+      if (filter.studentId) q.set("studentId", filter.studentId);
+      if (filter.mentorId) q.set("mentorId", filter.mentorId);
+
+      const res = await fetch(`/api/mentorship/tasks?${q.toString()}`);
+      return await res.json();
+    } catch (e) {
+      return { success: false, tasks: [] };
+    }
+  },
+
+  async createMentorshipTask(payload: {
+    title: string;
+    description: string;
+    assignedDate?: string;
+    dueDate: string;
+    priority?: "low" | "medium" | "high" | "urgent";
+    studentId: string;
+    mentorId: string;
+  }) {
+    try {
+      const res = await fetch("/api/mentorship/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      return await res.json();
+    } catch (e) {
+      return { success: false, message: "Network error creating task." };
+    }
+  },
+
+  async updateMentorshipTask(taskId: string, updates: {
+    status?: string;
+    feedback?: string;
+    submissionText?: string;
+  }) {
+    try {
+      const res = await fetch(`/api/mentorship/tasks/${taskId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updates),
+      });
+      return await res.json();
+    } catch (e) {
+      return { success: false, message: "Network error updating task." };
+    }
+  },
+
+  async getUnifiedStudentHistory(studentId: string) {
+    try {
+      const res = await fetch(`/api/mentorship/student-history/${encodeURIComponent(studentId)}`);
+      return await res.json();
+    } catch (e) {
+      return { success: false, message: "Network error fetching student history." };
+    }
+  },
+
+  async getManagementKPIs() {
+    try {
+      const res = await fetch("/api/management/kpis");
+      return await res.json();
+    } catch (e) {
+      return { success: false, kpis: null };
+    }
+  },
 };
