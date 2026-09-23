@@ -927,9 +927,12 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
                   <option value="student">🎓 GSFC Student (Campus Candidate)</option>
                   <option value="faculty_mentor">👨‍🏫 Faculty Mentorship (GSFC Faculty Mentor)</option>
                   <option value="internship_mentor">💼 Internship Mentor (Industry & Academic Guides)</option>
-                  <option value="management">🏛️ Institutional Management & Governance</option>
-                  <option value="admin">🏛️ TPC Admin (Dean & Academic Affairs)</option>
-                  <option value="organizer">💼 Placement Faculty Coordinator (Training & Placement / Organizer)</option>
+                  <option value="management">🏛️ GSFC University System Management (Institutional Governance)</option>
+                  <option value="super_admin">⚡ GSFC University Super Admin (Executive Control Center)</option>
+                  <option value="dean">🏛️ Dean & Academic Affairs Governance</option>
+                  <option value="admin">🛡️ University Administrator</option>
+                  <option value="tpc">💼 Training & Placement Cell (TPC Officer)</option>
+                  <option value="organizer">🎪 Placement Faculty Coordinator & Event Convener</option>
                 </select>
                 <ChevronDown className="pointer-events-none absolute right-3.5 top-3 size-4 text-slate-400" />
               </div>

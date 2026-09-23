@@ -221,10 +221,34 @@ CREATE TABLE IF NOT EXISTS public.management_audit_logs (
   action TEXT NOT NULL,
   actor_id TEXT NOT NULL,
   actor_name TEXT NOT NULL,
+  actor_role TEXT,
   target_type TEXT NOT NULL,
-  target_id TEXT NOT NULL,
+  target_id TEXT,
+  old_value TEXT,
+  new_value TEXT,
   details TEXT,
+  ip_address TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.role_permissions (
+  id TEXT PRIMARY KEY,
+  role TEXT NOT NULL,
+  permission TEXT NOT NULL,
+  scope TEXT NOT NULL DEFAULT 'global',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(role, permission)
+);
+
+CREATE TABLE IF NOT EXISTS public.user_permissions (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  permission TEXT NOT NULL,
+  is_granted BOOLEAN DEFAULT TRUE,
+  scope TEXT NOT NULL DEFAULT 'assigned',
+  granted_by TEXT,
+  granted_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id, permission)
 );
 
 -- ==============================================================================

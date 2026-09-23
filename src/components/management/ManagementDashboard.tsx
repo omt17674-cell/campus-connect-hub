@@ -21,63 +21,89 @@ import {
   UserCheck,
   UserPlus,
   Users,
+  AlertCircle,
+  FileSpreadsheet,
+  FileText,
+  Key,
+  Shield,
+  Sliders,
+  Table,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { apiClient } from "@/lib/api-client";
-import { CampusState, campusStore } from "@/lib/campus-store";
-import { FacultyMentorAssignment, NewRegisteredStudent } from "@/lib/types";
+import { CampusState } from "@/lib/campus-store";
+import {
+  FacultyMentorAssignment,
+  FacultyRecord,
+  ManagementAuditLog,
+  ManagementKPIs,
+  NewRegisteredStudent,
+} from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { MasterDataManager } from "./MasterDataManager";
 import { MentorAssignmentModal } from "./MentorAssignmentModal";
+import { Faculty360Modal } from "./Faculty360Modal";
 import { UnifiedStudentHistoryModal } from "../mentorship/UnifiedStudentHistoryModal";
+import { PeopleAccessView } from "./PeopleAccessView";
+import { RolesPermissionsMatrixView } from "./RolesPermissionsMatrixView";
+import { TaskControlCenterView } from "./TaskControlCenterView";
+import { FacultyWorkloadView } from "./FacultyWorkloadView";
+import { SystemDataDirectoryView } from "./SystemDataDirectoryView";
+import { ManagementReportsView } from "./ManagementReportsView";
+import { AuditActivityView } from "./AuditActivityView";
 import { toast } from "sonner";
 
 interface ManagementDashboardProps {
   state: CampusState;
 }
 
+type ManagementTab =
+  | "overview"
+  | "people"
+  | "roles"
+  | "faculty"
+  | "students"
+  | "assignments"
+  | "tasks"
+  | "workload"
+  | "directory"
+  | "reports"
+  | "audit"
+  | "masterdata";
+
 export function ManagementDashboard({ state }: ManagementDashboardProps) {
-  const [activeTab, setActiveTab] = useState<"overview" | "students" | "faculty" | "assignments" | "masterdata">("overview");
+  const [activeTab, setActiveTab] = useState<ManagementTab>("overview");
 
-  const [kpis, setKpis] = useState<any>({
-    totalStudents: 142,
-    totalFaculty: 18,
-    facultyMentorsCount: 12,
-    internshipMentorsCount: 8,
-    totalInternships: 24,
-    totalApplications: 68,
-    activeInterns: 19,
-    completedInternships: 32,
-    activeMentorAssignments: 95,
-    unassignedStudentsCount: 47,
-    pendingApprovals: 6,
-    attendanceAlertsCount: 3,
-  });
-
-  const [assignments, setAssignments] = useState<FacultyMentorAssignment[]>([]);
+  // Real Database KPIs (NO hardcoded numbers or fake defaults)
+  const [kpis, setKpis] = useState<ManagementKPIs | null>(null);
+  const [dbError, setDbError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Search queries
+  // Real Database Lists
+  const [facultyList, setFacultyList] = useState<FacultyRecord[]>([]);
+  const [assignments, setAssignments] = useState<FacultyMentorAssignment[]>([]);
+  const [recentAuditLogs, setRecentAuditLogs] = useState<ManagementAuditLog[]>([]);
+
+  // Search queries & filters
   const [studentSearch, setStudentSearch] = useState("");
   const [facultySearch, setFacultySearch] = useState("");
+  const [studentDeptFilter, setStudentDeptFilter] = useState("all");
+  const [facultyDeptFilter, setFacultyDeptFilter] = useState("all");
 
   // Modals
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [selectedStudentForAssign, setSelectedStudentForAssign] = useState<string | undefined>(undefined);
   const [selectedFacultyForAssign, setSelectedFacultyForAssign] = useState<string | undefined>(undefined);
   const [selectedStudentForHistory, setSelectedStudentForHistory] = useState<string | null>(null);
+  const [selectedFacultyFor360, setSelectedFacultyFor360] = useState<string | null>(null);
 
   const registeredStudents = state?.newRegisteredStudents || [];
-
-  // Faculty list derived from accounts and campus state
-  const facultyList = [
-    { id: "fac-1", name: "Dr. K. N. Joshi", department: "Computer Science & Engineering", email: "kn.joshi@gsfcuniversity.ac.in", designation: "Professor & HOD" },
-    { id: "fac-2", name: "Prof. Sneha Dave", department: "Chemical & Petrochemical Eng", email: "sneha.dave@gsfcuniversity.ac.in", designation: "Assistant Professor" },
-    { id: "fac-3", name: "Dr. Amit Trivedi", department: "School of Management", email: "amit.trivedi@gsfcuniversity.ac.in", designation: "Associate Professor" },
-    { id: "u-tpc", name: "Prof. Rajiv Mehta", department: "Training & Placement Cell / Event Convener", email: "tpc.admin@gsfcuniversity.ac.in", designation: "Associate Professor" },
-    { id: "u-ananya", name: "Dr. Ananya Sharma", department: "Student Affairs & Academic Governance", email: "admin.dean@gsfcuniversity.ac.in", designation: "Dean & Academic Head" },
-  ];
+  const currentUser = {
+    id: state?.currentUser?.id || "u-management",
+    name: state?.currentUser?.name || "Management Executive",
+    role: state?.currentRole || "management",
+  };
 
   useEffect(() => {
     loadManagementData();
@@ -85,18 +111,36 @@ export function ManagementDashboard({ state }: ManagementDashboardProps) {
 
   const loadManagementData = async () => {
     setLoading(true);
-    const [kpiRes, fmaRes] = await Promise.all([
-      apiClient.getManagementKPIs(),
-      apiClient.getFacultyMentorAssignments({}),
-    ]);
+    setDbError(null);
 
-    if (kpiRes?.kpis) {
-      setKpis(kpiRes.kpis);
+    try {
+      const [kpiRes, facRes, fmaRes, logsRes] = await Promise.all([
+        apiClient.getManagementKPIs(),
+        apiClient.getManagementFaculty(),
+        apiClient.getFacultyMentorAssignments({}),
+        apiClient.getManagementAuditLogs({ limit: 8 }),
+      ]);
+
+      if (kpiRes?.success && kpiRes.kpis) {
+        setKpis(kpiRes.kpis);
+      } else {
+        setDbError(kpiRes?.error || "Failed to query live management KPIs from Supabase.");
+      }
+
+      if (facRes?.success && facRes.faculty) {
+        setFacultyList(facRes.faculty);
+      }
+      if (fmaRes?.assignments) {
+        setAssignments(fmaRes.assignments);
+      }
+      if (logsRes?.success && logsRes.logs) {
+        setRecentAuditLogs(logsRes.logs);
+      }
+    } catch (err: any) {
+      setDbError(err?.message || "Critical error connecting to institutional database.");
+    } finally {
+      setLoading(false);
     }
-    if (fmaRes?.assignments) {
-      setAssignments(fmaRes.assignments);
-    }
-    setLoading(false);
   };
 
   const handleOpenAssignModal = (studentId?: string, facultyId?: string) => {
@@ -105,435 +149,897 @@ export function ManagementDashboard({ state }: ManagementDashboardProps) {
     setShowAssignModal(true);
   };
 
+  // Filtered lists
   const filteredStudents = registeredStudents.filter((s) => {
     const q = studentSearch.toLowerCase();
-    return (
+    const matchQuery =
       (s.fullName || "").toLowerCase().includes(q) ||
       (s.rollNo || "").toLowerCase().includes(q) ||
-      (s.department || "").toLowerCase().includes(q)
-    );
+      (s.department || "").toLowerCase().includes(q);
+    const matchDept = studentDeptFilter === "all" || s.department === studentDeptFilter;
+    return matchQuery && matchDept;
+  });
+
+  const filteredFaculty = facultyList.filter((f) => {
+    const q = facultySearch.toLowerCase();
+    const matchQuery =
+      (f.name || "").toLowerCase().includes(q) ||
+      (f.email || "").toLowerCase().includes(q) ||
+      (f.department || "").toLowerCase().includes(q) ||
+      (f.designation || "").toLowerCase().includes(q);
+    const matchDept = facultyDeptFilter === "all" || f.department === facultyDeptFilter;
+    return matchQuery && matchDept;
   });
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5">
       {/* Management Header Banner */}
       <div className="relative overflow-hidden rounded-3xl border border-border/80 bg-gradient-to-br from-[#1A3C6E] via-[#122A4E] to-[#0A182E] p-6 text-white shadow-xl shadow-[#1A3C6E]/20">
-        <div className="absolute right-0 top-0 -mr-10 -mt-10 size-48 rounded-full bg-[#F2A93B]/15 blur-2xl pointer-events-none" />
+        <div className="absolute right-0 top-0 -mr-10 -mt-10 size-56 rounded-full bg-[#F2A93B]/15 blur-3xl pointer-events-none" />
 
         <div className="relative z-10 flex flex-col justify-between gap-4 md:flex-row md:items-center">
           <div>
             <div className="flex items-center gap-2">
-              <span className="flex items-center gap-1 rounded-full bg-[#F2A93B]/20 px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-[#F2A93B]">
-                <ShieldCheck className="size-3" /> GSFC University Executive Management
+              <span className="flex items-center gap-1 rounded-full bg-[#F2A93B]/20 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-[#F2A93B]">
+                <ShieldCheck className="size-3" /> GSFC University System Management
               </span>
-              <span className="rounded-full bg-white/15 px-2.5 py-0.5 text-[10px] font-bold text-amber-200">
-                Live Governance System
+              <span className="rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-[10px] font-bold text-emerald-300">
+                Live Supabase Governance Center
               </span>
             </div>
             <h2 className="mt-2 font-display text-2xl sm:text-3xl font-black text-white">
-              Institutional Management Portal
+              Institutional Governance & System Control Center
             </h2>
-            <p className="mt-1 text-xs text-slate-300">
-              Institutional KPIs, faculty mentorship allocation, internship governance, and database master data.
+            <p className="mt-1 text-xs text-slate-300 max-w-2xl">
+              Highest-level university administration module: complete oversight of students, faculty rosters, mentor allocations, granular RBAC permissions, task control, data schemas, and audit logs.
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
-              onClick={() => setShowAssignModal(true)}
+              onClick={() => handleOpenAssignModal()}
               className="h-10 rounded-2xl bg-gradient-to-r from-[#F2A93B] to-amber-500 font-display text-xs font-black text-slate-950 shadow-lg hover:brightness-105 gap-1.5"
             >
               <UserPlus className="size-4 text-slate-950" /> Allocate Mentors
+            </Button>
+            <Button
+              variant="outline"
+              onClick={loadManagementData}
+              className="h-10 rounded-2xl border-white/20 bg-white/10 text-white hover:bg-white/20 text-xs font-bold gap-1.5 backdrop-blur-md"
+            >
+              <RefreshCw className={cn("size-3.5", loading && "animate-spin")} /> Sync System
             </Button>
           </div>
         </div>
       </div>
 
-      {/* Navigation Tabs */}
-      <div className="flex items-center gap-1.5 border-b border-border/60 pb-3 overflow-x-auto text-xs">
+      {/* Database Error Banner if query failed */}
+      {dbError && (
+        <div className="rounded-2xl border border-destructive/40 bg-destructive/10 p-4 text-xs text-destructive flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <AlertCircle className="size-5 shrink-0" />
+            <div>
+              <p className="font-bold">Database Connection Error</p>
+              <p className="text-[11px] opacity-90">{dbError}</p>
+            </div>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={loadManagementData}
+            className="rounded-xl h-8 text-xs font-bold border-destructive/40"
+          >
+            Retry DB Query
+          </Button>
+        </div>
+      )}
+
+      {/* Institutional Navigation Tab Strip */}
+      <div className="flex items-center gap-1.5 border-b border-border/60 pb-2 overflow-x-auto text-xs">
         <Button
           variant="ghost"
           size="sm"
           onClick={() => setActiveTab("overview")}
           className={cn(
-            "rounded-2xl text-xs font-bold px-4 h-9",
-            activeTab === "overview" ? "bg-[#1A3C6E] text-white shadow-md" : "text-muted-foreground hover:text-foreground"
+            "rounded-xl text-xs font-bold whitespace-nowrap",
+            activeTab === "overview"
+              ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
+              : "text-muted-foreground hover:text-foreground"
           )}
         >
-          <TrendingUp className="mr-1.5 size-3.5" /> Management Overview
+          <Layers className="mr-1.5 size-3.5" /> Institutional Overview
         </Button>
+
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => setActiveTab("students")}
+          onClick={() => setActiveTab("people")}
           className={cn(
-            "rounded-2xl text-xs font-bold px-4 h-9",
-            activeTab === "students" ? "bg-[#1A3C6E] text-white shadow-md" : "text-muted-foreground hover:text-foreground"
+            "rounded-xl text-xs font-bold whitespace-nowrap",
+            activeTab === "people"
+              ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
+              : "text-muted-foreground hover:text-foreground"
           )}
         >
-          <GraduationCap className="mr-1.5 size-3.5" /> Student Master ({registeredStudents.length})
+          <Users className="mr-1.5 size-3.5" /> People & Access Control
         </Button>
+
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setActiveTab("roles")}
+          className={cn(
+            "rounded-xl text-xs font-bold whitespace-nowrap",
+            activeTab === "roles"
+              ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <Shield className="mr-1.5 size-3.5" /> Roles & Permissions
+        </Button>
+
         <Button
           variant="ghost"
           size="sm"
           onClick={() => setActiveTab("faculty")}
           className={cn(
-            "rounded-2xl text-xs font-bold px-4 h-9",
-            activeTab === "faculty" ? "bg-[#1A3C6E] text-white shadow-md" : "text-muted-foreground hover:text-foreground"
+            "rounded-xl text-xs font-bold whitespace-nowrap",
+            activeTab === "faculty"
+              ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
+              : "text-muted-foreground hover:text-foreground"
           )}
         >
-          <UserCheck className="mr-1.5 size-3.5" /> Faculty Master ({facultyList.length})
+          <Building2 className="mr-1.5 size-3.5" /> Faculty Master ({facultyList.length})
         </Button>
+
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setActiveTab("students")}
+          className={cn(
+            "rounded-xl text-xs font-bold whitespace-nowrap",
+            activeTab === "students"
+              ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <GraduationCap className="mr-1.5 size-3.5" /> Student Master ({registeredStudents.length})
+        </Button>
+
         <Button
           variant="ghost"
           size="sm"
           onClick={() => setActiveTab("assignments")}
           className={cn(
-            "rounded-2xl text-xs font-bold px-4 h-9",
-            activeTab === "assignments" ? "bg-[#1A3C6E] text-white shadow-md" : "text-muted-foreground hover:text-foreground"
+            "rounded-xl text-xs font-bold whitespace-nowrap",
+            activeTab === "assignments"
+              ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
+              : "text-muted-foreground hover:text-foreground"
           )}
         >
-          <Users className="mr-1.5 size-3.5" /> Mentor Assignments ({assignments.length})
+          <BookOpen className="mr-1.5 size-3.5 text-[#F2A93B]" /> Mentor Allocations ({assignments.length})
         </Button>
+
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setActiveTab("tasks")}
+          className={cn(
+            "rounded-xl text-xs font-bold whitespace-nowrap",
+            activeTab === "tasks"
+              ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <FileText className="mr-1.5 size-3.5" /> Task Control Center
+        </Button>
+
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setActiveTab("workload")}
+          className={cn(
+            "rounded-xl text-xs font-bold whitespace-nowrap",
+            activeTab === "workload"
+              ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <TrendingUp className="mr-1.5 size-3.5" /> Faculty Workload
+        </Button>
+
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setActiveTab("directory")}
+          className={cn(
+            "rounded-xl text-xs font-bold whitespace-nowrap",
+            activeTab === "directory"
+              ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <Database className="mr-1.5 size-3.5 text-blue-500" /> Data Directory ("Where is My Data?")
+        </Button>
+
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setActiveTab("reports")}
+          className={cn(
+            "rounded-xl text-xs font-bold whitespace-nowrap",
+            activeTab === "reports"
+              ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <FileSpreadsheet className="mr-1.5 size-3.5 text-emerald-500" /> Reports
+        </Button>
+
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setActiveTab("audit")}
+          className={cn(
+            "rounded-xl text-xs font-bold whitespace-nowrap",
+            activeTab === "audit"
+              ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <ShieldCheck className="mr-1.5 size-3.5 text-amber-500" /> Audit & Activity
+        </Button>
+
         <Button
           variant="ghost"
           size="sm"
           onClick={() => setActiveTab("masterdata")}
           className={cn(
-            "rounded-2xl text-xs font-bold px-4 h-9",
-            activeTab === "masterdata" ? "bg-[#1A3C6E] text-white shadow-md" : "text-muted-foreground hover:text-foreground"
+            "rounded-xl text-xs font-bold whitespace-nowrap",
+            activeTab === "masterdata"
+              ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
+              : "text-muted-foreground hover:text-foreground"
           )}
         >
-          <Database className="mr-1.5 size-3.5" /> Master Data System
+          <Database className="mr-1.5 size-3.5" /> Master Data Control
         </Button>
       </div>
 
-      {/* Tab 1: Overview */}
+      {/* ========================================================================= */}
+      {/* 1. OVERVIEW TAB: Live Database KPI Grid + Recent Activity                  */}
+      {/* ========================================================================= */}
       {activeTab === "overview" && (
         <div className="space-y-6">
-          {/* Top KPI Cards Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-            <div className="rounded-2xl border border-border/80 bg-card/60 p-4 shadow-sm">
-              <p className="text-[11px] font-bold text-muted-foreground">Total Students</p>
-              <p className="mt-1 font-display text-2xl font-black text-foreground">{kpis.totalStudents}</p>
-              <p className="text-[10px] text-muted-foreground">Enrolled Scholars</p>
+          {/* Real Database KPI Metric Cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+            {/* Total Students */}
+            <div
+              onClick={() => setActiveTab("students")}
+              className="cursor-pointer rounded-2xl border border-border/80 bg-card p-3.5 hover:border-brand transition-all shadow-xs group"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Students</span>
+                <GraduationCap className="size-4 text-brand group-hover:scale-110 transition-transform" />
+              </div>
+              <p className="mt-1 text-2xl font-black text-foreground">{kpis ? kpis.totalStudents : "—"}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Enrolled Scholars</p>
             </div>
 
-            <div className="rounded-2xl border border-border/80 bg-card/60 p-4 shadow-sm">
-              <p className="text-[11px] font-bold text-muted-foreground">Faculty Body</p>
-              <p className="mt-1 font-display text-2xl font-black text-foreground">{kpis.totalFaculty}</p>
-              <p className="text-[10px] text-muted-foreground">Active Academicians</p>
+            {/* Total Faculty */}
+            <div
+              onClick={() => setActiveTab("faculty")}
+              className="cursor-pointer rounded-2xl border border-border/80 bg-card p-3.5 hover:border-brand transition-all shadow-xs group"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Faculty</span>
+                <Building2 className="size-4 text-blue-600 group-hover:scale-110 transition-transform" />
+              </div>
+              <p className="mt-1 text-2xl font-black text-foreground">{kpis ? kpis.totalFaculty : "—"}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Teaching Faculty</p>
             </div>
 
-            <div className="rounded-2xl border border-border/80 bg-card/60 p-4 shadow-sm">
-              <p className="text-[11px] font-bold text-[#F2A93B]">Faculty Mentors</p>
-              <p className="mt-1 font-display text-2xl font-black text-[#F2A93B]">{kpis.facultyMentorsCount}</p>
-              <p className="text-[10px] text-muted-foreground">Assigned Cohorts</p>
+            {/* Faculty Mentors */}
+            <div
+              onClick={() => setActiveTab("assignments")}
+              className="cursor-pointer rounded-2xl border border-border/80 bg-card p-3.5 hover:border-brand transition-all shadow-xs group"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Faculty Mentors</span>
+                <Users className="size-4 text-purple-600 group-hover:scale-110 transition-transform" />
+              </div>
+              <p className="mt-1 text-2xl font-black text-foreground">{kpis ? kpis.facultyMentorsCount : "—"}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Active Academic Guides</p>
             </div>
 
-            <div className="rounded-2xl border border-border/80 bg-card/60 p-4 shadow-sm">
-              <p className="text-[11px] font-bold text-emerald-500">Active Interns</p>
-              <p className="mt-1 font-display text-2xl font-black text-emerald-600 dark:text-emerald-400">{kpis.activeInterns}</p>
-              <p className="text-[10px] text-muted-foreground">Industry Placed</p>
+            {/* Internship Mentors */}
+            <div
+              onClick={() => setActiveTab("faculty")}
+              className="cursor-pointer rounded-2xl border border-border/80 bg-card p-3.5 hover:border-brand transition-all shadow-xs group"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Intern Mentors</span>
+                <UserCheck className="size-4 text-teal-600 group-hover:scale-110 transition-transform" />
+              </div>
+              <p className="mt-1 text-2xl font-black text-foreground">{kpis ? kpis.internshipMentorsCount : "—"}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Industry Supervisors</p>
             </div>
 
-            <div className="rounded-2xl border border-border/80 bg-card/60 p-4 shadow-sm">
-              <p className="text-[11px] font-bold text-blue-500">Pending Approvals</p>
-              <p className="mt-1 font-display text-2xl font-black text-blue-600 dark:text-blue-400">{kpis.pendingApprovals}</p>
-              <p className="text-[10px] text-muted-foreground">Dean / TPC Review</p>
+            {/* Administrators */}
+            <div
+              onClick={() => setActiveTab("people")}
+              className="cursor-pointer rounded-2xl border border-border/80 bg-card p-3.5 hover:border-brand transition-all shadow-xs group"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Administrators</span>
+                <ShieldCheck className="size-4 text-amber-600 group-hover:scale-110 transition-transform" />
+              </div>
+              <p className="mt-1 text-2xl font-black text-foreground">{kpis ? kpis.administratorsCount : "—"}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Dean & Governance</p>
             </div>
 
-            <div className="rounded-2xl border border-border/80 bg-card/60 p-4 shadow-sm">
-              <p className="text-[11px] font-bold text-amber-500">Unassigned</p>
-              <p className="mt-1 font-display text-2xl font-black text-amber-600 dark:text-amber-400">{kpis.unassignedStudentsCount}</p>
-              <p className="text-[10px] text-muted-foreground">Need Allocation</p>
+            {/* Active Internships */}
+            <div
+              onClick={() => setActiveTab("reports")}
+              className="cursor-pointer rounded-2xl border border-border/80 bg-card p-3.5 hover:border-brand transition-all shadow-xs group"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Active Internships</span>
+                <Briefcase className="size-4 text-[#F2A93B] group-hover:scale-110 transition-transform" />
+              </div>
+              <p className="mt-1 text-2xl font-black text-foreground">{kpis ? kpis.totalInternships : "—"}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Corporate Listings</p>
+            </div>
+
+            {/* Internship Applications */}
+            <div
+              onClick={() => setActiveTab("reports")}
+              className="cursor-pointer rounded-2xl border border-border/80 bg-card p-3.5 hover:border-brand transition-all shadow-xs group"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Applications</span>
+                <BookOpen className="size-4 text-blue-500 group-hover:scale-110 transition-transform" />
+              </div>
+              <p className="mt-1 text-2xl font-black text-foreground">{kpis ? kpis.totalApplications : "—"}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Student Submissions</p>
+            </div>
+
+            {/* Active Interns */}
+            <div
+              onClick={() => setActiveTab("reports")}
+              className="cursor-pointer rounded-2xl border border-border/80 bg-card p-3.5 hover:border-brand transition-all shadow-xs group"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Active Interns</span>
+                <CheckCircle2 className="size-4 text-emerald-500 group-hover:scale-110 transition-transform" />
+              </div>
+              <p className="mt-1 text-2xl font-black text-emerald-600">{kpis ? kpis.activeInterns : "—"}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Working at Plants</p>
+            </div>
+
+            {/* Completed Internships */}
+            <div
+              onClick={() => setActiveTab("reports")}
+              className="cursor-pointer rounded-2xl border border-border/80 bg-card p-3.5 hover:border-brand transition-all shadow-xs group"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Completed</span>
+                <Award className="size-4 text-amber-500 group-hover:scale-110 transition-transform" />
+              </div>
+              <p className="mt-1 text-2xl font-black text-foreground">{kpis ? kpis.completedInternships : "—"}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Certificates Issued</p>
+            </div>
+
+            {/* Active Mentor Allocations */}
+            <div
+              onClick={() => setActiveTab("assignments")}
+              className="cursor-pointer rounded-2xl border border-border/80 bg-card p-3.5 hover:border-brand transition-all shadow-xs group"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Mentor Allocations</span>
+                <CheckCircle2 className="size-4 text-emerald-500 group-hover:scale-110 transition-transform" />
+              </div>
+              <p className="mt-1 text-2xl font-black text-foreground">{kpis ? kpis.activeMentorAssignments : "—"}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Assigned Cohorts</p>
+            </div>
+
+            {/* Unassigned Students */}
+            <div
+              onClick={() => setActiveTab("students")}
+              className="cursor-pointer rounded-2xl border border-amber-500/30 bg-amber-500/5 p-3.5 hover:border-amber-500 transition-all shadow-xs group"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">Unassigned</span>
+                <AlertCircle className="size-4 text-amber-500 group-hover:scale-110 transition-transform" />
+              </div>
+              <p className="mt-1 text-2xl font-black text-amber-600">{kpis ? kpis.unassignedStudentsCount : "—"}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Needs Mentor Allocation</p>
+            </div>
+
+            {/* Pending Approvals */}
+            <div
+              onClick={() => setActiveTab("reports")}
+              className="cursor-pointer rounded-2xl border border-border/80 bg-card p-3.5 hover:border-brand transition-all shadow-xs group"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Pending Approvals</span>
+                <Clock className="size-4 text-amber-500 group-hover:scale-110 transition-transform" />
+              </div>
+              <p className="mt-1 text-2xl font-black text-amber-600">{kpis ? kpis.pendingApprovals : "—"}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Dean & TPC Reviews</p>
+            </div>
+
+            {/* Pending Tasks */}
+            <div
+              onClick={() => setActiveTab("tasks")}
+              className="cursor-pointer rounded-2xl border border-border/80 bg-card p-3.5 hover:border-brand transition-all shadow-xs group"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Pending Tasks</span>
+                <FileText className="size-4 text-blue-500 group-hover:scale-110 transition-transform" />
+              </div>
+              <p className="mt-1 text-2xl font-black text-blue-600">{kpis ? kpis.pendingTasks : "—"}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Active Academic Tasks</p>
+            </div>
+
+            {/* Unread Messages */}
+            <div
+              onClick={() => setActiveTab("tasks")}
+              className="cursor-pointer rounded-2xl border border-border/80 bg-card p-3.5 hover:border-brand transition-all shadow-xs group"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Unread Messages</span>
+                <Clock className="size-4 text-purple-500 group-hover:scale-110 transition-transform" />
+              </div>
+              <p className="mt-1 text-2xl font-black text-purple-600">{kpis ? kpis.unreadMessages : "—"}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Mentorship Channels</p>
+            </div>
+
+            {/* Attendance Alerts */}
+            <div
+              onClick={() => setActiveTab("reports")}
+              className="cursor-pointer rounded-2xl border border-border/80 bg-card p-3.5 hover:border-brand transition-all shadow-xs group"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Attendance Alerts</span>
+                <ShieldAlert className="size-4 text-red-500 group-hover:scale-110 transition-transform" />
+              </div>
+              <p className="mt-1 text-2xl font-black text-red-600">{kpis ? kpis.attendanceAlertsCount : "—"}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">&lt; 75% Attendance</p>
             </div>
           </div>
 
-          {/* Quick Management Overview Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="rounded-3xl border border-border/80 bg-card/60 p-6 shadow-xl space-y-4">
-              <h3 className="font-display text-base font-black text-foreground flex items-center gap-2">
-                <Users className="size-4 text-brand" /> Mentorship Allocation Status
-              </h3>
-              <p className="text-xs text-muted-foreground">
-                Current academic year allocations across School of Technology and School of Management.
-              </p>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-semibold text-foreground">Computer Science & Engineering</span>
-                  <span className="font-bold text-emerald-600">92% Assigned</span>
-                </div>
-                <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
-                  <div className="h-full bg-emerald-500 rounded-full" style={{ width: "92%" }} />
+          {/* Quick Overview Layout */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Quick Unassigned Students Allocation Action List */}
+            <div className="lg:col-span-2 rounded-3xl border border-border/80 bg-card p-5 space-y-4 shadow-sm">
+              <div className="flex items-center justify-between border-b border-border/60 pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="flex size-7 items-center justify-center rounded-xl bg-amber-500/15 text-amber-600">
+                    <UserPlus className="size-4" />
+                  </div>
+                  <div>
+                    <h3 className="font-display text-sm font-black text-foreground">
+                      Students Requiring Mentor Allocation ({registeredStudents.filter((s) => !assignments.some((a) => a.studentId === s.id || a.studentId === s.rollNo)).length})
+                    </h3>
+                    <p className="text-[11px] text-muted-foreground">Unassigned candidates ready for semester cohort allocation</p>
+                  </div>
                 </div>
 
-                <div className="flex items-center justify-between text-xs pt-2">
-                  <span className="font-semibold text-foreground">Chemical & Petrochemical Eng</span>
-                  <span className="font-bold text-emerald-600">84% Assigned</span>
-                </div>
-                <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
-                  <div className="h-full bg-emerald-500 rounded-full" style={{ width: "84%" }} />
-                </div>
+                <Button
+                  size="sm"
+                  onClick={() => handleOpenAssignModal()}
+                  className="rounded-xl h-8 text-xs font-bold bg-[#1A3C6E] text-white"
+                >
+                  Allocate Mentors
+                </Button>
+              </div>
+
+              <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1">
+                {registeredStudents
+                  .filter((s) => !assignments.some((a) => a.studentId === s.id || a.studentId === s.rollNo))
+                  .map((stu) => (
+                    <div
+                      key={stu.id}
+                      className="flex items-center justify-between rounded-2xl border border-border/60 bg-muted/20 p-3 hover:bg-muted/40 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="flex size-9 items-center justify-center rounded-xl bg-brand/10 font-bold text-xs text-brand">
+                          {(stu.fullName || "ST").slice(0, 2).toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="font-bold text-xs text-foreground">{stu.fullName}</p>
+                          <p className="text-[10px] text-muted-foreground font-mono">
+                            {stu.rollNo} · {stu.department} · Sem {stu.semester}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setSelectedStudentForHistory(stu.id)}
+                          className="h-7 rounded-xl text-[10px] font-bold"
+                        >
+                          <Eye className="mr-1 size-3" /> 360°
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => handleOpenAssignModal(stu.id)}
+                          className="h-7 rounded-xl text-[10px] font-bold bg-amber-500 text-slate-950 hover:bg-amber-400"
+                        >
+                          Assign Mentor
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
               </div>
             </div>
 
-            <div className="rounded-3xl border border-border/80 bg-card/60 p-6 shadow-xl space-y-4">
-              <h3 className="font-display text-base font-black text-foreground flex items-center gap-2">
-                <Briefcase className="size-4 text-brand" /> Industry Internship Governance
-              </h3>
-              <p className="text-xs text-muted-foreground">
-                Real-time tracking of student applications, Dean approvals, and industry partners.
-              </p>
-              <div className="grid grid-cols-2 gap-3 text-xs">
-                <div className="rounded-2xl border border-border/60 p-3 bg-card/40">
-                  <span className="text-muted-foreground">Total Listings:</span>
-                  <p className="font-bold text-foreground text-sm mt-0.5">{kpis.totalInternships} Open Roles</p>
+            {/* Recent System Activity Log Card */}
+            <div className="rounded-3xl border border-border/80 bg-card p-5 space-y-4 shadow-sm flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between border-b border-border/60 pb-3">
+                  <h3 className="font-display text-sm font-black text-foreground flex items-center gap-2">
+                    <ShieldCheck className="size-4 text-emerald-500" /> Recent System Activity
+                  </h3>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setActiveTab("audit")}
+                    className="h-7 text-[10px] font-bold"
+                  >
+                    View All
+                  </Button>
                 </div>
-                <div className="rounded-2xl border border-border/60 p-3 bg-card/40">
-                  <span className="text-muted-foreground">Applications:</span>
-                  <p className="font-bold text-foreground text-sm mt-0.5">{kpis.totalApplications} Submitted</p>
+
+                <div className="mt-3 space-y-3">
+                  {recentAuditLogs.slice(0, 5).map((log) => (
+                    <div key={log.id} className="rounded-xl border border-border/40 bg-muted/20 p-2.5 space-y-1 text-xs">
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono text-[10px] font-bold text-brand bg-brand/10 px-1.5 py-0.5 rounded">
+                          {log.action}
+                        </span>
+                        <span className="text-[9px] text-muted-foreground">
+                          {new Date(log.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground truncate">{log.details || "Administrative update logged"}</p>
+                    </div>
+                  ))}
                 </div>
+              </div>
+
+              <div className="pt-3 border-t border-border/50 text-[10px] text-muted-foreground text-center">
+                All activities written immutably to <span className="font-mono text-brand">management_audit_logs</span>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Tab 2: Student Master */}
-      {activeTab === "students" && (
-        <div className="rounded-3xl border border-border/80 bg-card/60 p-6 shadow-xl space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <h3 className="font-display text-lg font-black text-foreground">Student Master Registry</h3>
-              <p className="text-xs text-muted-foreground">Authorized complete institutional student master database</p>
+      {/* ========================================================================= */}
+      {/* 2. PEOPLE & ACCESS CONTROL TAB                                            */}
+      {/* ========================================================================= */}
+      {activeTab === "people" && (
+        <PeopleAccessView currentUser={currentUser} />
+      )}
+
+      {/* ========================================================================= */}
+      {/* 3. ROLES & PERMISSIONS MATRIX TAB                                         */}
+      {/* ========================================================================= */}
+      {activeTab === "roles" && (
+        <RolesPermissionsMatrixView />
+      )}
+
+      {/* ========================================================================= */}
+      {/* 4. FACULTY MASTER TAB                                                     */}
+      {/* ========================================================================= */}
+      {activeTab === "faculty" && (
+        <div className="space-y-4">
+          <div className="rounded-3xl border border-border/80 bg-card p-4 sm:p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="relative flex-1 max-w-md">
+              <Search className="pointer-events-none absolute left-3 top-2.5 size-4 text-muted-foreground" />
+              <Input
+                placeholder="Search faculty name, official email, or designation..."
+                value={facultySearch}
+                onChange={(e) => setFacultySearch(e.target.value)}
+                className="pl-9 rounded-2xl h-9 text-xs"
+              />
             </div>
 
-            <div className="relative w-full sm:w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-              <Input
-                placeholder="Search student, roll no, department..."
-                value={studentSearch}
-                onChange={(e) => setStudentSearch(e.target.value)}
-                className="pl-9 text-xs rounded-xl h-9"
-              />
+            <div className="flex items-center gap-2 text-xs">
+              <select
+                value={facultyDeptFilter}
+                onChange={(e) => setFacultyDeptFilter(e.target.value)}
+                className="rounded-xl border border-border/80 bg-background px-3 py-1.5 text-xs font-bold text-foreground focus:ring-2 focus:ring-brand"
+              >
+                <option value="all">All Departments</option>
+                <option value="Computer Science & Engineering">CSE</option>
+                <option value="Chemical & Petrochemical Eng">Chemical Eng</option>
+                <option value="School of Management">School of Management</option>
+                <option value="Mechanical & Automation Eng">Mechanical</option>
+              </select>
             </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="border-b border-border/60 text-muted-foreground font-bold">
-                  <th className="pb-3 pl-2">Student Name</th>
-                  <th className="pb-3">Roll Number</th>
-                  <th className="pb-3">Department</th>
-                  <th className="pb-3">Semester</th>
-                  <th className="pb-3">Allocated Mentor</th>
-                  <th className="pb-3 text-right pr-2">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/40">
-                {filteredStudents.map((stu) => {
-                  const assignment = assignments.find(
-                    (a) =>
-                      a.status === "active" &&
-                      (a.studentId === stu.id || a.studentRollNo === stu.rollNo || (stu.rollNo && a.studentRollNo && a.studentRollNo.toLowerCase() === stu.rollNo.toLowerCase()))
-                  );
-                  return (
-                    <tr key={stu.id} className="hover:bg-muted/40 transition-colors">
-                      <td className="py-3 pl-2 font-bold text-foreground">{stu.fullName}</td>
-                      <td className="py-3 font-mono">{stu.rollNo}</td>
-                      <td className="py-3">{stu.department}</td>
-                      <td className="py-3">Sem {stu.semester || 6}</td>
-                      <td className="py-3">
-                        {assignment ? (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[10px] font-bold text-emerald-600">
-                            <UserCheck className="size-3" /> {assignment.facultyName || "Faculty Mentor"}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+            {filteredFaculty.map((fac) => (
+              <div
+                key={fac.id}
+                className="rounded-3xl border border-border/80 bg-card p-5 hover:border-brand/50 transition-all flex flex-col justify-between gap-4 shadow-xs"
+              >
+                <div>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-[#1A3C6E] to-[#0E2342] text-[#F2A93B] font-bold text-sm">
+                      {fac.name.slice(0, 2).toUpperCase()}
+                    </div>
+                    <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[9px] font-bold text-emerald-600">
+                      Active
+                    </span>
+                  </div>
+
+                  <h4 className="font-display text-sm font-black text-foreground mt-3">{fac.name}</h4>
+                  <p className="text-xs text-muted-foreground font-semibold">{fac.designation}</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">{fac.department}</p>
+                  <p className="font-mono text-[10px] text-brand/80 mt-1">{fac.email}</p>
+
+                  <div className="grid grid-cols-2 gap-2 pt-3 mt-3 border-t border-border/40 text-[10px]">
+                    <div className="rounded-xl bg-muted/40 p-2 text-center">
+                      <p className="text-muted-foreground">Assigned Mentees</p>
+                      <p className="font-mono text-sm font-bold text-foreground">{fac.assignedStudentCount}</p>
+                    </div>
+                    <div className="rounded-xl bg-muted/40 p-2 text-center">
+                      <p className="text-muted-foreground">Active Tasks</p>
+                      <p className="font-mono text-sm font-bold text-foreground">{fac.activeTasks}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-2 border-t border-border/40">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleOpenAssignModal(undefined, fac.id)}
+                    className="h-7 text-[10px] font-bold rounded-xl"
+                  >
+                    Allocate Student
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => setSelectedFacultyFor360(fac.id)}
+                    className="h-7 text-[10px] font-bold rounded-xl bg-[#1A3C6E] text-white"
+                  >
+                    Open Faculty 360°
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 5. STUDENT MASTER TAB                                                     */}
+      {/* ========================================================================= */}
+      {activeTab === "students" && (
+        <div className="space-y-4">
+          <div className="rounded-3xl border border-border/80 bg-card p-4 sm:p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="relative flex-1 max-w-md">
+              <Search className="pointer-events-none absolute left-3 top-2.5 size-4 text-muted-foreground" />
+              <Input
+                placeholder="Search student by name, roll number, or department..."
+                value={studentSearch}
+                onChange={(e) => setStudentSearch(e.target.value)}
+                className="pl-9 rounded-2xl h-9 text-xs"
+              />
+            </div>
+
+            <div className="flex items-center gap-2 text-xs">
+              <select
+                value={studentDeptFilter}
+                onChange={(e) => setStudentDeptFilter(e.target.value)}
+                className="rounded-xl border border-border/80 bg-background px-3 py-1.5 text-xs font-bold text-foreground focus:ring-2 focus:ring-brand"
+              >
+                <option value="all">All Departments</option>
+                <option value="Computer Science & Engineering">CSE</option>
+                <option value="Chemical & Petrochemical Eng">Chemical Eng</option>
+                <option value="School of Management">School of Management</option>
+                <option value="Mechanical & Automation Eng">Mechanical</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="rounded-3xl border border-border/80 bg-card overflow-hidden shadow-sm">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-muted/60 text-muted-foreground font-bold uppercase tracking-wider text-[10px] border-b border-border/60">
+                  <tr>
+                    <th className="px-4 py-3">Student Name</th>
+                    <th className="px-3 py-3">Roll Number</th>
+                    <th className="px-3 py-3">Department & Semester</th>
+                    <th className="px-3 py-3">Faculty Mentor</th>
+                    <th className="px-3 py-3 text-center">Status</th>
+                    <th className="px-4 py-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/50 font-medium">
+                  {filteredStudents.map((stu) => {
+                    const mentorAssign = assignments.find((a) => (a.studentId === stu.id || a.studentId === stu.rollNo) && a.status === "active");
+                    return (
+                      <tr key={stu.id} className="hover:bg-muted/30 transition-colors">
+                        <td className="px-4 py-3">
+                          <p className="font-bold text-foreground">{stu.fullName}</p>
+                          <p className="text-[10px] text-muted-foreground font-mono">{stu.email}</p>
+                        </td>
+                        <td className="px-3 py-3 font-mono font-bold text-brand">{stu.rollNo}</td>
+                        <td className="px-3 py-3">
+                          <p className="text-foreground">{stu.department}</p>
+                          <p className="text-[10px] text-muted-foreground">Semester {stu.semester}</p>
+                        </td>
+                        <td className="px-3 py-3">
+                          {mentorAssign ? (
+                            <span className="font-semibold text-foreground">
+                              {mentorAssign.facultyName || mentorAssign.facultyId}
+                            </span>
+                          ) : (
+                            <span className="rounded-md bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-600">
+                              Unassigned
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-3 py-3 text-center">
+                          <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[9px] font-bold text-emerald-600">
+                            Enrolled
                           </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2.5 py-0.5 text-[10px] font-bold text-amber-600">
-                            <ShieldAlert className="size-3" /> Unassigned
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-3 text-right pr-2">
-                        <div className="flex items-center justify-end gap-1.5">
-                          {!assignment && (
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setSelectedStudentForHistory(stu.id)}
+                              className="h-7 text-[10px] font-bold rounded-xl"
+                            >
+                              <Eye className="mr-1 size-3" /> Student 360°
+                            </Button>
                             <Button
                               size="sm"
                               onClick={() => handleOpenAssignModal(stu.id)}
-                              className="h-7 rounded-xl bg-[#1A3C6E] text-white text-[11px] gap-1 font-bold px-2.5 shadow-xs"
+                              className="h-7 text-[10px] font-bold rounded-xl bg-[#1A3C6E] text-white"
                             >
-                              <UserPlus className="size-3" /> Allocate
+                              {mentorAssign ? "Reassign" : "Assign Mentor"}
                             </Button>
-                          )}
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setSelectedStudentForHistory(stu.rollNo || stu.id)}
-                            className="h-7 rounded-xl text-[11px] gap-1 font-bold px-2.5"
-                          >
-                            <Eye className="size-3" /> 360° History
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* Tab 3: Faculty Master */}
-      {activeTab === "faculty" && (
-        <div className="rounded-3xl border border-border/80 bg-card/60 p-6 shadow-xl space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <h3 className="font-display text-lg font-black text-foreground">Faculty Master Registry</h3>
-              <p className="text-xs text-muted-foreground">Institutional faculty records with assigned capability management</p>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="border-b border-border/60 text-muted-foreground font-bold">
-                  <th className="pb-3 pl-2">Faculty Name</th>
-                  <th className="pb-3">Designation</th>
-                  <th className="pb-3">Department</th>
-                  <th className="pb-3">Assigned Mentees</th>
-                  <th className="pb-3 text-right pr-2">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/40">
-                {facultyList.map((fac) => {
-                  const facAssignments = assignments.filter(
-                    (a) =>
-                      a.status === "active" &&
-                      (a.facultyId === fac.id ||
-                        a.facultyEmail === fac.email ||
-                        (fac.id === "fac-1" && a.facultyName?.includes("Joshi")) ||
-                        (fac.id === "fac-2" && a.facultyName?.includes("Dave")) ||
-                        (fac.id === "u-tpc" && a.facultyName?.includes("Mehta")))
-                  );
-                  return (
-                    <tr key={fac.id} className="hover:bg-muted/40 transition-colors">
-                      <td className="py-3 pl-2">
-                        <p className="font-bold text-foreground">{fac.name}</p>
-                        <p className="text-[10px] text-muted-foreground font-mono">{fac.email}</p>
-                      </td>
-                      <td className="py-3">{fac.designation}</td>
-                      <td className="py-3">{fac.department}</td>
-                      <td className="py-3">
-                        <span className="inline-flex items-center gap-1 rounded-full bg-blue-500/15 px-2.5 py-0.5 text-[10px] font-bold text-blue-600">
-                          <Users className="size-3" /> {facAssignments.length} Mentee{facAssignments.length === 1 ? "" : "s"}
-                        </span>
-                      </td>
-                      <td className="py-3 text-right pr-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleOpenAssignModal(undefined, fac.id)}
-                          className="h-7 rounded-xl text-xs gap-1 font-bold"
-                        >
-                          <UserPlus className="size-3" /> Assign Students
-                        </Button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
         </div>
       )}
 
-      {/* Tab 4: Mentor Assignments */}
+      {/* ========================================================================= */}
+      {/* 6. MENTOR ALLOCATIONS TAB                                                 */}
+      {/* ========================================================================= */}
       {activeTab === "assignments" && (
-        <div className="rounded-3xl border border-border/80 bg-card/60 p-6 shadow-xl space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <h3 className="font-display text-lg font-black text-foreground">Faculty Mentor Allocations</h3>
-              <p className="text-xs text-muted-foreground">Active mentor-student mappings stored in Supabase database</p>
-            </div>
-
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-display text-base font-black text-foreground">
+              Official Faculty Mentor Allocations ({assignments.length})
+            </h3>
             <Button
               size="sm"
               onClick={() => handleOpenAssignModal()}
-              className="rounded-xl bg-[#1A3C6E] text-white text-xs font-bold gap-1.5 h-8.5 shadow-md"
+              className="rounded-xl h-8 text-xs font-bold bg-gradient-to-r from-[#F2A93B] to-amber-500 text-slate-950"
             >
-              <UserPlus className="size-3.5" /> Allocate Mentors
+              <UserPlus className="mr-1 size-3.5" /> Allocate New Mentor
             </Button>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="border-b border-border/60 text-muted-foreground font-bold">
-                  <th className="pb-3 pl-2">Faculty Mentor</th>
-                  <th className="pb-3">Student Mentee</th>
-                  <th className="pb-3">Department & Semester</th>
-                  <th className="pb-3">Specialization Field</th>
-                  <th className="pb-3">Academic Year</th>
-                  <th className="pb-3">Status</th>
-                  <th className="pb-3 text-right pr-2">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/40">
-                {assignments.map((a) => (
-                  <tr key={a.id} className="hover:bg-muted/40 transition-colors">
-                    <td className="py-3 pl-2">
-                      <p className="font-bold text-foreground">{a.facultyName || a.facultyId}</p>
-                      <p className="text-[10px] text-muted-foreground">{a.facultyDepartment}</p>
-                    </td>
-                    <td className="py-3">
-                      <p className="font-semibold text-foreground">{a.studentName || a.studentId}</p>
-                      <p className="text-[10px] text-muted-foreground font-mono">{a.studentRollNo || a.studentId}</p>
-                    </td>
-                    <td className="py-3">{a.department} (Sem {a.semester})</td>
-                    <td className="py-3">
-                      <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[10px] font-semibold text-foreground">
-                        {a.field || "General"}
-                      </span>
-                    </td>
-                    <td className="py-3">{a.academicYear}</td>
-                    <td className="py-3">
-                      <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-600">
-                        {a.status}
-                      </span>
-                    </td>
-                    <td className="py-3 text-right pr-2">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleOpenAssignModal(a.studentId, a.facultyId)}
-                          className="h-7 rounded-xl text-xs font-bold"
-                        >
-                          Reassign
-                        </Button>
+          <div className="rounded-3xl border border-border/80 bg-card overflow-hidden shadow-sm">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-muted/60 text-muted-foreground font-bold uppercase tracking-wider text-[10px] border-b border-border/60">
+                  <tr>
+                    <th className="px-4 py-3">Faculty Mentor</th>
+                    <th className="px-3 py-3">Assigned Student</th>
+                    <th className="px-3 py-3">Department & Field</th>
+                    <th className="px-3 py-3">Academic Term</th>
+                    <th className="px-3 py-3 text-center">Status</th>
+                    <th className="px-4 py-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/50 font-medium">
+                  {assignments.map((a) => (
+                    <tr key={a.id} className="hover:bg-muted/30 transition-colors">
+                      <td className="px-4 py-3">
+                        <p className="font-bold text-foreground">{a.facultyName || a.facultyId}</p>
+                        <p className="text-[10px] text-muted-foreground font-mono">{a.facultyEmail || a.facultyId}</p>
+                      </td>
+                      <td className="px-3 py-3">
+                        <p className="font-bold text-foreground">{a.studentName || a.studentRollNo || a.studentId}</p>
+                        <p className="text-[10px] text-brand font-mono font-bold">{a.studentRollNo || a.studentId}</p>
+                      </td>
+                      <td className="px-3 py-3">
+                        <p className="text-foreground">{a.department}</p>
+                        <p className="text-[10px] text-amber-600 font-semibold">{a.field || "General Focus"}</p>
+                      </td>
+                      <td className="px-3 py-3 font-mono text-muted-foreground">
+                        {a.academicYear} · Sem {a.semester}
+                      </td>
+                      <td className="px-3 py-3 text-center">
+                        <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-600">
+                          {a.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right">
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => setSelectedStudentForHistory(a.studentRollNo || a.studentId)}
-                          className="h-7 rounded-xl text-xs gap-1 font-bold"
+                          onClick={() => handleOpenAssignModal(a.studentId, a.facultyId)}
+                          className="h-7 text-[10px] font-bold rounded-xl"
                         >
-                          <Eye className="size-3" /> History
+                          Modify / Reassign
                         </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Tab 5: Master Data */}
-      {activeTab === "masterdata" && <MasterDataManager />}
+      {/* ========================================================================= */}
+      {/* 7. TASK CONTROL CENTER TAB                                                */}
+      {/* ========================================================================= */}
+      {activeTab === "tasks" && (
+        <TaskControlCenterView />
+      )}
+
+      {/* ========================================================================= */}
+      {/* 8. FACULTY WORKLOAD TAB                                                   */}
+      {/* ========================================================================= */}
+      {activeTab === "workload" && (
+        <FacultyWorkloadView />
+      )}
+
+      {/* ========================================================================= */}
+      {/* 9. DATA DIRECTORY TAB                                                     */}
+      {/* ========================================================================= */}
+      {activeTab === "directory" && (
+        <SystemDataDirectoryView />
+      )}
+
+      {/* ========================================================================= */}
+      {/* 10. MANAGEMENT REPORTS TAB                                                */}
+      {/* ========================================================================= */}
+      {activeTab === "reports" && (
+        <ManagementReportsView />
+      )}
+
+      {/* ========================================================================= */}
+      {/* 11. AUDIT & ACTIVITY TAB                                                  */}
+      {/* ========================================================================= */}
+      {activeTab === "audit" && (
+        <AuditActivityView />
+      )}
+
+      {/* ========================================================================= */}
+      {/* 12. MASTER DATA TAB                                                       */}
+      {/* ========================================================================= */}
+      {activeTab === "masterdata" && (
+        <MasterDataManager />
+      )}
+
+      {/* ========================================================================= */}
+      {/* GLOBAL MODALS                                                             */}
+      {/* ========================================================================= */}
 
       {/* Mentor Assignment Modal */}
       {showAssignModal && (
@@ -544,11 +1050,24 @@ export function ManagementDashboard({ state }: ManagementDashboardProps) {
             setSelectedStudentForAssign(undefined);
             setSelectedFacultyForAssign(undefined);
           }}
-          onSuccess={loadManagementData}
+          onSuccess={() => {
+            setShowAssignModal(false);
+            loadManagementData();
+          }}
           students={registeredStudents}
           facultyList={facultyList}
           initialStudentId={selectedStudentForAssign}
           initialFacultyId={selectedFacultyForAssign}
+        />
+      )}
+
+      {/* Faculty 360 Modal */}
+      {selectedFacultyFor360 && (
+        <Faculty360Modal
+          facultyId={selectedFacultyFor360}
+          isOpen={Boolean(selectedFacultyFor360)}
+          onClose={() => setSelectedFacultyFor360(null)}
+          onOpenStudent360={(stuId) => setSelectedStudentForHistory(stuId)}
         />
       )}
 

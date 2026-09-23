@@ -159,11 +159,34 @@ export async function ensureMentorshipSchema(): Promise<void> {
           action TEXT NOT NULL,
           actor_id TEXT NOT NULL,
           actor_name TEXT NOT NULL,
+          actor_role TEXT,
           target_type TEXT NOT NULL,
           target_id TEXT,
+          old_value TEXT,
+          new_value TEXT,
           details TEXT,
           ip_address TEXT,
           created_at TIMESTAMPTZ DEFAULT NOW()
+        );
+
+        CREATE TABLE IF NOT EXISTS public.role_permissions (
+          id TEXT PRIMARY KEY,
+          role TEXT NOT NULL,
+          permission TEXT NOT NULL,
+          scope TEXT NOT NULL DEFAULT 'global',
+          created_at TIMESTAMPTZ DEFAULT NOW(),
+          UNIQUE(role, permission)
+        );
+
+        CREATE TABLE IF NOT EXISTS public.user_permissions (
+          id TEXT PRIMARY KEY,
+          user_id TEXT NOT NULL,
+          permission TEXT NOT NULL,
+          is_granted BOOLEAN DEFAULT TRUE,
+          scope TEXT NOT NULL DEFAULT 'assigned',
+          granted_by TEXT,
+          granted_at TIMESTAMPTZ DEFAULT NOW(),
+          UNIQUE(user_id, permission)
         );
 
         -- Indexes for 100+ concurrent users and performance
@@ -179,7 +202,48 @@ export async function ensureMentorshipSchema(): Promise<void> {
         CREATE INDEX IF NOT EXISTS idx_mm_faculty ON public.mentor_messages(faculty_id, created_at DESC);
         CREATE INDEX IF NOT EXISTS idx_mt_student ON public.mentorship_tasks(student_id, status);
         CREATE INDEX IF NOT EXISTS idx_mt_mentor ON public.mentorship_tasks(mentor_id, status);
+        CREATE INDEX IF NOT EXISTS idx_audit_created ON public.management_audit_logs(created_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_role_perms ON public.role_permissions(role, permission);
+        CREATE INDEX IF NOT EXISTS idx_user_perms ON public.user_permissions(user_id, permission);
       `);
+
+      // Seed Default Role Permissions if empty
+      const permCount = await client.query(`SELECT count(*) as count FROM public.role_permissions`);
+      if (parseInt(permCount.rows[0]?.count || "0", 10) === 0) {
+        const defaultRolePermissions = [
+          // Management / Super Admin: Full Institutional Authority
+          { role: 'management', perms: ['VIEW_STUDENTS', 'EDIT_STUDENTS', 'VIEW_FACULTY', 'EDIT_FACULTY', 'ASSIGN_FACULTY_MENTOR', 'ASSIGN_INTERNSHIP_MENTOR', 'VIEW_INTERNSHIPS', 'CREATE_INTERNSHIP', 'EDIT_INTERNSHIP', 'APPROVE_INTERNSHIP', 'VIEW_ATTENDANCE', 'VIEW_INTERNSHIP_ATTENDANCE', 'VIEW_MENTORSHIP', 'CREATE_MENTOR_TASK', 'SEND_MENTOR_MESSAGE', 'VIEW_REPORTS', 'EXPORT_REPORTS', 'MANAGE_MASTER_DATA', 'MANAGE_USERS', 'MANAGE_ROLES', 'MANAGE_PERMISSIONS', 'VIEW_AUDIT_LOGS', 'MANAGE_SYSTEM_SETTINGS'], scope: 'global' },
+          { role: 'super_admin', perms: ['VIEW_STUDENTS', 'EDIT_STUDENTS', 'VIEW_FACULTY', 'EDIT_FACULTY', 'ASSIGN_FACULTY_MENTOR', 'ASSIGN_INTERNSHIP_MENTOR', 'VIEW_INTERNSHIPS', 'CREATE_INTERNSHIP', 'EDIT_INTERNSHIP', 'APPROVE_INTERNSHIP', 'VIEW_ATTENDANCE', 'VIEW_INTERNSHIP_ATTENDANCE', 'VIEW_MENTORSHIP', 'CREATE_MENTOR_TASK', 'SEND_MENTOR_MESSAGE', 'VIEW_REPORTS', 'EXPORT_REPORTS', 'MANAGE_MASTER_DATA', 'MANAGE_USERS', 'MANAGE_ROLES', 'MANAGE_PERMISSIONS', 'VIEW_AUDIT_LOGS', 'MANAGE_SYSTEM_SETTINGS'], scope: 'global' },
+          // Dean / Academic Affairs
+          { role: 'dean', perms: ['VIEW_STUDENTS', 'VIEW_FACULTY', 'ASSIGN_FACULTY_MENTOR', 'ASSIGN_INTERNSHIP_MENTOR', 'VIEW_INTERNSHIPS', 'APPROVE_INTERNSHIP', 'VIEW_ATTENDANCE', 'VIEW_INTERNSHIP_ATTENDANCE', 'VIEW_MENTORSHIP', 'VIEW_REPORTS', 'EXPORT_REPORTS', 'VIEW_AUDIT_LOGS'], scope: 'global' },
+          { role: 'admin', perms: ['VIEW_STUDENTS', 'EDIT_STUDENTS', 'VIEW_FACULTY', 'ASSIGN_FACULTY_MENTOR', 'ASSIGN_INTERNSHIP_MENTOR', 'VIEW_INTERNSHIPS', 'CREATE_INTERNSHIP', 'EDIT_INTERNSHIP', 'APPROVE_INTERNSHIP', 'VIEW_ATTENDANCE', 'VIEW_INTERNSHIP_ATTENDANCE', 'VIEW_MENTORSHIP', 'VIEW_REPORTS', 'EXPORT_REPORTS', 'MANAGE_USERS', 'VIEW_AUDIT_LOGS'], scope: 'global' },
+          // Faculty Mentor
+          { role: 'faculty_mentor', perms: ['VIEW_STUDENTS', 'VIEW_ATTENDANCE', 'VIEW_MENTORSHIP', 'CREATE_MENTOR_TASK', 'SEND_MENTOR_MESSAGE', 'VIEW_REPORTS'], scope: 'assigned' },
+          // Faculty general
+          { role: 'faculty', perms: ['VIEW_STUDENTS', 'VIEW_ATTENDANCE', 'VIEW_MENTORSHIP', 'SEND_MENTOR_MESSAGE'], scope: 'assigned' },
+          // Internship Mentor
+          { role: 'internship_mentor', perms: ['VIEW_STUDENTS', 'VIEW_INTERNSHIPS', 'VIEW_INTERNSHIP_ATTENDANCE', 'VIEW_MENTORSHIP', 'CREATE_MENTOR_TASK', 'SEND_MENTOR_MESSAGE', 'VIEW_REPORTS'], scope: 'assigned' },
+          // TPC / Placement Officer
+          { role: 'tpc', perms: ['VIEW_STUDENTS', 'VIEW_INTERNSHIPS', 'CREATE_INTERNSHIP', 'EDIT_INTERNSHIP', 'APPROVE_INTERNSHIP', 'VIEW_INTERNSHIP_ATTENDANCE', 'VIEW_REPORTS', 'EXPORT_REPORTS'], scope: 'global' },
+          // Organizer
+          { role: 'organizer', perms: ['VIEW_STUDENTS', 'VIEW_ATTENDANCE', 'VIEW_REPORTS'], scope: 'limited' },
+          // Student
+          { role: 'student', perms: ['VIEW_STUDENTS', 'VIEW_INTERNSHIPS', 'VIEW_ATTENDANCE', 'VIEW_INTERNSHIP_ATTENDANCE', 'VIEW_MENTORSHIP', 'SEND_MENTOR_MESSAGE'], scope: 'self' },
+          // Security
+          { role: 'security', perms: ['VIEW_ATTENDANCE'], scope: 'limited' },
+        ];
+
+        for (const grp of defaultRolePermissions) {
+          for (const p of grp.perms) {
+            const id = `rp-${grp.role}-${p.toLowerCase()}`;
+            await client.query(`
+              INSERT INTO public.role_permissions (id, role, permission, scope)
+              VALUES ($1, $2, $3, $4)
+              ON CONFLICT (role, permission) DO NOTHING;
+            `, [id, grp.role, p, grp.scope]);
+          }
+        }
+      }
 
       // 4. Seed Essential Master Data if empty
       const yearCount = await client.query(`SELECT count(*) as count FROM public.academic_years`);
@@ -245,7 +309,7 @@ export async function ensureMentorshipSchema(): Promise<void> {
         }
       }
 
-      console.log("[Mentorship DB] Database tables and master data ensured successfully.");
+      console.log("[Mentorship DB] Database tables, role permissions, and master data ensured successfully.");
     } finally {
       client.release();
     }
@@ -253,3 +317,4 @@ export async function ensureMentorshipSchema(): Promise<void> {
     console.warn("[Mentorship DB] Error ensuring schema:", err);
   }
 }
+

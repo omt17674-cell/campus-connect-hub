@@ -2592,13 +2592,97 @@ ${clubs.map((c) => `- ${c.name} (${c.category}): ${c.description || "Active stud
   }
 
   // ==============================================================================
-  // 36. MANAGEMENT METRICS & AUDIT
+  // 36. MANAGEMENT METRICS, GOVERNANCE & CONTROL CENTER
   // ==============================================================================
   if (path === "/api/management/kpis" && method === "GET") {
     triggerSchemaInit();
-    const kpis = await mentorshipSync.getManagementKPIs();
-    return jsonResponse({ success: true, kpis }, 200);
+    try {
+      const kpis = await mentorshipSync.getManagementKPIs();
+      return jsonResponse({ success: true, kpis }, 200);
+    } catch (err: any) {
+      return jsonResponse({ success: false, error: err.message || "Database connection error." }, 500);
+    }
+  }
+
+  if (path === "/api/management/faculty" && method === "GET") {
+    triggerSchemaInit();
+    try {
+      const faculty = await mentorshipSync.getFacultyList();
+      return jsonResponse({ success: true, faculty }, 200);
+    } catch (err: any) {
+      return jsonResponse({ success: false, error: err.message || "Database error fetching faculty." }, 500);
+    }
+  }
+
+  if (path.startsWith("/api/management/faculty-360/") && method === "GET") {
+    triggerSchemaInit();
+    const facultyId = decodeURIComponent(path.replace("/api/management/faculty-360/", ""));
+    const profile = await mentorshipSync.getFaculty360(facultyId);
+    if (!profile) {
+      return jsonResponse({ success: false, message: "Faculty member not found." }, 404);
+    }
+    return jsonResponse({ success: true, profile }, 200);
+  }
+
+  if (path === "/api/management/people-access" && method === "GET") {
+    triggerSchemaInit();
+    const role = url.searchParams.get("role") || undefined;
+    const department = url.searchParams.get("department") || undefined;
+    const search = url.searchParams.get("search") || undefined;
+    const users = await mentorshipSync.getUsersAndAccess({ role, department, search });
+    return jsonResponse({ success: true, users }, 200);
+  }
+
+  if (path === "/api/management/user-access" && method === "POST") {
+    triggerSchemaInit();
+    const body = await req.json();
+    const result = await mentorshipSync.manageUserAccess(body);
+    return jsonResponse(result, result.success ? 200 : 400);
+  }
+
+  if (path === "/api/management/roles-permissions" && method === "GET") {
+    triggerSchemaInit();
+    const result = await mentorshipSync.getRolesAndPermissions();
+    return jsonResponse({ success: true, ...result }, 200);
+  }
+
+  if (path === "/api/management/tasks" && method === "GET") {
+    triggerSchemaInit();
+    const status = url.searchParams.get("status") || undefined;
+    const priority = url.searchParams.get("priority") || undefined;
+    const facultyId = url.searchParams.get("facultyId") || undefined;
+    const studentId = url.searchParams.get("studentId") || undefined;
+    const tasks = await mentorshipSync.getTaskControlCenter({ status, priority, facultyId, studentId });
+    return jsonResponse({ success: true, tasks }, 200);
+  }
+
+  if (path === "/api/management/faculty-workload" && method === "GET") {
+    triggerSchemaInit();
+    const workload = await mentorshipSync.getFacultyWorkload();
+    return jsonResponse({ success: true, workload }, 200);
+  }
+
+  if (path === "/api/management/data-directory" && method === "GET") {
+    triggerSchemaInit();
+    const directory = await mentorshipSync.getSystemDataDirectory();
+    return jsonResponse({ success: true, directory }, 200);
+  }
+
+  if (path === "/api/management/audit-logs" && method === "GET") {
+    triggerSchemaInit();
+    const action = url.searchParams.get("action") || undefined;
+    const limit = parseInt(url.searchParams.get("limit") || "50", 10);
+    const logs = await mentorshipSync.getManagementAuditLogs({ action, limit });
+    return jsonResponse({ success: true, logs }, 200);
+  }
+
+  if (path === "/api/management/reports" && method === "GET") {
+    triggerSchemaInit();
+    const reportType = url.searchParams.get("type") || "students";
+    const report = await mentorshipSync.getManagementReports(reportType);
+    return jsonResponse({ success: true, report }, 200);
   }
 
   return jsonResponse({ error: "Route not found in GSFC API Gateway" }, 404);
 }
+

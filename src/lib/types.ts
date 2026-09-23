@@ -718,8 +718,11 @@ export interface ManagementAuditLog {
   action: string;
   actorId: string;
   actorName: string;
+  actorRole?: string;
   targetType: string;
   targetId?: string;
+  oldValue?: string;
+  newValue?: string;
   details?: string;
   ipAddress?: string;
   createdAt: string;
@@ -749,6 +752,160 @@ export interface UnifiedStudentHistory {
     points: number;
   };
 }
+
+// ==========================================
+// INSTITUTIONAL GOVERNANCE & PERMISSIONS TYPES
+// ==========================================
+
+export type GranularPermission =
+  | "VIEW_STUDENTS"
+  | "EDIT_STUDENTS"
+  | "VIEW_FACULTY"
+  | "EDIT_FACULTY"
+  | "ASSIGN_FACULTY_MENTOR"
+  | "ASSIGN_INTERNSHIP_MENTOR"
+  | "VIEW_INTERNSHIPS"
+  | "CREATE_INTERNSHIP"
+  | "EDIT_INTERNSHIP"
+  | "APPROVE_INTERNSHIP"
+  | "VIEW_ATTENDANCE"
+  | "VIEW_INTERNSHIP_ATTENDANCE"
+  | "VIEW_MENTORSHIP"
+  | "CREATE_MENTOR_TASK"
+  | "SEND_MENTOR_MESSAGE"
+  | "VIEW_REPORTS"
+  | "EXPORT_REPORTS"
+  | "MANAGE_MASTER_DATA"
+  | "MANAGE_USERS"
+  | "MANAGE_ROLES"
+  | "MANAGE_PERMISSIONS"
+  | "VIEW_AUDIT_LOGS"
+  | "MANAGE_SYSTEM_SETTINGS";
+
+export type PermissionScope = "global" | "assigned" | "self" | "limited" | "none";
+
+export interface RolePermissionDefinition {
+  id: string;
+  role: UserRole;
+  permission: GranularPermission;
+  scope: PermissionScope;
+  createdAt?: string;
+}
+
+export interface UserPermissionOverride {
+  id: string;
+  userId: string;
+  permission: GranularPermission;
+  isGranted: boolean;
+  scope: PermissionScope;
+  grantedBy?: string;
+  grantedAt?: string;
+}
+
+export interface ManagementKPIs {
+  totalStudents: number;
+  totalFaculty: number;
+  facultyMentorsCount: number;
+  internshipMentorsCount: number;
+  administratorsCount: number;
+  totalInternships: number;
+  totalApplications: number;
+  activeInterns: number;
+  completedInternships: number;
+  activeMentorAssignments: number;
+  unassignedStudentsCount: number;
+  pendingApprovals: number;
+  pendingTasks: number;
+  unreadMessages: number;
+  attendanceAlertsCount: number;
+  lastUpdated?: string;
+}
+
+export interface FacultyRecord {
+  id: string;
+  name: string;
+  email: string;
+  mobileNumber?: string;
+  department: string;
+  designation: string;
+  specialization?: string;
+  status: "active" | "inactive" | "on_leave";
+  isFacultyMentor: boolean;
+  isInternshipMentor: boolean;
+  assignedStudentCount: number;
+  pendingTasks: number;
+  activeTasks: number;
+  roles?: UserRole[];
+  permissions?: GranularPermission[];
+}
+
+export interface Faculty360Profile {
+  faculty: FacultyRecord;
+  roles: UserRole[];
+  permissions: { permission: GranularPermission; scope: PermissionScope }[];
+  assignedStudents: {
+    id: string;
+    studentId: string;
+    studentName: string;
+    studentRollNo: string;
+    department: string;
+    semester: number;
+    academicYear: string;
+    field?: string;
+    type: "faculty_mentor" | "internship_mentor";
+    assignedAt: string;
+    status: string;
+  }[];
+  tasks: MentorshipTask[];
+  tasksCompletedCount: number;
+  tasksPendingCount: number;
+  messages: MentorMessage[];
+  supervisedInternships: {
+    id: string;
+    title: string;
+    companyName: string;
+    department: string;
+    status: string;
+    activeInternsCount: number;
+  }[];
+  mentorshipNotes: MentorshipNote[];
+  activityLogs: ManagementAuditLog[];
+}
+
+export interface SystemDataDomain {
+  domain: string;
+  databaseTable: string;
+  purpose: string;
+  recordCount: number;
+  lastUpdated: string;
+  accessScope: string;
+}
+
+export interface FacultyWorkloadItem {
+  facultyId: string;
+  facultyName: string;
+  department: string;
+  designation: string;
+  facultyMenteesCount: number;
+  internshipMenteesCount: number;
+  tasksAssignedCount: number;
+  tasksPendingCount: number;
+  tasksCompletedCount: number;
+  messagesSentCount: number;
+  activeInternshipsSupervisedCount: number;
+}
+
+export interface AccessMatrixItem {
+  userId: string;
+  userName: string;
+  role: UserRole;
+  department: string;
+  module: string;
+  permission: GranularPermission;
+  scope: PermissionScope;
+  status: "active" | "revoked" | "custom";
+}
+
 
 
 
