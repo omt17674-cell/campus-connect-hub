@@ -1221,7 +1221,8 @@ export function initSupabaseRealtimeSync() {
 
 /**
  * Scoped realtime subscription for an individual student.
- * Subscribes strictly to notifications and application updates where student_id matches.
+ * Subscribes to notifications and application updates where student_id matches.
+ * Genuinely pushes newly arrived realtime rows into state.notifications and state.internshipNotifications.
  * Returns an unsubscribe cleanup function.
  */
 export function subscribeStudentInternshipRealtime(
@@ -1230,7 +1231,8 @@ export function subscribeStudentInternshipRealtime(
 ): () => void {
   if (typeof window === "undefined" || !studentId) return () => {};
   try {
-    const channelName = `student-int-${studentId.replace(/[^a-zA-Z0-9_-]/g, "_")}`;
+    const cleanId = studentId.replace(/[^a-zA-Z0-9_-]/g, "_");
+    const channelName = `student-int-${cleanId}-${Date.now()}`;
     const channel = supabase
       .channel(channelName)
       .on(
@@ -1241,7 +1243,41 @@ export function subscribeStudentInternshipRealtime(
           table: "internship_notifications",
           filter: `student_id=eq.${studentId}`,
         },
-        () => {
+        (payload: any) => {
+          if (payload?.new) {
+            const raw = payload.new;
+            const notifItem: NotificationItem = {
+              id: raw.id || `notif-int-${Date.now()}`,
+              userId: raw.student_id,
+              title: raw.title || "Internship Update",
+              message: raw.message || "Your internship application status was updated.",
+              type: "approval",
+              timestamp: raw.created_at || new Date().toISOString(),
+              read: false,
+            };
+            const intNotif: InternshipNotification = {
+              id: raw.id || `notif-int-${Date.now()}`,
+              studentId: raw.student_id,
+              applicationId: raw.application_id || "",
+              type: raw.type || "admin_approved",
+              title: raw.title || "Internship Update",
+              message: raw.message || "",
+              isRead: Boolean(raw.is_read),
+              createdAt: raw.created_at || new Date().toISOString(),
+            };
+
+            campusStore.setState((prev) => {
+              const alreadyHas = prev.notifications.some((n) => n.id === notifItem.id);
+              if (alreadyHas) return {};
+              return {
+                notifications: [notifItem, ...prev.notifications],
+                internshipNotifications: [
+                  intNotif,
+                  ...(prev.internshipNotifications || []).filter((n) => n.id !== intNotif.id),
+                ],
+              };
+            });
+          }
           if (onUpdate) onUpdate();
         },
       )
@@ -1253,7 +1289,15 @@ export function subscribeStudentInternshipRealtime(
           table: "internship_applications",
           filter: `student_id=eq.${studentId}`,
         },
-        () => {
+        (payload: any) => {
+          if (payload?.new) {
+            const updated = deserializeInternshipApplicationFromDb(payload.new);
+            campusStore.setState((prev) => ({
+              internshipApplications: (prev.internshipApplications || []).map((a) =>
+                a.id === updated.id ? updated : a,
+              ),
+            }));
+          }
           if (onUpdate) onUpdate();
         },
       )
@@ -1270,13 +1314,15 @@ export function subscribeStudentInternshipRealtime(
 
 /**
  * Scoped realtime subscription for Administration / Dean review queues.
+ * Notifies administrators when students submit applications or punch attendance.
  * Returns an unsubscribe cleanup function.
  */
 export function subscribeAdminInternshipRealtime(onUpdate?: () => void): () => void {
   if (typeof window === "undefined") return () => {};
   try {
+    const channelName = `admin-internship-queue-${Date.now()}`;
     const channel = supabase
-      .channel("admin-internship-queue")
+      .channel(channelName)
       .on(
         "postgres_changes",
         {
@@ -1284,7 +1330,37 @@ export function subscribeAdminInternshipRealtime(onUpdate?: () => void): () => v
           schema: "public",
           table: "internship_applications",
         },
-        () => {
+        (payload: any) => {
+          if (payload?.eventType === "INSERT" && payload.new) {
+            const app = payload.new;
+            const notifItem: NotificationItem = {
+              id: `notif-admin-app-${app.id || Date.now()}`,
+              userId: "admin",
+              title: "📄 New Internship Application",
+              message: `${app.full_name || "A student"} submitted application ${app.application_number || ""} for administrative review.`,
+              type: "approval",
+              timestamp: app.created_at || new Date().toISOString(),
+              read: false,
+            };
+            const parsedApp = deserializeInternshipApplicationFromDb(app);
+            campusStore.setState((prev) => {
+              const alreadyHas = prev.notifications.some((n) => n.id === notifItem.id);
+              return {
+                notifications: alreadyHas ? prev.notifications : [notifItem, ...prev.notifications],
+                internshipApplications: [
+                  parsedApp,
+                  ...(prev.internshipApplications || []).filter((a) => a.id !== parsedApp.id),
+                ],
+              };
+            });
+          } else if (payload?.new) {
+            const parsedApp = deserializeInternshipApplicationFromDb(payload.new);
+            campusStore.setState((prev) => ({
+              internshipApplications: (prev.internshipApplications || []).map((a) =>
+                a.id === parsedApp.id ? parsedApp : a,
+              ),
+            }));
+          }
           if (onUpdate) onUpdate();
         },
       )
@@ -1295,6 +1371,68 @@ export function subscribeAdminInternshipRealtime(onUpdate?: () => void): () => v
     };
   } catch (err) {
     console.debug("Admin realtime sub error:", err);
+    return () => {};
+  }
+}
+
+/**
+ * Realtime broadcast subscription for campus-wide announcements.
+ */
+export function subscribeCampusAnnouncementsRealtime(onNewAnnouncement?: () => void): () => void {
+  if (typeof window === "undefined") return () => {};
+  try {
+    const channelName = `campus-announcements-${Date.now()}`;
+    const channel = supabase
+      .channel(channelName)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "announcements",
+        },
+        (payload: any) => {
+          if (payload?.new) {
+            const ann = payload.new;
+            const notifItem: NotificationItem = {
+              id: `notif-ann-${ann.id || Date.now()}`,
+              title: `📢 ${ann.title || "Campus Announcement"}`,
+              message: ann.content ? ann.content.slice(0, 100) : "New announcement posted",
+              type: "alert",
+              timestamp: ann.created_at || new Date().toISOString(),
+              read: false,
+            };
+            const newAnn: CampusAnnouncement = {
+              id: ann.id,
+              title: ann.title,
+              content: ann.content,
+              category: ann.category || "General",
+              authorName: ann.author_name || "Campus Administration",
+              authorRole: ann.author_role || "Dean / Admin",
+              departmentTarget: ann.department_target || "All Departments",
+              priority: ann.priority || "normal",
+              readBy: ann.read_by || [],
+              createdAt: ann.created_at || new Date().toISOString(),
+            };
+
+            campusStore.setState((prev) => {
+              const alreadyHas = prev.notifications.some((n) => n.id === notifItem.id);
+              return {
+                announcements: [newAnn, ...(prev.announcements || []).filter((a) => a.id !== newAnn.id)],
+                notifications: alreadyHas ? prev.notifications : [notifItem, ...prev.notifications],
+              };
+            });
+            if (onNewAnnouncement) onNewAnnouncement();
+          }
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  } catch (err) {
+    console.debug("Announcements realtime sub error:", err);
     return () => {};
   }
 }
@@ -5023,12 +5161,23 @@ export const campusStore = {
       createdAt: nowIso,
     };
 
+    const genericNotif: NotificationItem = {
+      id: studentNotif.id,
+      userId: studentNotif.studentId,
+      title: studentNotif.title,
+      message: studentNotif.message,
+      type: "approval",
+      timestamp: "Just now",
+      read: false,
+    };
+
     campusStore.setState((prev) => ({
       internshipApplications: (prev.internshipApplications || []).map((a) =>
         a.id === applicationId ? updatedApp : a,
       ),
       internshipApprovals: [approvalLog, ...(prev.internshipApprovals || [])],
       internshipNotifications: [studentNotif, ...(prev.internshipNotifications || [])],
+      notifications: [genericNotif, ...prev.notifications],
     }));
 
     try {
@@ -5046,6 +5195,16 @@ export const campusStore = {
           comment: approvalLog.comment,
           approved_at: approvalLog.approvedAt,
           created_at: approvalLog.createdAt,
+        });
+        await supabase.from("internship_notifications").insert({
+          id: studentNotif.id,
+          student_id: studentNotif.studentId,
+          application_id: studentNotif.applicationId,
+          type: studentNotif.type,
+          title: studentNotif.title,
+          message: studentNotif.message,
+          is_read: false,
+          created_at: studentNotif.createdAt,
         });
       }
     } catch (err) {
@@ -5139,12 +5298,23 @@ export const campusStore = {
       createdAt: nowIso,
     };
 
+    const genericNotif: NotificationItem = {
+      id: studentNotif.id,
+      userId: studentNotif.studentId,
+      title: studentNotif.title,
+      message: studentNotif.message,
+      type: "approval",
+      timestamp: "Just now",
+      read: false,
+    };
+
     campusStore.setState((prev) => ({
       internshipApplications: (prev.internshipApplications || []).map((a) =>
         a.id === applicationId ? updatedApp : a,
       ),
       internshipApprovals: [approvalLog, ...(prev.internshipApprovals || [])],
       internshipNotifications: [studentNotif, ...(prev.internshipNotifications || [])],
+      notifications: [genericNotif, ...prev.notifications],
     }));
 
     try {
@@ -5162,6 +5332,16 @@ export const campusStore = {
           comment: approvalLog.comment,
           approved_at: approvalLog.approvedAt,
           created_at: approvalLog.createdAt,
+        });
+        await supabase.from("internship_notifications").insert({
+          id: studentNotif.id,
+          student_id: studentNotif.studentId,
+          application_id: studentNotif.applicationId,
+          type: studentNotif.type,
+          title: studentNotif.title,
+          message: studentNotif.message,
+          is_read: false,
+          created_at: studentNotif.createdAt,
         });
       }
     } catch (err) {

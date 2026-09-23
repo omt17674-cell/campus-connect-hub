@@ -1,7 +1,14 @@
-import { Award, Bell, Calendar, Check, RefreshCw, ShieldAlert, X } from "lucide-react";
+import { useState } from "react";
+import { Award, Bell, Calendar, Check, Play, RefreshCw, ShieldAlert, Volume2, VolumeX, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CampusState, campusStore } from "@/lib/campus-store";
 import { cn } from "@/lib/utils";
+import {
+  isNotificationSoundEnabled,
+  setNotificationSoundEnabled,
+  playNotificationSound,
+  triggerNewNotificationToast,
+} from "@/lib/notification-sound";
 
 interface NotificationsModalProps {
   state: CampusState;
@@ -14,6 +21,29 @@ export function NotificationsModal({
   onClose,
   onSelectEventId,
 }: NotificationsModalProps) {
+  const [soundEnabled, setSoundEnabled] = useState(() => isNotificationSoundEnabled());
+
+  const toggleSound = () => {
+    const next = !soundEnabled;
+    setSoundEnabled(next);
+    setNotificationSoundEnabled(next);
+    if (next) {
+      playNotificationSound();
+    }
+  };
+
+  const handleTestNotification = () => {
+    triggerNewNotificationToast(
+      {
+        id: `test-${Date.now()}`,
+        title: "🔔 Test Notification Alert",
+        message: "Real-time sound and toast notifications are working properly on Campus Connect Hub!",
+        type: "alert",
+      },
+      () => {},
+    );
+  };
+
   const markAllAsRead = () => {
     campusStore.setState((prev) => ({
       notifications: prev.notifications.map((n) => ({ ...n, read: true })),
@@ -61,16 +91,51 @@ export function NotificationsModal({
             </div>
           </div>
 
-          {state.notifications.some((n) => !n.read) && (
+          <div className="flex items-center gap-1.5">
+            {/* Sound Toggle */}
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
-              onClick={markAllAsRead}
-              className="h-7 text-xs font-bold text-brand"
+              onClick={toggleSound}
+              className="h-7 px-2 text-xs font-semibold gap-1"
+              title={soundEnabled ? "Mute notification sound" : "Enable notification sound"}
             >
-              <Check className="mr-1 size-3" /> Mark read
+              {soundEnabled ? (
+                <>
+                  <Volume2 className="size-3 text-emerald-500" />
+                  <span className="hidden sm:inline">Sound On</span>
+                </>
+              ) : (
+                <>
+                  <VolumeX className="size-3 text-muted-foreground" />
+                  <span className="hidden sm:inline">Muted</span>
+                </>
+              )}
             </Button>
-          )}
+
+            {/* Test Trigger */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleTestNotification}
+              className="h-7 px-2 text-xs font-semibold gap-1 border-brand/30 text-brand hover:bg-brand/10"
+              title="Test chime sound and toast popup"
+            >
+              <Play className="size-3 fill-current" />
+              <span className="hidden sm:inline">Test</span>
+            </Button>
+
+            {state.notifications.some((n) => !n.read) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={markAllAsRead}
+                className="h-7 text-xs font-bold text-brand"
+              >
+                <Check className="mr-1 size-3" /> Mark read
+              </Button>
+            )}
+          </div>
         </div>
 
         <div className="mt-5 max-h-[60vh] space-y-2.5 overflow-y-auto pr-1">

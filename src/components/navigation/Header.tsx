@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Bell,
   Check,
@@ -12,6 +12,8 @@ import {
   Sun,
   UserCheck,
   Users,
+  Volume2,
+  VolumeX,
   Wifi,
   WifiOff,
 } from "lucide-react";
@@ -28,6 +30,12 @@ import { Language, UserRole } from "@/lib/types";
 import { campusStore, CampusState } from "@/lib/campus-store";
 import { translations } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import {
+  isNotificationSoundEnabled,
+  setNotificationSoundEnabled,
+  playNotificationSound,
+  requestBrowserNotificationPermission,
+} from "@/lib/notification-sound";
 
 interface HeaderProps {
   state: CampusState;
@@ -52,7 +60,28 @@ export function Header({
 }: HeaderProps) {
   const t = translations[state.language];
   const [syncing, setSyncing] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(() => isNotificationSoundEnabled());
   const unreadCount = state.notifications.filter((n) => !n.read).length;
+
+  useEffect(() => {
+    const handleSoundChange = (e: any) => {
+      if (e?.detail?.enabled !== undefined) {
+        setSoundEnabled(e.detail.enabled);
+      }
+    };
+    window.addEventListener("notification-sound-change", handleSoundChange);
+    return () => window.removeEventListener("notification-sound-change", handleSoundChange);
+  }, []);
+
+  const handleToggleSound = () => {
+    const next = !soundEnabled;
+    setSoundEnabled(next);
+    setNotificationSoundEnabled(next);
+    if (next) {
+      playNotificationSound();
+      requestBrowserNotificationPermission();
+    }
+  };
 
   const handleSync = () => {
     setSyncing(true);
@@ -201,12 +230,32 @@ export function Header({
             onClick={onOpenNotifications}
             className="relative size-9 rounded-full text-foreground/80 hover:bg-card/70"
             aria-label="Notifications"
+            title="Open Notifications"
           >
             <Bell className="size-4" />
             {unreadCount > 0 && (
               <span className="absolute right-1.5 top-1.5 flex size-2">
                 <span className="relative inline-flex size-2 rounded-full bg-accent" />
               </span>
+            )}
+          </Button>
+
+          {/* Notification Sound Mute / Unmute Toggle */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleToggleSound}
+            className={cn(
+              "size-9 rounded-full text-foreground/80 hover:bg-card/70 transition-colors",
+              !soundEnabled && "text-muted-foreground/60 opacity-70"
+            )}
+            aria-label={soundEnabled ? "Mute notification sounds" : "Unmute notification sounds"}
+            title={soundEnabled ? "Notification sound is ON (click to mute)" : "Notification sound is MUTED (click to enable)"}
+          >
+            {soundEnabled ? (
+              <Volume2 className="size-4 text-emerald-500" />
+            ) : (
+              <VolumeX className="size-4 text-muted-foreground" />
             )}
           </Button>
 

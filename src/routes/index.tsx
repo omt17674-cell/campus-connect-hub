@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import {
   Award,
@@ -45,7 +45,14 @@ import { OrganizerDashboard } from "@/components/organizer/OrganizerDashboard";
 import { AdminDashboard } from "@/components/admin/AdminDashboard";
 import { LoginPage } from "@/components/auth/LoginPage";
 import { CampusEvent } from "@/lib/types";
-import { campusStore, CampusState } from "@/lib/campus-store";
+import {
+  campusStore,
+  CampusState,
+  subscribeStudentInternshipRealtime,
+  subscribeAdminInternshipRealtime,
+  subscribeCampusAnnouncementsRealtime,
+} from "@/lib/campus-store";
+import { triggerNewNotificationToast } from "@/lib/notification-sound";
 import { translations } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import {
@@ -92,6 +99,54 @@ function CampusConnectApp() {
     });
     return unsubscribe;
   }, []);
+
+  // Central notification watcher: trigger sound and toast whenever state.notifications gets a new item
+  const knownNotificationIds = useRef<Set<string>>(new Set());
+  const isNotificationsInitialized = useRef(false);
+
+  useEffect(() => {
+    if (!state.isAuthenticated) return;
+
+    if (!isNotificationsInitialized.current) {
+      // On initial load, record all existing notification IDs so we don't alert on existing items
+      state.notifications.forEach((n) => knownNotificationIds.current.add(n.id));
+      isNotificationsInitialized.current = true;
+      return;
+    }
+
+    // Identify any genuinely new notification that was not previously known
+    const newItems = state.notifications.filter((n) => !knownNotificationIds.current.has(n.id));
+    if (newItems.length > 0) {
+      newItems.forEach((n) => knownNotificationIds.current.add(n.id));
+      // Trigger toast & sound for incoming notification
+      const newest = newItems[0];
+      triggerNewNotificationToast(newest, () => setShowNotifications(true));
+    }
+  }, [state.notifications, state.isAuthenticated]);
+
+  // Hook into realtime notifications for current logged in user
+  useEffect(() => {
+    if (!state.isAuthenticated) return;
+
+    const unsubs: Array<() => void> = [];
+
+    // Realtime announcements for everyone
+    unsubs.push(subscribeCampusAnnouncementsRealtime());
+
+    if (state.currentRole === "student") {
+      const studentId = state.currentUser.id || `stu-${(state.currentUser.rollNo || "").toLowerCase()}`;
+      unsubs.push(subscribeStudentInternshipRealtime(studentId));
+      if (state.currentUser.rollNo && state.currentUser.rollNo !== studentId) {
+        unsubs.push(subscribeStudentInternshipRealtime(state.currentUser.rollNo));
+      }
+    } else if (state.currentRole === "admin" || state.currentRole === "dean" || state.currentRole === "organizer") {
+      unsubs.push(subscribeAdminInternshipRealtime());
+    }
+
+    return () => {
+      unsubs.forEach((unsub) => unsub());
+    };
+  }, [state.isAuthenticated, state.currentRole, state.currentUser.id, state.currentUser.rollNo]);
 
   // Listen to browser online/offline events
   useEffect(() => {
