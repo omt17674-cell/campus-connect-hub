@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { apiClient } from "@/lib/api-client";
+import { INITIAL_NEW_STUDENTS } from "@/lib/campus-store";
 import {
   AcademicYearMaster,
   DepartmentMaster,
@@ -22,13 +23,14 @@ import {
   UserProfile,
 } from "@/lib/types";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 interface MentorAssignmentModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
   students: NewRegisteredStudent[];
-  facultyList: Array<{ id: string; name: string; department?: string; email?: string }>;
+  facultyList: Array<{ id: string; name: string; department?: string; email?: string; designation?: string }>;
   initialStudentId?: string;
   initialFacultyId?: string;
 }
@@ -58,7 +60,8 @@ const DEFAULT_FACULTY_LIST = [
   { id: "fac-2", name: "Prof. Sneha Dave", department: "Chemical & Petrochemical Eng", email: "sneha.dave@gsfcuniversity.ac.in", designation: "Assistant Professor & Internship Mentor" },
   { id: "fac-3", name: "Dr. Amit Trivedi", department: "School of Management", email: "amit.trivedi@gsfcuniversity.ac.in", designation: "Professor & Academic Guide" },
   { id: "u-tpc", name: "Prof. Rajiv Mehta", department: "Training & Placement Cell / Event Convener", email: "tpc.admin@gsfcuniversity.ac.in", designation: "TPC Head & Placement Convener" },
-  { id: "u-ananya", name: "Dr. Ananya Sharma", department: "Student Affairs & Academic Governance", email: "admin.dean@gsfcuniversity.ac.in", designation: "Dean & Academic Governance" },
+  { id: "u-ananya", name: "Dr. Ananya Sharma (Dean)", department: "Student Affairs & Academic Governance", email: "admin.dean@gsfcuniversity.ac.in", designation: "Dean & Academic Governance" },
+  { id: "DEAN-001", name: "Dr. Ananya Sharma (Dean)", department: "Student Affairs & Academic Governance", email: "admin.dean@gsfcuniversity.ac.in", designation: "Dean & Academic Governance" },
   { id: "fac-6", name: "Dr. Pratik Patel", department: "Mechanical & Automation Eng", email: "pratik.patel@gsfcuniversity.ac.in", designation: "Associate Professor" },
   { id: "fac-7", name: "Dr. Meera Varma", department: "Computer Science & Engineering", email: "meera.varma@gsfcuniversity.ac.in", designation: "Assistant Professor" },
   { id: "fac-8", name: "Prof. Rajesh Shah", department: "Chemical & Petrochemical Eng", email: "rajesh.shah@gsfcuniversity.ac.in", designation: "Professor" },
@@ -75,9 +78,26 @@ export function MentorAssignmentModal({
 }: MentorAssignmentModalProps) {
   const [assignmentMode, setAssignmentMode] = useState<"single" | "bulk">("single");
 
-  // Effective Lists with Guaranteed Non-Empty Fallbacks
-  const effectiveFaculty = facultyList && facultyList.length > 0 ? facultyList : DEFAULT_FACULTY_LIST;
-  const effectiveStudents = students && students.length > 0 ? students : [];
+  // Guaranteed non-empty faculty & students lists
+  const effectiveStudents = students && students.length > 0 ? students : INITIAL_NEW_STUDENTS;
+
+  // Build merged distinct faculty list
+  const distinctFacultyMap = new Map<string, { id: string; name: string; department?: string; email?: string; designation?: string }>();
+  for (const fac of DEFAULT_FACULTY_LIST) {
+    distinctFacultyMap.set(fac.id, fac);
+  }
+  for (const fac of (facultyList || [])) {
+    if (fac && fac.id) {
+      distinctFacultyMap.set(fac.id, {
+        id: fac.id,
+        name: fac.name,
+        department: fac.department || "Faculty Member",
+        email: fac.email || `${fac.id}@gsfcuniversity.ac.in`,
+        designation: fac.designation || "Faculty Mentor",
+      });
+    }
+  }
+  const effectiveFaculty = Array.from(distinctFacultyMap.values());
 
   // Master Data
   const [academicYears, setAcademicYears] = useState<AcademicYearMaster[]>(DEFAULT_ACADEMIC_YEARS);
@@ -85,8 +105,8 @@ export function MentorAssignmentModal({
   const [fields, setFields] = useState<FieldMaster[]>(DEFAULT_FIELDS);
 
   // Form State
-  const [selectedFaculty, setSelectedFaculty] = useState(initialFacultyId || "");
-  const [selectedStudent, setSelectedStudent] = useState(initialStudentId || "");
+  const [selectedFaculty, setSelectedFaculty] = useState("");
+  const [selectedStudent, setSelectedStudent] = useState("");
   const [selectedBulkStudents, setSelectedBulkStudents] = useState<string[]>([]);
   const [selectedYear, setSelectedYear] = useState("2025-2026");
   const [selectedSemester, setSelectedSemester] = useState(6);
@@ -97,17 +117,42 @@ export function MentorAssignmentModal({
 
   useEffect(() => {
     if (!isOpen) return;
+
+    // Resolve initial student
     if (initialStudentId) {
-      setSelectedStudent(initialStudentId);
-      const stu = effectiveStudents.find((s) => s.id === initialStudentId || s.rollNo === initialStudentId);
+      const stu = effectiveStudents.find(
+        (s) => s.id === initialStudentId || s.rollNo === initialStudentId || s.email === initialStudentId
+      );
       if (stu) {
+        setSelectedStudent(stu.id || stu.rollNo);
         if (stu.department) setSelectedDept(stu.department);
         if (stu.semester) setSelectedSemester(stu.semester);
+      } else {
+        setSelectedStudent(initialStudentId);
       }
+    } else {
+      setSelectedStudent(effectiveStudents[0]?.id || "");
     }
+
+    // Resolve initial faculty
     if (initialFacultyId) {
-      setSelectedFaculty(initialFacultyId);
+      const q = initialFacultyId.toLowerCase();
+      const fac = effectiveFaculty.find(
+        (f) =>
+          f.id.toLowerCase() === q ||
+          (f.email && f.email.toLowerCase() === q) ||
+          f.name.toLowerCase().includes(q)
+      );
+      if (fac) {
+        setSelectedFaculty(fac.id);
+        if (fac.department) setSelectedDept(fac.department);
+      } else {
+        setSelectedFaculty(initialFacultyId);
+      }
+    } else {
+      setSelectedFaculty(effectiveFaculty[0]?.id || "");
     }
+
     apiClient.getMasterData().then((res) => {
       if (res?.success && res.data) {
         if (res.data.academicYears?.length) setAcademicYears(res.data.academicYears);

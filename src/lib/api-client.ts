@@ -482,13 +482,21 @@ export const apiClient = {
       "fac-2": { name: "Prof. Sneha Dave", email: "sneha.dave@gsfcuniversity.ac.in", dept: "Chemical & Petrochemical Eng" },
       "fac-3": { name: "Dr. Amit Trivedi", email: "amit.trivedi@gsfcuniversity.ac.in", dept: "School of Management" },
       "u-tpc": { name: "Prof. Rajiv Mehta", email: "tpc.admin@gsfcuniversity.ac.in", dept: "Training & Placement Cell / Event Convener" },
-      "u-ananya": { name: "Dr. Ananya Sharma", email: "admin.dean@gsfcuniversity.ac.in", dept: "Student Affairs & Academic Governance" },
+      "TPC-001": { name: "Prof. Rajiv Mehta", email: "tpc.admin@gsfcuniversity.ac.in", dept: "Training & Placement Cell / Event Convener" },
+      "u-ananya": { name: "Dr. Ananya Sharma (Dean)", email: "admin.dean@gsfcuniversity.ac.in", dept: "Student Affairs & Academic Governance" },
+      "DEAN-001": { name: "Dr. Ananya Sharma (Dean)", email: "admin.dean@gsfcuniversity.ac.in", dept: "Student Affairs & Academic Governance" },
+      "ADM-DEAN-001": { name: "Dr. Ananya Sharma (Dean)", email: "admin.dean@gsfcuniversity.ac.in", dept: "Student Affairs & Academic Governance" },
+      "u-management": { name: "Dr. S. K. Patel (Management Head)", email: "management.admin@gsfcuniversity.ac.in", dept: "Institutional Governance" },
+      "MGT-001": { name: "Dr. S. K. Patel (Management Head)", email: "management.admin@gsfcuniversity.ac.in", dept: "Institutional Governance" },
+      "fac-6": { name: "Dr. Pratik Patel", email: "pratik.patel@gsfcuniversity.ac.in", dept: "Mechanical & Automation Eng" },
+      "fac-7": { name: "Dr. Meera Varma", email: "meera.varma@gsfcuniversity.ac.in", dept: "Computer Science & Engineering" },
+      "fac-8": { name: "Prof. Rajesh Shah", email: "rajesh.shah@gsfcuniversity.ac.in", dept: "Chemical & Petrochemical Eng" },
     };
 
     const facInfo = facultyMap[payload.facultyId] || {
-      name: payload.facultyId,
-      email: `${payload.facultyId.toLowerCase()}@gsfcuniversity.ac.in`,
-      dept: payload.department,
+      name: payload.facultyId.includes("@") ? payload.facultyId.split("@")[0].replace(".", " ").toUpperCase() : payload.facultyId,
+      email: payload.facultyId.includes("@") ? payload.facultyId : `${payload.facultyId.toLowerCase()}@gsfcuniversity.ac.in`,
+      dept: payload.department || "Academic Faculty",
     };
 
     // Find student in local storage or initial students

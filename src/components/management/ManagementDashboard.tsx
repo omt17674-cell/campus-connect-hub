@@ -32,7 +32,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { apiClient } from "@/lib/api-client";
-import { CampusState } from "@/lib/campus-store";
+import { CampusState, INITIAL_NEW_STUDENTS } from "@/lib/campus-store";
 import {
   FacultyMentorAssignment,
   FacultyRecord,
@@ -98,7 +98,10 @@ export function ManagementDashboard({ state }: ManagementDashboardProps) {
   const [selectedStudentForHistory, setSelectedStudentForHistory] = useState<string | null>(null);
   const [selectedFacultyFor360, setSelectedFacultyFor360] = useState<string | null>(null);
 
-  const registeredStudents = state?.newRegisteredStudents || [];
+  const registeredStudents =
+    state?.newRegisteredStudents && state.newRegisteredStudents.length > 0
+      ? state.newRegisteredStudents
+      : INITIAL_NEW_STUDENTS;
   const currentUser = {
     id: state?.currentUser?.id || "u-management",
     name: state?.currentUser?.name || "Management Executive",
