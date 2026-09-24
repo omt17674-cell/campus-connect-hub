@@ -135,8 +135,56 @@ export function InternshipMentorDashboard({ state }: InternshipMentorDashboardPr
         </div>
       </div>
 
-      {/* Dynamic Master-Data Filter Bar */}
-      <div className="rounded-3xl border border-border/80 bg-card/60 p-5 shadow-xl space-y-4">
+      {/* Main Internship Mentorship Workspace: Professional Left Sidebar + Active Module Content */}
+      <div className="grid grid-cols-1 lg:grid-cols-[270px_1fr] gap-6 items-start">
+        {/* Left Sidebar Navigation */}
+        <aside className="space-y-4">
+          <div className="rounded-3xl border border-border/80 bg-card p-4 shadow-sm space-y-4 sticky top-6">
+            <div className="flex items-center justify-between border-b border-border/60 pb-3">
+              <div>
+                <h3 className="font-display text-xs font-black uppercase tracking-wider text-foreground">
+                  Internship Hub
+                </h3>
+                <p className="text-[10px] text-muted-foreground font-semibold">Industry & Academic Guide</p>
+              </div>
+              <span className="flex size-2 rounded-full bg-emerald-500 animate-pulse" title="Supabase Live" />
+            </div>
+
+            {/* Quick Filter Info */}
+            <nav className="space-y-1 text-xs">
+              <p className="px-2 text-[9px] font-black uppercase tracking-widest text-muted-foreground/80 mb-1">
+                Mentorship Scope
+              </p>
+
+              <div className="flex w-full items-center justify-between rounded-xl bg-[#1A3C6E] text-white px-3 py-2 text-xs font-bold shadow-md shadow-[#1A3C6E]/20">
+                <span className="flex items-center gap-2">
+                  <Briefcase className="size-4 text-[#F2A93B]" />
+                  <span>Assigned Interns</span>
+                </span>
+                <span className="rounded-md bg-white/20 px-1.5 py-0.5 text-[9px] font-black text-white">
+                  {assignments.length}
+                </span>
+              </div>
+            </nav>
+
+            {/* Active Mentor Info Card */}
+            <div className="mt-auto space-y-2 rounded-2xl border border-border/60 bg-muted/40 p-3">
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="text-muted-foreground font-bold">Total Assigned</span>
+                <span className="font-display font-black text-[#1A3C6E] dark:text-[#F2A93B]">{assignments.length}</span>
+              </div>
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="text-muted-foreground font-bold">Active Cohort</span>
+                <span className="font-mono text-[10px] font-bold text-emerald-600">2025-2026</span>
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        {/* Right Active Module Area */}
+        <div className="min-w-0 space-y-6">
+          {/* Dynamic Master-Data Filter Bar */}
+          <div className="rounded-3xl border border-border/80 bg-card/60 p-5 shadow-xl space-y-4">
         <div className="flex items-center gap-2">
           <Filter className="size-4 text-brand" />
           <h3 className="font-display text-sm font-bold text-foreground">
@@ -293,6 +341,8 @@ export function InternshipMentorDashboard({ state }: InternshipMentorDashboardPr
             </table>
           </div>
         )}
+      </div>
+        </div>
       </div>
 
       {/* Full 360 Student History Modal */}

@@ -373,154 +373,296 @@ export function AdminDashboard({ state, onOpenGateModal }: AdminDashboardProps) 
       </div>
 
 
-      {/* Tabs */}
-      <div className="flex flex-wrap items-center gap-1.5 rounded-2xl border border-border/70 bg-card/60 p-1 backdrop-blur-xl">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setAdminTab("overview")}
-          className={cn(
-            "rounded-xl text-xs font-bold",
-            adminTab === "overview"
-              ? "bg-[#1A3C6E] text-white"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          <BarChart3 className="mr-1.5 size-3.5" /> Analytics Overview
-        </Button>
+      {/* Main Governance Workspace: Professional Left Sidebar + Active Module Content */}
+      <div className="grid grid-cols-1 lg:grid-cols-[270px_1fr] gap-6 items-start">
+        {/* Left Sidebar Navigation */}
+        <aside className="space-y-4">
+          {/* Mobile Module Selector (< lg) */}
+          <div className="lg:hidden rounded-2xl border border-border/80 bg-card p-3 shadow-sm">
+            <label className="block text-[10px] font-black uppercase tracking-wider text-muted-foreground mb-1.5">
+              Select Administration Module
+            </label>
+            <select
+              value={adminTab}
+              onChange={(e) => setAdminTab(e.target.value as any)}
+              className="w-full h-10 rounded-xl border border-border/80 bg-background px-3 text-xs font-bold text-foreground focus:ring-2 focus:ring-[#1A3C6E]"
+            >
+              <optgroup label="Core & Analytics">
+                <option value="overview">📊 Analytics Overview</option>
+                <option value="events">📅 Events & Live Sessions ({state.events.length})</option>
+                <option value="roster">📋 Event-by-Event Roster</option>
+              </optgroup>
+              <optgroup label="Identity & Security">
+                <option value="students">🎓 Student Identity Registry ({(state.newRegisteredStudents || []).length})</option>
+                <option value="security">🛡️ Visitor & Vehicle Security ({activeVisitors.length})</option>
+                <option value="alerts">⚠️ Attendance Flags ({flaggedStudents.length})</option>
+              </optgroup>
+              <optgroup label="Governance & Internships">
+                <option value="approvals">📑 Approvals Queue ({pendingApprovals.length})</option>
+                <option value="audit">⏱️ Immutable Audit Log</option>
+                <option value="internships">💼 Internships Governance ({(state.internshipApplications || []).length})</option>
+              </optgroup>
+            </select>
+          </div>
 
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => {
-            setAdminTab("events");
-            campusStore.loadFromSupabase();
-          }}
-          className={cn(
-            "rounded-xl text-xs font-bold",
-            adminTab === "events"
-              ? "bg-[#1A3C6E] text-white"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          <Calendar className="mr-1.5 size-3.5 text-[#F2A93B]" />
-          Events & Live Sessions ({state.events.length})
-        </Button>
+          {/* Desktop Left Sidebar Card (lg+) */}
+          <div className="hidden lg:flex flex-col rounded-3xl border border-border/80 bg-card p-4 shadow-sm space-y-4 sticky top-6">
+            <div className="flex items-center justify-between border-b border-border/60 pb-3">
+              <div>
+                <h3 className="font-display text-xs font-black uppercase tracking-wider text-foreground">
+                  Admin Governance
+                </h3>
+                <p className="text-[10px] text-muted-foreground font-semibold">9 Core Governance Modules</p>
+              </div>
+              <span className="flex size-2 rounded-full bg-emerald-500 animate-pulse" title="Supabase Live" />
+            </div>
 
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => {
-            setAdminTab("students");
-            campusStore.loadFromSupabase();
-          }}
-          className={cn(
-            "rounded-xl text-xs font-bold",
-            adminTab === "students"
-              ? "bg-[#1A3C6E] text-white"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          <GraduationCap className="mr-1.5 size-3.5 text-[#F2A93B]" />
-          Student Identity Registry ({(state.newRegisteredStudents || []).length})
-        </Button>
+            {/* Quick Actions */}
+            <div className="flex flex-col gap-2">
+              <Button
+                onClick={() => setShowCreateModal(true)}
+                className="h-10 w-full justify-start gap-2 rounded-2xl bg-gradient-to-r from-[#1A3C6E] to-[#0E2342] px-3 font-display text-xs font-black text-white shadow-md hover:opacity-95"
+              >
+                <Plus className="size-4 text-[#F2A93B]" />
+                <span>Generate Event</span>
+              </Button>
 
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => {
-            setAdminTab("roster");
-            campusStore.loadFromSupabase();
-          }}
-          className={cn(
-            "rounded-xl text-xs font-bold",
-            adminTab === "roster"
-              ? "bg-[#1A3C6E] text-white"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          <UserCheck className="mr-1.5 size-3.5 text-[#F2A93B]" />
-          Event-by-Event Roster
-        </Button>
+              {onOpenGateModal && (
+                <Button
+                  onClick={onOpenGateModal}
+                  variant="outline"
+                  className="h-9 w-full justify-start gap-2 rounded-2xl border-emerald-500/30 bg-emerald-500/5 px-3 font-display text-xs font-bold text-emerald-700 hover:bg-emerald-500/10 dark:text-emerald-400"
+                >
+                  <ShieldCheck className="size-4 text-emerald-500" />
+                  <span>Multi-Factor Gate</span>
+                </Button>
+              )}
+            </div>
 
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setAdminTab("security")}
-          className={cn(
-            "rounded-xl text-xs font-bold",
-            adminTab === "security"
-              ? "bg-[#1A3C6E] text-white"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          <ShieldCheck className="mr-1.5 size-3.5 text-emerald-500" />
-          Visitor & Vehicle Gate Security ({activeVisitors.length})
-        </Button>
+            {/* Navigation Modules */}
+            <nav className="space-y-4 text-xs">
+              {/* Group 1: Core & Analytics */}
+              <div className="space-y-1">
+                <p className="px-2 text-[9px] font-black uppercase tracking-widest text-muted-foreground/80">
+                  Core & Analytics
+                </p>
 
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setAdminTab("approvals")}
-          className={cn(
-            "rounded-xl text-xs font-bold",
-            adminTab === "approvals"
-              ? "bg-[#1A3C6E] text-white"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          <FileText className="mr-1.5 size-3.5" />
-          Approvals Queue ({pendingApprovals.length})
-        </Button>
+                <button
+                  type="button"
+                  onClick={() => setAdminTab("overview")}
+                  className={cn(
+                    "flex w-full items-center justify-between rounded-xl px-3 py-2 text-xs font-bold transition-all text-left",
+                    adminTab === "overview"
+                      ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
+                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                  )}
+                >
+                  <span className="flex items-center gap-2">
+                    <BarChart3 className={cn("size-4", adminTab === "overview" ? "text-[#F2A93B]" : "text-slate-400")} />
+                    <span>Analytics Overview</span>
+                  </span>
+                  {adminTab === "overview" && (
+                    <span className="size-1.5 rounded-full bg-[#F2A93B]" />
+                  )}
+                </button>
 
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setAdminTab("alerts")}
-          className={cn(
-            "rounded-xl text-xs font-bold",
-            adminTab === "alerts"
-              ? "bg-[#1A3C6E] text-white"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          <ShieldAlert className="mr-1.5 size-3.5 text-amber-500" />
-          Attendance Flags ({flaggedStudents.length})
-        </Button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAdminTab("events");
+                    campusStore.loadFromSupabase();
+                  }}
+                  className={cn(
+                    "flex w-full items-center justify-between rounded-xl px-3 py-2 text-xs font-bold transition-all text-left",
+                    adminTab === "events"
+                      ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
+                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                  )}
+                >
+                  <span className="flex items-center gap-2">
+                    <Calendar className={cn("size-4", adminTab === "events" ? "text-[#F2A93B]" : "text-slate-400")} />
+                    <span>Events & Live Sessions</span>
+                  </span>
+                  <span className={cn(
+                    "rounded-md px-1.5 py-0.5 text-[9px] font-black",
+                    adminTab === "events" ? "bg-white/20 text-white" : "bg-muted text-muted-foreground"
+                  )}>
+                    {state.events.length}
+                  </span>
+                </button>
 
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setAdminTab("audit")}
-          className={cn(
-            "rounded-xl text-xs font-bold",
-            adminTab === "audit"
-              ? "bg-[#1A3C6E] text-white"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          <History className="mr-1.5 size-3.5" />
-          Immutable Audit Log
-        </Button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAdminTab("roster");
+                    campusStore.loadFromSupabase();
+                  }}
+                  className={cn(
+                    "flex w-full items-center justify-between rounded-xl px-3 py-2 text-xs font-bold transition-all text-left",
+                    adminTab === "roster"
+                      ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
+                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                  )}
+                >
+                  <span className="flex items-center gap-2">
+                    <UserCheck className={cn("size-4", adminTab === "roster" ? "text-[#F2A93B]" : "text-slate-400")} />
+                    <span>Event-by-Event Roster</span>
+                  </span>
+                  {adminTab === "roster" && (
+                    <span className="size-1.5 rounded-full bg-[#F2A93B]" />
+                  )}
+                </button>
+              </div>
 
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => {
-            setAdminTab("internships");
-            campusStore.loadFromSupabase();
-          }}
-          className={cn(
-            "rounded-xl text-xs font-bold",
-            adminTab === "internships"
-              ? "bg-[#1A3C6E] text-white"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          <Briefcase className="mr-1.5 size-3.5 text-[#F2A93B]" />
-          Internships Governance ({(state.internshipApplications || []).length})
-        </Button>
-      </div>
+              {/* Group 2: Identity & Security */}
+              <div className="space-y-1">
+                <p className="px-2 text-[9px] font-black uppercase tracking-widest text-muted-foreground/80">
+                  Identity & Security
+                </p>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAdminTab("students");
+                    campusStore.loadFromSupabase();
+                  }}
+                  className={cn(
+                    "flex w-full items-center justify-between rounded-xl px-3 py-2 text-xs font-bold transition-all text-left",
+                    adminTab === "students"
+                      ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
+                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                  )}
+                >
+                  <span className="flex items-center gap-2">
+                    <GraduationCap className={cn("size-4", adminTab === "students" ? "text-[#F2A93B]" : "text-slate-400")} />
+                    <span>Student Registry</span>
+                  </span>
+                  <span className={cn(
+                    "rounded-md px-1.5 py-0.5 text-[9px] font-black",
+                    adminTab === "students" ? "bg-white/20 text-white" : "bg-muted text-muted-foreground"
+                  )}>
+                    {(state.newRegisteredStudents || []).length}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setAdminTab("security")}
+                  className={cn(
+                    "flex w-full items-center justify-between rounded-xl px-3 py-2 text-xs font-bold transition-all text-left",
+                    adminTab === "security"
+                      ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
+                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                  )}
+                >
+                  <span className="flex items-center gap-2">
+                    <ShieldCheck className={cn("size-4", adminTab === "security" ? "text-emerald-400" : "text-slate-400")} />
+                    <span>Gate & Security</span>
+                  </span>
+                  <span className={cn(
+                    "rounded-md px-1.5 py-0.5 text-[9px] font-black",
+                    adminTab === "security" ? "bg-white/20 text-white" : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                  )}>
+                    {activeVisitors.length}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setAdminTab("alerts")}
+                  className={cn(
+                    "flex w-full items-center justify-between rounded-xl px-3 py-2 text-xs font-bold transition-all text-left",
+                    adminTab === "alerts"
+                      ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
+                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                  )}
+                >
+                  <span className="flex items-center gap-2">
+                    <ShieldAlert className={cn("size-4", adminTab === "alerts" ? "text-amber-400" : "text-slate-400")} />
+                    <span>Attendance Flags</span>
+                  </span>
+                  {flaggedStudents.length > 0 && (
+                    <span className={cn(
+                      "rounded-md px-1.5 py-0.5 text-[9px] font-black",
+                      adminTab === "alerts" ? "bg-white/20 text-white" : "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                    )}>
+                      {flaggedStudents.length}
+                    </span>
+                  )}
+                </button>
+              </div>
+
+              {/* Group 3: Governance & Internships */}
+              <div className="space-y-1">
+                <p className="px-2 text-[9px] font-black uppercase tracking-widest text-muted-foreground/80">
+                  Governance & Career
+                </p>
+
+                <button
+                  type="button"
+                  onClick={() => setAdminTab("approvals")}
+                  className={cn(
+                    "flex w-full items-center justify-between rounded-xl px-3 py-2 text-xs font-bold transition-all text-left",
+                    adminTab === "approvals"
+                      ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
+                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                  )}
+                >
+                  <span className="flex items-center gap-2">
+                    <FileText className={cn("size-4", adminTab === "approvals" ? "text-[#F2A93B]" : "text-slate-400")} />
+                    <span>Approvals Queue</span>
+                  </span>
+                  {pendingApprovals.length > 0 && (
+                    <span className={cn(
+                      "rounded-md px-1.5 py-0.5 text-[9px] font-black",
+                      adminTab === "approvals" ? "bg-white/20 text-white" : "bg-amber-500/20 text-amber-700 dark:text-amber-300"
+                    )}>
+                      {pendingApprovals.length}
+                    </span>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setAdminTab("audit")}
+                  className={cn(
+                    "flex w-full items-center justify-between rounded-xl px-3 py-2 text-xs font-bold transition-all text-left",
+                    adminTab === "audit"
+                      ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
+                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                  )}
+                >
+                  <span className="flex items-center gap-2">
+                    <History className={cn("size-4", adminTab === "audit" ? "text-[#F2A93B]" : "text-slate-400")} />
+                    <span>Immutable Audit Log</span>
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAdminTab("internships");
+                    campusStore.loadFromSupabase();
+                  }}
+                  className={cn(
+                    "flex w-full items-center justify-between rounded-xl px-3 py-2 text-xs font-bold transition-all text-left",
+                    adminTab === "internships"
+                      ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
+                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                  )}
+                >
+                  <span className="flex items-center gap-2">
+                    <Briefcase className={cn("size-4", adminTab === "internships" ? "text-[#F2A93B]" : "text-slate-400")} />
+                    <span>Internships Governance</span>
+                  </span>
+                </button>
+              </div>
+            </nav>
+          </div>
+        </aside>
+
+        {/* Right Active Module Area */}
+        <div className="min-w-0 space-y-6">
 
       {/* University Events & Session Controls View */}
       {adminTab === "events" && (
@@ -1179,6 +1321,8 @@ export function AdminDashboard({ state, onOpenGateModal }: AdminDashboardProps) 
       {adminTab === "internships" && (
         <InternshipManagementHub state={state} />
       )}
+        </div>
+      </div>
 
       {/* Create Event Modal */}
       {showCreateModal && (

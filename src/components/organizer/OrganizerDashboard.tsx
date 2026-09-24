@@ -98,66 +98,142 @@ export function OrganizerDashboard({ state }: OrganizerDashboardProps) {
         </div>
       </div>
 
-      {/* Main Tab Switcher */}
-      <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-border/70 bg-card/60 p-1.5 backdrop-blur-xl">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setActiveTab("events")}
-          className={cn(
-            "rounded-xl text-xs font-bold",
-            activeTab === "events"
-              ? "bg-[#1A3C6E] text-white shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          <Calendar className="mr-1.5 size-3.5" />
-          Events & Live QR Controls
-        </Button>
+      {/* Main Workspace: Professional Left Sidebar + Active Module Content */}
+      <div className="grid grid-cols-1 lg:grid-cols-[270px_1fr] gap-6 items-start">
+        {/* Left Sidebar Navigation */}
+        <aside className="space-y-4">
+          {/* Mobile Module Selector (< lg) */}
+          <div className="lg:hidden rounded-2xl border border-border/80 bg-card p-3 shadow-sm">
+            <label className="block text-[10px] font-black uppercase tracking-wider text-muted-foreground mb-1.5">
+              Select Coordinator Module
+            </label>
+            <select
+              value={activeTab}
+              onChange={(e) => setActiveTab(e.target.value as any)}
+              className="w-full h-10 rounded-xl border border-border/80 bg-background px-3 text-xs font-bold text-foreground focus:ring-2 focus:ring-[#1A3C6E]"
+            >
+              <option value="events">📅 Events & Live Sessions ({myEvents.length})</option>
+              <option value="attendance_roster">📋 Attendance Roster</option>
+              <option value="students">🎓 Student Registry</option>
+            </select>
+          </div>
 
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setActiveTab("attendance_roster")}
-          className={cn(
-            "rounded-xl text-xs font-bold",
-            activeTab === "attendance_roster"
-              ? "bg-[#1A3C6E] text-white shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          <UserCheck className="mr-1.5 size-3.5 text-[#F2A93B]" />
-          Event-by-Event Attendance Roster
-        </Button>
+          {/* Desktop Left Sidebar Card (lg+) */}
+          <div className="hidden lg:flex flex-col rounded-3xl border border-border/80 bg-card p-4 shadow-sm space-y-4 sticky top-6">
+            <div className="flex items-center justify-between border-b border-border/60 pb-3">
+              <div>
+                <h3 className="font-display text-xs font-black uppercase tracking-wider text-foreground">
+                  Coordinator Hub
+                </h3>
+                <p className="text-[10px] text-muted-foreground font-semibold">Faculty & TPC Operations</p>
+              </div>
+              <span className="flex size-2 rounded-full bg-emerald-500 animate-pulse" title="Supabase Live" />
+            </div>
 
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setActiveTab("students")}
-          className={cn(
-            "rounded-xl text-xs font-bold",
-            activeTab === "students"
-              ? "bg-[#1A3C6E] text-white shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          <GraduationCap className="mr-1.5 size-3.5 text-blue-400" />
-          Student Registry & Mobile Updates
-        </Button>
-      </div>
+            {/* Quick Create Event Action Button */}
+            <Button
+              onClick={() => setShowCreateModal(true)}
+              className="h-10 w-full justify-start gap-2 rounded-2xl bg-gradient-to-r from-[#1A3C6E] to-[#0E2342] px-3 font-display text-xs font-black text-white shadow-md hover:opacity-95"
+            >
+              <Plus className="size-4 text-[#F2A93B]" />
+              <span>Create New Event</span>
+            </Button>
 
-      {activeTab === "students" ? (
-        <StudentRegistryViewer state={state} />
-      ) : activeTab === "attendance_roster" ? (
-        <EventAttendanceViewer
-          state={state}
-          selectedEventId={selectedRosterEventId}
-          onSelectEventId={(id) => setSelectedRosterEventId(id)}
-          titlePrefix="Faculty & TPC Coordinator Attendance Governance"
-        />
-      ) : (
-        <>
-          {/* Metrics Row */}
+            {/* Navigation Modules */}
+            <nav className="space-y-1 text-xs">
+              <p className="px-2 text-[9px] font-black uppercase tracking-widest text-muted-foreground/80 mb-1">
+                Event Operations
+              </p>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab("events")}
+                className={cn(
+                  "flex w-full items-center justify-between rounded-xl px-3 py-2 text-xs font-bold transition-all text-left",
+                  activeTab === "events"
+                    ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
+                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                )}
+              >
+                <span className="flex items-center gap-2">
+                  <Calendar className={cn("size-4", activeTab === "events" ? "text-[#F2A93B]" : "text-slate-400")} />
+                  <span>Events & Live QR</span>
+                </span>
+                <span className={cn(
+                  "rounded-md px-1.5 py-0.5 text-[9px] font-black",
+                  activeTab === "events" ? "bg-white/20 text-white" : "bg-muted text-muted-foreground"
+                )}>
+                  {myEvents.length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab("attendance_roster")}
+                className={cn(
+                  "flex w-full items-center justify-between rounded-xl px-3 py-2 text-xs font-bold transition-all text-left",
+                  activeTab === "attendance_roster"
+                    ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
+                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                )}
+              >
+                <span className="flex items-center gap-2">
+                  <UserCheck className={cn("size-4", activeTab === "attendance_roster" ? "text-[#F2A93B]" : "text-slate-400")} />
+                  <span>Attendance Roster</span>
+                </span>
+                {activeTab === "attendance_roster" && (
+                  <span className="size-1.5 rounded-full bg-[#F2A93B]" />
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab("students")}
+                className={cn(
+                  "flex w-full items-center justify-between rounded-xl px-3 py-2 text-xs font-bold transition-all text-left",
+                  activeTab === "students"
+                    ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
+                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                )}
+              >
+                <span className="flex items-center gap-2">
+                  <GraduationCap className={cn("size-4", activeTab === "students" ? "text-blue-400" : "text-slate-400")} />
+                  <span>Student Registry</span>
+                </span>
+                {activeTab === "students" && (
+                  <span className="size-1.5 rounded-full bg-[#F2A93B]" />
+                )}
+              </button>
+            </nav>
+
+            {/* Quick Metrics Summary in Sidebar */}
+            <div className="mt-auto space-y-2 rounded-2xl border border-border/60 bg-muted/40 p-3">
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="text-muted-foreground font-bold">Total Registrations</span>
+                <span className="font-display font-black text-[#1A3C6E] dark:text-[#F2A93B]">{totalRegistrations}</span>
+              </div>
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="text-muted-foreground font-bold">Live Sessions</span>
+                <span className="font-display font-black text-emerald-600">{liveEventsCount}</span>
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        {/* Right Active Module Area */}
+        <div className="min-w-0 space-y-6">
+          {activeTab === "students" ? (
+            <StudentRegistryViewer state={state} />
+          ) : activeTab === "attendance_roster" ? (
+            <EventAttendanceViewer
+              state={state}
+              selectedEventId={selectedRosterEventId}
+              onSelectEventId={(id) => setSelectedRosterEventId(id)}
+              titlePrefix="Faculty & TPC Coordinator Attendance Governance"
+            />
+          ) : (
+            <>
+              {/* Metrics Row */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div className="rounded-3xl border border-border/80 bg-card/60 p-5 shadow-lg shadow-brand/5 backdrop-blur-2xl">
               <div className="flex items-center justify-between">
@@ -369,6 +445,8 @@ export function OrganizerDashboard({ state }: OrganizerDashboardProps) {
           </div>
         </>
       )}
+        </div>
+      </div>
 
       {showCreateModal && (
         <CreateEventModal

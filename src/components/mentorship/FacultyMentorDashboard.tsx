@@ -211,65 +211,158 @@ export function FacultyMentorDashboard({ state }: FacultyMentorDashboardProps) {
         </div>
       </div>
 
-      {/* Navigation Tabs */}
-      <div className="flex items-center justify-between border-b border-border/60 pb-3 gap-2 overflow-x-auto text-xs">
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setActiveTab("students")}
-            className={cn(
-              "rounded-2xl text-xs font-bold px-4 h-9",
-              activeTab === "students" ? "bg-[#1A3C6E] text-white shadow-md" : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            <Users className="mr-1.5 size-3.5" /> My Assigned Students ({assignments.length})
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setActiveTab("tasks")}
-            className={cn(
-              "rounded-2xl text-xs font-bold px-4 h-9",
-              activeTab === "tasks" ? "bg-[#1A3C6E] text-white shadow-md" : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            <Award className="mr-1.5 size-3.5" /> Mentorship Tasks ({tasks.length})
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setActiveTab("messages")}
-            className={cn(
-              "rounded-2xl text-xs font-bold px-4 h-9",
-              activeTab === "messages" ? "bg-[#1A3C6E] text-white shadow-md" : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            <MessageSquare className="mr-1.5 size-3.5" /> Communication ({messages.length})
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setActiveTab("alerts")}
-            className={cn(
-              "rounded-2xl text-xs font-bold px-4 h-9",
-              activeTab === "alerts" ? "bg-[#1A3C6E] text-white shadow-md" : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            <ShieldAlert className="mr-1.5 size-3.5 text-amber-500" /> Attendance Alerts
-          </Button>
-        </div>
+      {/* Main Mentorship Workspace: Professional Left Sidebar + Active Module Content */}
+      <div className="grid grid-cols-1 lg:grid-cols-[270px_1fr] gap-6 items-start">
+        {/* Left Sidebar Navigation */}
+        <aside className="space-y-4">
+          {/* Mobile Module Selector (< lg) */}
+          <div className="lg:hidden rounded-2xl border border-border/80 bg-card p-3 shadow-sm">
+            <label className="block text-[10px] font-black uppercase tracking-wider text-muted-foreground mb-1.5">
+              Select Mentorship Module
+            </label>
+            <select
+              value={activeTab}
+              onChange={(e) => setActiveTab(e.target.value as any)}
+              className="w-full h-10 rounded-xl border border-border/80 bg-background px-3 text-xs font-bold text-foreground focus:ring-2 focus:ring-[#1A3C6E]"
+            >
+              <option value="students">👥 My Assigned Students ({assignments.length})</option>
+              <option value="tasks">📋 Mentorship Tasks ({tasks.length})</option>
+              <option value="messages">💬 Communication & Messages ({messages.length})</option>
+              <option value="alerts">⚠️ Attendance Alerts</option>
+            </select>
+          </div>
 
-        {activeTab === "tasks" && (
-          <Button
-            size="sm"
-            onClick={() => setShowNewTaskModal(true)}
-            className="rounded-2xl bg-[#1A3C6E] text-white text-xs font-bold h-9 gap-1.5 shadow-md shrink-0"
-          >
-            <Plus className="size-3.5" /> Assign New Task
-          </Button>
-        )}
-      </div>
+          {/* Desktop Left Sidebar Card (lg+) */}
+          <div className="hidden lg:flex flex-col rounded-3xl border border-border/80 bg-card p-4 shadow-sm space-y-4 sticky top-6">
+            <div className="flex items-center justify-between border-b border-border/60 pb-3">
+              <div>
+                <h3 className="font-display text-xs font-black uppercase tracking-wider text-foreground">
+                  Mentorship Hub
+                </h3>
+                <p className="text-[10px] text-muted-foreground font-semibold">Faculty Mentor Controls</p>
+              </div>
+              <span className="flex size-2 rounded-full bg-emerald-500 animate-pulse" title="Supabase Live" />
+            </div>
+
+            {/* Quick Action: Assign Task */}
+            <Button
+              onClick={() => setShowNewTaskModal(true)}
+              className="h-10 w-full justify-start gap-2 rounded-2xl bg-gradient-to-r from-[#1A3C6E] to-[#0E2342] px-3 font-display text-xs font-black text-white shadow-md hover:opacity-95"
+            >
+              <Plus className="size-4 text-[#F2A93B]" />
+              <span>Assign New Task</span>
+            </Button>
+
+            {/* Navigation Modules */}
+            <nav className="space-y-1 text-xs">
+              <p className="px-2 text-[9px] font-black uppercase tracking-widest text-muted-foreground/80 mb-1">
+                Mentorship Workflow
+              </p>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab("students")}
+                className={cn(
+                  "flex w-full items-center justify-between rounded-xl px-3 py-2 text-xs font-bold transition-all text-left",
+                  activeTab === "students"
+                    ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
+                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                )}
+              >
+                <span className="flex items-center gap-2">
+                  <Users className={cn("size-4", activeTab === "students" ? "text-[#F2A93B]" : "text-slate-400")} />
+                  <span>My Assigned Students</span>
+                </span>
+                <span className={cn(
+                  "rounded-md px-1.5 py-0.5 text-[9px] font-black",
+                  activeTab === "students" ? "bg-white/20 text-white" : "bg-muted text-muted-foreground"
+                )}>
+                  {assignments.length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab("tasks")}
+                className={cn(
+                  "flex w-full items-center justify-between rounded-xl px-3 py-2 text-xs font-bold transition-all text-left",
+                  activeTab === "tasks"
+                    ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
+                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                )}
+              >
+                <span className="flex items-center gap-2">
+                  <Award className={cn("size-4", activeTab === "tasks" ? "text-[#F2A93B]" : "text-slate-400")} />
+                  <span>Mentorship Tasks</span>
+                </span>
+                <span className={cn(
+                  "rounded-md px-1.5 py-0.5 text-[9px] font-black",
+                  activeTab === "tasks" ? "bg-white/20 text-white" : "bg-muted text-muted-foreground"
+                )}>
+                  {tasks.length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab("messages")}
+                className={cn(
+                  "flex w-full items-center justify-between rounded-xl px-3 py-2 text-xs font-bold transition-all text-left",
+                  activeTab === "messages"
+                    ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
+                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                )}
+              >
+                <span className="flex items-center gap-2">
+                  <MessageSquare className={cn("size-4", activeTab === "messages" ? "text-emerald-400" : "text-slate-400")} />
+                  <span>Communication</span>
+                </span>
+                <span className={cn(
+                  "rounded-md px-1.5 py-0.5 text-[9px] font-black",
+                  activeTab === "messages" ? "bg-white/20 text-white" : "bg-muted text-muted-foreground"
+                )}>
+                  {messages.length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab("alerts")}
+                className={cn(
+                  "flex w-full items-center justify-between rounded-xl px-3 py-2 text-xs font-bold transition-all text-left",
+                  activeTab === "alerts"
+                    ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
+                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                )}
+              >
+                <span className="flex items-center gap-2">
+                  <ShieldAlert className={cn("size-4", activeTab === "alerts" ? "text-amber-400" : "text-slate-400")} />
+                  <span>Attendance Alerts</span>
+                </span>
+                {activeTab === "alerts" && (
+                  <span className="size-1.5 rounded-full bg-[#F2A93B]" />
+                )}
+              </button>
+            </nav>
+
+            {/* Sidebar Stats Summary */}
+            <div className="mt-auto space-y-2 rounded-2xl border border-border/60 bg-muted/40 p-3">
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="text-muted-foreground font-bold">Assigned Mentees</span>
+                <span className="font-display font-black text-[#1A3C6E] dark:text-[#F2A93B]">{assignments.length}</span>
+              </div>
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="text-muted-foreground font-bold">Pending Tasks</span>
+                <span className="font-display font-black text-amber-600">
+                  {tasks.filter((t) => t.status !== "Completed").length}
+                </span>
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        {/* Right Active Module Area */}
+        <div className="min-w-0 space-y-6">
 
       {/* Tab 1: My Students */}
       {activeTab === "students" && (
@@ -517,6 +610,8 @@ export function FacultyMentorDashboard({ state }: FacultyMentorDashboardProps) {
           </div>
         </div>
       )}
+        </div>
+      </div>
 
       {/* New Task Modal */}
       {showNewTaskModal && (
