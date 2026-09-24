@@ -722,8 +722,12 @@ export const apiClient = {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
-      }).catch(() => {});
-    } catch (e) {}
+      }).catch((fetchErr) => {
+        console.error("[apiClient] Failed to dispatch mentorship message to server:", fetchErr);
+      });
+    } catch (e) {
+      console.error("[apiClient] Error queuing mentorship message:", e);
+    }
 
     return { success: true, messageRecord: newMsg, message: "Message dispatched successfully!" };
   },
@@ -801,8 +805,12 @@ export const apiClient = {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
-      }).catch(() => {});
-    } catch (e) {}
+      }).catch((fetchErr) => {
+        console.error("[apiClient] Failed to dispatch mentorship task to server:", fetchErr);
+      });
+    } catch (e) {
+      console.error("[apiClient] Error saving mentorship task:", e);
+    }
 
     return { success: true, task: newTask, message: "Mentorship task assigned successfully!" };
   },
@@ -836,8 +844,12 @@ export const apiClient = {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updates),
-      }).catch(() => {});
-    } catch (e) {}
+      }).catch((fetchErr) => {
+        console.error(`[apiClient] Failed to sync task update for ${taskId}:`, fetchErr);
+      });
+    } catch (e) {
+      console.error(`[apiClient] Error updating task ${taskId}:`, e);
+    }
 
     return { success: true, message: "Task updated successfully!" };
   },
@@ -1850,7 +1862,9 @@ function saveStoredFacultyAssignments(assignments: any[]) {
   if (typeof window === "undefined") return;
   try {
     localStorage.setItem(FA_KEY, JSON.stringify(assignments));
-  } catch (e) {}
+  } catch (e) {
+    console.warn("[apiClient] Failed to persist faculty assignments to cache:", e);
+  }
 }
 
 function getStoredMentorshipTasks(): any[] {
@@ -1864,6 +1878,7 @@ function getStoredMentorshipTasks(): any[] {
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_SEEDED_TASKS;
   } catch (e) {
+    console.warn("[apiClient] Error reading mentorship tasks cache:", e);
     return DEFAULT_SEEDED_TASKS;
   }
 }
@@ -1872,7 +1887,9 @@ function saveStoredMentorshipTasks(tasks: any[]) {
   if (typeof window === "undefined") return;
   try {
     localStorage.setItem(MT_KEY, JSON.stringify(tasks));
-  } catch (e) {}
+  } catch (e) {
+    console.warn("[apiClient] Failed to persist mentorship tasks to cache:", e);
+  }
 }
 
 function getStoredMentorMessages(): any[] {
@@ -1886,6 +1903,7 @@ function getStoredMentorMessages(): any[] {
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_SEEDED_MESSAGES;
   } catch (e) {
+    console.warn("[apiClient] Error reading mentor messages cache:", e);
     return DEFAULT_SEEDED_MESSAGES;
   }
 }
@@ -1894,7 +1912,9 @@ function saveStoredMentorMessages(msgs: any[]) {
   if (typeof window === "undefined") return;
   try {
     localStorage.setItem(MM_KEY, JSON.stringify(msgs));
-  } catch (e) {}
+  } catch (e) {
+    console.warn("[apiClient] Failed to persist mentor messages to cache:", e);
+  }
 }
 
 function getStoredStudents(): any[] {
@@ -1907,7 +1927,9 @@ function getStoredStudents(): any[] {
         return parsed.newRegisteredStudents;
       }
     }
-  } catch (e) {}
+  } catch (e) {
+    console.warn("[apiClient] Error reading primary student cache:", e);
+  }
 
   try {
     const raw = localStorage.getItem(STU_KEY);
@@ -1917,7 +1939,9 @@ function getStoredStudents(): any[] {
         return parsed.newRegisteredStudents;
       }
     }
-  } catch (e) {}
+  } catch (e) {
+    console.warn("[apiClient] Error reading student registry cache:", e);
+  }
 
   return DEFAULT_SEEDED_STUDENTS;
 }

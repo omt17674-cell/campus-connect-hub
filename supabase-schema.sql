@@ -1,19 +1,104 @@
 -- ==============================================================================
 -- GSFC UNIVERSITY — CAMPUS CONNECT HUB
--- SUPABASE POSTGRESQL PRODUCTION DATABASE SCHEMA
--- Project Reference: llhfumrtotectnbpeabu
+-- CANONICAL PRODUCTION DATABASE SCHEMA & INITIALIZATION SCRIPT
+-- Single Source of Truth for All Portals, Mentorship, Internships & Governance
 -- ==============================================================================
 
--- Enable UUID extension
+-- Enable UUID & Cryptographic Extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
--- 1. ACCOUNTS & USERS TABLE
+-- ==============================================================================
+-- 1. MASTER DATA SYSTEM
+-- ==============================================================================
+
+CREATE TABLE IF NOT EXISTS public.academic_years (
+  id TEXT PRIMARY KEY,
+  year_name TEXT UNIQUE NOT NULL,
+  is_current BOOLEAN DEFAULT FALSE,
+  start_date DATE,
+  end_date DATE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.departments (
+  id TEXT PRIMARY KEY,
+  code TEXT UNIQUE NOT NULL,
+  name TEXT NOT NULL,
+  school TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.courses (
+  id TEXT PRIMARY KEY,
+  code TEXT UNIQUE NOT NULL,
+  name TEXT NOT NULL,
+  department_id TEXT,
+  duration_years INT DEFAULT 4,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.branches (
+  id TEXT PRIMARY KEY,
+  code TEXT UNIQUE NOT NULL,
+  name TEXT NOT NULL,
+  department_id TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.semesters (
+  id TEXT PRIMARY KEY,
+  semester_number INT NOT NULL,
+  academic_year_id TEXT,
+  department_id TEXT,
+  field TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.fields (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  department_id TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.companies (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  industry TEXT NOT NULL,
+  contact_person TEXT,
+  contact_email TEXT,
+  phone TEXT,
+  location TEXT,
+  website TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ==============================================================================
+-- 2. ACCOUNTS & USER PROFILES TABLE (ALL ROLES)
+-- ==============================================================================
+
 CREATE TABLE IF NOT EXISTS public.accounts (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
-  roll_no TEXT UNIQUE NOT NULL,
+  roll_no TEXT,
   email TEXT UNIQUE NOT NULL,
-  role TEXT NOT NULL DEFAULT 'student' CHECK (role IN ('student', 'faculty', 'organizer', 'tpc', 'admin', 'dean', 'security', 'super_admin')),
+  password_hash TEXT,
+  role TEXT NOT NULL DEFAULT 'student' CHECK (
+    role IN (
+      'student',
+      'faculty',
+      'faculty_mentor',
+      'internship_mentor',
+      'organizer',
+      'tpc',
+      'admin',
+      'dean',
+      'management',
+      'security',
+      'super_admin'
+    )
+  ),
   department TEXT NOT NULL,
   semester INT DEFAULT 4,
   year INT DEFAULT 2,
@@ -21,14 +106,17 @@ CREATE TABLE IF NOT EXISTS public.accounts (
   points INT DEFAULT 100,
   streak_days INT DEFAULT 1,
   volunteer_hours INT DEFAULT 0,
-  avatar TEXT,
+  avatar TEXT DEFAULT 'ST',
   mobile_number TEXT,
   is_verified BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 2. NEW REGISTERED STUDENTS TABLE (LOCKED IDENTITY: NAME & ROLL NUMBER CANNOT BE ALTERED)
+-- ==============================================================================
+-- 3. NEW REGISTERED STUDENTS (LOCKED IDENTITY)
+-- ==============================================================================
+
 CREATE TABLE IF NOT EXISTS public.new_registered_students (
   id TEXT PRIMARY KEY,
   full_name TEXT NOT NULL,
@@ -50,20 +138,20 @@ CREATE TABLE IF NOT EXISTS public.new_registered_students (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- STRICT DATABASE TRIGGER: PREVENTS ANY MODIFICATION TO FULL NAME OR ROLL NUMBER
+-- Student Identity Lock Trigger
 CREATE OR REPLACE FUNCTION lock_student_name_and_number()
 RETURNS TRIGGER AS $$
 BEGIN
-  -- Check if full_name was modified
-  IF NEW.full_name <> OLD.full_name THEN
-    RAISE EXCEPTION 'SECURITY POLICY: Student Full Name is permanently locked and cannot be changed after registration.';
+  IF TG_OP = 'UPDATE' THEN
+    IF OLD.is_locked = TRUE THEN
+      IF NEW.full_name <> OLD.full_name THEN
+        RAISE EXCEPTION 'SECURITY POLICY: Student Full Name is permanently locked and cannot be changed after registration.';
+      END IF;
+      IF NEW.roll_no <> OLD.roll_no THEN
+        RAISE EXCEPTION 'SECURITY POLICY: Student Roll/Enrollment Number is permanently locked and cannot be changed after registration.';
+      END IF;
+    END IF;
   END IF;
-
-  -- Check if roll_no was modified
-  IF NEW.roll_no <> OLD.roll_no THEN
-    RAISE EXCEPTION 'SECURITY POLICY: Student Roll/Enrollment Number is permanently locked and cannot be changed after registration.';
-  END IF;
-
   NEW.updated_at = NOW();
   RETURN NEW;
 END;
@@ -75,7 +163,124 @@ BEFORE UPDATE ON public.new_registered_students
 FOR EACH ROW
 EXECUTE FUNCTION lock_student_name_and_number();
 
--- 3. EVENTS TABLE
+-- ==============================================================================
+-- 4. MENTORSHIP SYSTEM TABLES
+-- ==============================================================================
+
+CREATE TABLE IF NOT EXISTS public.faculty_mentor_assignments (
+  id TEXT PRIMARY KEY,
+  faculty_id TEXT NOT NULL,
+  student_id TEXT NOT NULL,
+  academic_year TEXT NOT NULL,
+  semester INT NOT NULL,
+  department TEXT NOT NULL,
+  field TEXT,
+  assigned_by TEXT NOT NULL,
+  assigned_at TIMESTAMPTZ DEFAULT NOW(),
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'reassigned', 'completed', 'removed')),
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.internship_mentor_assignments (
+  id TEXT PRIMARY KEY,
+  faculty_id TEXT NOT NULL,
+  student_id TEXT NOT NULL,
+  internship_id TEXT,
+  academic_year TEXT NOT NULL,
+  semester INT NOT NULL,
+  department TEXT NOT NULL,
+  field TEXT,
+  assigned_by TEXT NOT NULL,
+  assigned_at TIMESTAMPTZ DEFAULT NOW(),
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'completed', 'removed')),
+  remarks TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.mentor_messages (
+  id TEXT PRIMARY KEY,
+  sender_id TEXT NOT NULL,
+  sender_name TEXT NOT NULL,
+  sender_role TEXT NOT NULL,
+  receiver_id TEXT NOT NULL,
+  student_id TEXT NOT NULL,
+  faculty_id TEXT NOT NULL,
+  subject TEXT NOT NULL,
+  message TEXT NOT NULL,
+  priority TEXT NOT NULL DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high', 'urgent')),
+  is_read BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.mentorship_tasks (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  description TEXT NOT NULL,
+  assigned_date DATE DEFAULT CURRENT_DATE,
+  due_date DATE NOT NULL,
+  priority TEXT NOT NULL DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high', 'urgent')),
+  status TEXT NOT NULL DEFAULT 'Pending' CHECK (status IN ('Pending', 'In Progress', 'Submitted', 'Reviewed', 'Completed')),
+  student_id TEXT NOT NULL,
+  mentor_id TEXT NOT NULL,
+  submission_text TEXT,
+  submission_date TIMESTAMPTZ,
+  feedback TEXT,
+  reviewed_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.mentorship_notes (
+  id TEXT PRIMARY KEY,
+  student_id TEXT NOT NULL,
+  faculty_id TEXT NOT NULL,
+  note_type TEXT NOT NULL DEFAULT 'general' CHECK (note_type IN ('academic', 'behavioral', 'attendance', 'career', 'general')),
+  content TEXT NOT NULL,
+  is_confidential BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.management_audit_logs (
+  id TEXT PRIMARY KEY,
+  action TEXT NOT NULL,
+  actor_id TEXT NOT NULL,
+  actor_name TEXT NOT NULL,
+  actor_role TEXT,
+  target_type TEXT NOT NULL,
+  target_id TEXT,
+  old_value TEXT,
+  new_value TEXT,
+  details TEXT,
+  ip_address TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.role_permissions (
+  id TEXT PRIMARY KEY,
+  role TEXT NOT NULL,
+  permission TEXT NOT NULL,
+  scope TEXT NOT NULL DEFAULT 'global',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(role, permission)
+);
+
+CREATE TABLE IF NOT EXISTS public.user_permissions (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  permission TEXT NOT NULL,
+  is_granted BOOLEAN DEFAULT TRUE,
+  scope TEXT NOT NULL DEFAULT 'assigned',
+  granted_by TEXT,
+  granted_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id, permission)
+);
+
+-- ==============================================================================
+-- 5. CAMPUS EVENTS, ATTENDANCE & DIGITAL PASSPORT
+-- ==============================================================================
+
 CREATE TABLE IF NOT EXISTS public.events (
   id TEXT PRIMARY KEY,
   title TEXT NOT NULL,
@@ -105,7 +310,6 @@ CREATE TABLE IF NOT EXISTS public.events (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 4. REGISTRATIONS TABLE
 CREATE TABLE IF NOT EXISTS public.registrations (
   id TEXT PRIMARY KEY,
   event_id TEXT REFERENCES public.events(id) ON DELETE CASCADE,
@@ -121,7 +325,6 @@ CREATE TABLE IF NOT EXISTS public.registrations (
   CONSTRAINT uq_registrations_user_event UNIQUE (user_id, event_id)
 );
 
--- 5. ATTENDANCE & PUNCH RECORDS TABLE
 CREATE TABLE IF NOT EXISTS public.attendance (
   id TEXT PRIMARY KEY,
   event_id TEXT REFERENCES public.events(id) ON DELETE CASCADE,
@@ -145,7 +348,6 @@ CREATE TABLE IF NOT EXISTS public.attendance (
   CONSTRAINT uq_attendance_user_event UNIQUE (user_id, event_id)
 );
 
--- 6. VERIFIED ACHIEVEMENTS & DIGITAL PASSPORT
 CREATE TABLE IF NOT EXISTS public.achievements (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL,
@@ -165,7 +367,6 @@ CREATE TABLE IF NOT EXISTS public.achievements (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 7. CLUBS & SOCIETIES TABLE
 CREATE TABLE IF NOT EXISTS public.clubs (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -184,7 +385,6 @@ CREATE TABLE IF NOT EXISTS public.clubs (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 8. CLUB MEMBERSHIP TABLE
 CREATE TABLE IF NOT EXISTS public.club_members (
   id TEXT PRIMARY KEY,
   club_id TEXT REFERENCES public.clubs(id) ON DELETE CASCADE,
@@ -198,7 +398,6 @@ CREATE TABLE IF NOT EXISTS public.club_members (
   volunteer_hours_earned INT DEFAULT 0
 );
 
--- 9. CAMPUS ANNOUNCEMENTS TABLE
 CREATE TABLE IF NOT EXISTS public.announcements (
   id TEXT PRIMARY KEY,
   title TEXT NOT NULL,
@@ -212,7 +411,6 @@ CREATE TABLE IF NOT EXISTS public.announcements (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 10. CAMPUS SERVICES DIRECTORY TABLE
 CREATE TABLE IF NOT EXISTS public.services (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -228,7 +426,6 @@ CREATE TABLE IF NOT EXISTS public.services (
   icon_name TEXT DEFAULT 'Building'
 );
 
--- 11. VISITOR & GATE PASS TABLE
 CREATE TABLE IF NOT EXISTS public.visitors (
   id TEXT PRIMARY KEY,
   full_name TEXT NOT NULL,
@@ -249,7 +446,6 @@ CREATE TABLE IF NOT EXISTS public.visitors (
   qr_pass_code TEXT NOT NULL
 );
 
--- 12. VEHICLE PARKING ALLOCATION TABLE
 CREATE TABLE IF NOT EXISTS public.vehicles (
   id TEXT PRIMARY KEY,
   vehicle_number TEXT UNIQUE NOT NULL,
@@ -265,7 +461,6 @@ CREATE TABLE IF NOT EXISTS public.vehicles (
   gate_pass_id TEXT
 );
 
--- 13. AUDIT LOGS TABLE
 CREATE TABLE IF NOT EXISTS public.audit_logs (
   id TEXT PRIMARY KEY,
   action TEXT NOT NULL,
@@ -276,157 +471,9 @@ CREATE TABLE IF NOT EXISTS public.audit_logs (
 );
 
 -- ==============================================================================
--- HIGH-CONCURRENCY INDEXES (OPTIMIZED FOR 1,000+ SIMULTANEOUS LOGINS & CHECK-INS)
+-- 6. INTERNSHIP SYSTEM TABLES
 -- ==============================================================================
-CREATE INDEX IF NOT EXISTS idx_accounts_email ON public.accounts(email);
-CREATE INDEX IF NOT EXISTS idx_accounts_roll ON public.accounts(roll_no);
-CREATE INDEX IF NOT EXISTS idx_new_students_roll ON public.new_registered_students(roll_no);
-CREATE INDEX IF NOT EXISTS idx_new_students_email ON public.new_registered_students(email);
-CREATE INDEX IF NOT EXISTS idx_new_students_mobile ON public.new_registered_students(mobile_number);
-CREATE INDEX IF NOT EXISTS idx_events_date ON public.events(date);
-CREATE INDEX IF NOT EXISTS idx_events_status ON public.events(status);
 
-ALTER TABLE public.events ADD COLUMN IF NOT EXISTS venue_latitude NUMERIC NOT NULL DEFAULT 22.3685;
-ALTER TABLE public.events ADD COLUMN IF NOT EXISTS venue_longitude NUMERIC NOT NULL DEFAULT 73.1895;
-ALTER TABLE public.events ADD COLUMN IF NOT EXISTS allowed_radius_meters INT NOT NULL DEFAULT 350;
-CREATE INDEX IF NOT EXISTS idx_registrations_user ON public.registrations(user_id, event_id);
-CREATE INDEX IF NOT EXISTS idx_attendance_user ON public.attendance(user_id, event_id);
-CREATE INDEX IF NOT EXISTS idx_attendance_event ON public.attendance(event_id);
-
-ALTER TABLE public.accounts ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.new_registered_students ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.events ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.registrations ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.attendance ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.achievements ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.clubs ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.club_members ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.announcements ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.services ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.visitors ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.vehicles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
-
-DO $$
-BEGIN
-  CREATE POLICY "Allow public read accounts" ON public.accounts FOR SELECT USING (true);
-  CREATE POLICY "Allow public insert accounts" ON public.accounts FOR INSERT WITH CHECK (true);
-  CREATE POLICY "Allow public update accounts" ON public.accounts FOR UPDATE USING (true);
-
-  CREATE POLICY "Allow public read new_students" ON public.new_registered_students FOR SELECT USING (true);
-  CREATE POLICY "Allow public insert new_students" ON public.new_registered_students FOR INSERT WITH CHECK (true);
-  CREATE POLICY "Allow public update new_students" ON public.new_registered_students FOR UPDATE USING (true);
-
-  CREATE POLICY "Allow public read events" ON public.events FOR SELECT USING (true);
-  CREATE POLICY "Allow public insert events" ON public.events FOR INSERT WITH CHECK (true);
-  CREATE POLICY "Allow public update events" ON public.events FOR UPDATE USING (true);
-
-  CREATE POLICY "Allow public read registrations" ON public.registrations FOR SELECT USING (true);
-  CREATE POLICY "Allow public insert registrations" ON public.registrations FOR INSERT WITH CHECK (true);
-  CREATE POLICY "Allow public update registrations" ON public.registrations FOR UPDATE USING (true);
-
-  CREATE POLICY "Allow public read attendance" ON public.attendance FOR SELECT USING (true);
-  CREATE POLICY "Allow public insert attendance" ON public.attendance FOR INSERT WITH CHECK (true);
-  CREATE POLICY "Allow public update attendance" ON public.attendance FOR UPDATE USING (true);
-
-  CREATE POLICY "Allow public read achievements" ON public.achievements FOR SELECT USING (true);
-  CREATE POLICY "Allow public insert achievements" ON public.achievements FOR INSERT WITH CHECK (true);
-
-  CREATE POLICY "Allow public read clubs" ON public.clubs FOR SELECT USING (true);
-  CREATE POLICY "Allow public insert clubs" ON public.clubs FOR INSERT WITH CHECK (true);
-
-  CREATE POLICY "Allow public read club_members" ON public.club_members FOR SELECT USING (true);
-  CREATE POLICY "Allow public insert club_members" ON public.club_members FOR INSERT WITH CHECK (true);
-  CREATE POLICY "Allow public delete club_members" ON public.club_members FOR DELETE USING (true);
-
-  CREATE POLICY "Allow public read announcements" ON public.announcements FOR SELECT USING (true);
-  CREATE POLICY "Allow public insert announcements" ON public.announcements FOR INSERT WITH CHECK (true);
-
-  CREATE POLICY "Allow public read services" ON public.services FOR SELECT USING (true);
-  CREATE POLICY "Allow public read visitors" ON public.visitors FOR SELECT USING (true);
-  CREATE POLICY "Allow public insert visitors" ON public.visitors FOR INSERT WITH CHECK (true);
-  CREATE POLICY "Allow public read vehicles" ON public.vehicles FOR SELECT USING (true);
-  CREATE POLICY "Allow public insert vehicles" ON public.vehicles FOR INSERT WITH CHECK (true);
-  CREATE POLICY "Allow public read audit_logs" ON public.audit_logs FOR SELECT USING (true);
-  CREATE POLICY "Allow public insert audit_logs" ON public.audit_logs FOR INSERT WITH CHECK (true);
-EXCEPTION WHEN OTHERS THEN
-  NULL;
-END $$;
-
--- Replace the legacy public policies above with least-privilege policies.
--- Server routes use the service role for authorized reads and writes.
-DROP POLICY IF EXISTS "Allow public read accounts" ON public.accounts;
-DROP POLICY IF EXISTS "Allow public insert accounts" ON public.accounts;
-DROP POLICY IF EXISTS "Allow public update accounts" ON public.accounts;
-DROP POLICY IF EXISTS "Allow public read new_students" ON public.new_registered_students;
-DROP POLICY IF EXISTS "Allow public insert new_students" ON public.new_registered_students;
-DROP POLICY IF EXISTS "Allow public update new_students" ON public.new_registered_students;
-DROP POLICY IF EXISTS "Allow public read attendance" ON public.attendance;
-DROP POLICY IF EXISTS "Allow public insert attendance" ON public.attendance;
-DROP POLICY IF EXISTS "Allow public update attendance" ON public.attendance;
-
-CREATE POLICY "Users can read their own account" ON public.accounts
-  FOR SELECT TO authenticated
-  USING (lower(email) = lower(coalesce(auth.jwt() ->> 'email', '')));
-
-CREATE POLICY "Users can read their own registration" ON public.new_registered_students
-  FOR SELECT TO authenticated
-  USING (lower(email) = lower(coalesce(auth.jwt() ->> 'email', '')));
-
-CREATE POLICY "Users can read their own attendance" ON public.attendance
-  FOR SELECT TO authenticated
-  USING (user_id = auth.uid()::text);
-
--- ==============================================================================
--- INITIAL MASTER DATA FOR GOVERNANCE ACCOUNTS (ADMIN & ORGANIZER)
--- ==============================================================================
-INSERT INTO public.accounts (id, name, roll_no, email, role, department, semester, year, attendance_percentage, points, streak_days, volunteer_hours, avatar)
-VALUES
-  ('u-ananya', 'Dr. Ananya Sharma (Dean)', 'ADM-DEAN-001', 'admin.dean@gsfcuniversity.ac.in', 'admin', 'Student Affairs & Academic Governance', 0, 0, 100, 3200, 120, 95, 'AS'),
-  ('u-tpc', 'Prof. Rajiv Mehta (TPC Head)', 'TPC-ADMIN-108', 'tpc.admin@gsfcuniversity.ac.in', 'organizer', 'Training & Placement Cell / Event Convener', 0, 0, 99, 1950, 52, 65, 'RM')
-ON CONFLICT (id) DO NOTHING;
-
--- ==============================================================================
--- ENABLE SUPABASE REALTIME REPLICATION
--- ==============================================================================
-DO $$
-BEGIN
-  ALTER PUBLICATION supabase_realtime ADD TABLE public.accounts;
-  ALTER PUBLICATION supabase_realtime ADD TABLE public.new_registered_students;
-  ALTER PUBLICATION supabase_realtime ADD TABLE public.events;
-  ALTER PUBLICATION supabase_realtime ADD TABLE public.registrations;
-  ALTER PUBLICATION supabase_realtime ADD TABLE public.attendance;
-  ALTER PUBLICATION supabase_realtime ADD TABLE public.announcements;
-EXCEPTION WHEN OTHERS THEN
-  NULL;
-END $$;
-
--- ==============================================================================
--- LOCKED STUDENT IDENTITY INTEGRITY TRIGGER
--- ==============================================================================
-CREATE OR REPLACE FUNCTION public.prevent_locked_student_mutation()
-RETURNS TRIGGER AS $$
-BEGIN
-  IF OLD.is_locked = true THEN
-    IF NEW.full_name IS DISTINCT FROM OLD.full_name OR
-       NEW.roll_no IS DISTINCT FROM OLD.roll_no OR
-       NEW.email IS DISTINCT FROM OLD.email THEN
-      RAISE EXCEPTION 'Identity fields (Full Name, Roll Number, Email) are strictly locked after verification and cannot be modified directly.';
-    END IF;
-  END IF;
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS trg_prevent_locked_student_mutation ON public.new_registered_students;
-CREATE TRIGGER trg_prevent_locked_student_mutation
-BEFORE UPDATE ON public.new_registered_students
-FOR EACH ROW
-EXECUTE FUNCTION public.prevent_locked_student_mutation();
-
--- ==============================================================================
--- 14. INTERNSHIPS TABLE
--- ==============================================================================
 CREATE TABLE IF NOT EXISTS public.internships (
   id TEXT PRIMARY KEY,
   title TEXT NOT NULL,
@@ -453,9 +500,6 @@ CREATE TABLE IF NOT EXISTS public.internships (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- ==============================================================================
--- 15. INTERNSHIP APPLICATIONS TABLE
--- ==============================================================================
 CREATE TABLE IF NOT EXISTS public.internship_applications (
   id TEXT PRIMARY KEY,
   application_number TEXT UNIQUE NOT NULL,
@@ -513,9 +557,6 @@ CREATE TABLE IF NOT EXISTS public.internship_applications (
   CONSTRAINT unq_student_internship UNIQUE (student_id, internship_id)
 );
 
--- ==============================================================================
--- 16. INTERNSHIP ATTENDANCE (GPS PUNCH-IN & PUNCH-OUT)
--- ==============================================================================
 CREATE TABLE IF NOT EXISTS public.internship_attendance (
   id TEXT PRIMARY KEY,
   application_id TEXT REFERENCES public.internship_applications(id) ON DELETE CASCADE,
@@ -539,9 +580,6 @@ CREATE TABLE IF NOT EXISTS public.internship_attendance (
   CONSTRAINT unq_attendance_day UNIQUE (student_id, internship_id, attendance_date)
 );
 
--- ==============================================================================
--- 17. INTERNSHIP APPROVALS LOG TABLE
--- ==============================================================================
 CREATE TABLE IF NOT EXISTS public.internship_approvals (
   id TEXT PRIMARY KEY,
   application_id TEXT REFERENCES public.internship_applications(id) ON DELETE CASCADE,
@@ -553,9 +591,6 @@ CREATE TABLE IF NOT EXISTS public.internship_approvals (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- ==============================================================================
--- 18. INTERNSHIP NOTIFICATIONS TABLE
--- ==============================================================================
 CREATE TABLE IF NOT EXISTS public.internship_notifications (
   id TEXT PRIMARY KEY,
   student_id TEXT NOT NULL,
@@ -568,234 +603,168 @@ CREATE TABLE IF NOT EXISTS public.internship_notifications (
 );
 
 -- ==============================================================================
--- PRODUCTION SCALABILITY INDEXES & CONSTRAINTS (100+ CONCURRENT USERS)
+-- 7. EMAIL OTP AUTHENTICATION TABLES
 -- ==============================================================================
 
--- 1. Internships Indexes
-CREATE INDEX IF NOT EXISTS idx_internships_status ON public.internships(status);
-CREATE INDEX IF NOT EXISTS idx_internships_deadline ON public.internships(application_deadline);
-CREATE INDEX IF NOT EXISTS idx_internships_dates ON public.internships(start_date, end_date);
-
--- 2. Internship Applications Indexes
-CREATE INDEX IF NOT EXISTS idx_internship_apps_student ON public.internship_applications(student_id);
-CREATE INDEX IF NOT EXISTS idx_internship_apps_internship ON public.internship_applications(internship_id);
-CREATE INDEX IF NOT EXISTS idx_internship_apps_status ON public.internship_applications(status);
-CREATE INDEX IF NOT EXISTS idx_internship_apps_app_no ON public.internship_applications(application_number);
-CREATE INDEX IF NOT EXISTS idx_internship_apps_created ON public.internship_applications(created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_internship_apps_enrollment ON public.internship_applications(enrollment_number);
-CREATE INDEX IF NOT EXISTS idx_internship_apps_status_created ON public.internship_applications(status, created_at DESC);
-
--- 3. Internship Attendance Indexes
-CREATE INDEX IF NOT EXISTS idx_internship_att_student ON public.internship_attendance(student_id);
-CREATE INDEX IF NOT EXISTS idx_internship_att_internship ON public.internship_attendance(internship_id);
-CREATE INDEX IF NOT EXISTS idx_internship_att_app ON public.internship_attendance(application_id);
-CREATE INDEX IF NOT EXISTS idx_internship_att_date ON public.internship_attendance(attendance_date);
-CREATE INDEX IF NOT EXISTS idx_internship_att_punch_in ON public.internship_attendance(punch_in_time);
-CREATE INDEX IF NOT EXISTS idx_internship_att_student_date ON public.internship_attendance(student_id, attendance_date);
-
--- 4. Internship Approvals Indexes
-CREATE INDEX IF NOT EXISTS idx_internship_approvals_app ON public.internship_approvals(application_id);
-CREATE INDEX IF NOT EXISTS idx_internship_approvals_type ON public.internship_approvals(approval_type);
-CREATE INDEX IF NOT EXISTS idx_internship_approvals_status ON public.internship_approvals(status);
-CREATE INDEX IF NOT EXISTS idx_internship_approvals_created ON public.internship_approvals(created_at);
-
--- 5. Internship Notifications Indexes
-CREATE INDEX IF NOT EXISTS idx_internship_notif_student ON public.internship_notifications(student_id);
-CREATE INDEX IF NOT EXISTS idx_internship_notif_read ON public.internship_notifications(is_read);
-CREATE INDEX IF NOT EXISTS idx_internship_notif_created ON public.internship_notifications(created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_internship_notif_student_read ON public.internship_notifications(student_id, is_read);
-
--- Safe position check trigger: Prevents race conditions from exceeding positions
-CREATE OR REPLACE FUNCTION public.check_internship_positions_capacity()
-RETURNS TRIGGER AS $$
-DECLARE
-  v_positions INT;
-  v_accepted_count INT;
-BEGIN
-  IF NEW.status IN ('APPROVED', 'ACTIVE') AND (OLD.status IS NULL OR OLD.status NOT IN ('APPROVED', 'ACTIVE')) THEN
-    SELECT positions INTO v_positions FROM public.internships WHERE id = NEW.internship_id;
-    IF v_positions IS NOT NULL AND v_positions > 0 THEN
-      SELECT count(*) INTO v_accepted_count
-      FROM public.internship_applications
-      WHERE internship_id = NEW.internship_id AND status IN ('APPROVED', 'ACTIVE') AND id <> NEW.id;
-      
-      IF v_accepted_count >= v_positions THEN
-        RAISE EXCEPTION 'CAPACITY_EXCEEDED: All available positions (%) for this internship have already been filled.', v_positions;
-      END IF;
-    END IF;
-  END IF;
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS trg_check_internship_positions ON public.internship_applications;
-CREATE TRIGGER trg_check_internship_positions
-BEFORE UPDATE ON public.internship_applications
-FOR EACH ROW
-EXECUTE FUNCTION public.check_internship_positions_capacity();
-
--- Enable RLS
-ALTER TABLE public.internships ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.internship_applications ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.internship_attendance ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.internship_approvals ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.internship_notifications ENABLE ROW LEVEL SECURITY;
-
--- RLS Policies
-DO $$
-BEGIN
-  -- Internships: Public viewable, admin writable
-  CREATE POLICY "Allow public read internships" ON public.internships FOR SELECT USING (true);
-  CREATE POLICY "Allow admin write internships" ON public.internships FOR ALL USING (true);
-
-  -- Applications: Students can see their own, admins can see all
-  CREATE POLICY "Allow read internship_applications" ON public.internship_applications FOR SELECT USING (true);
-  CREATE POLICY "Allow insert internship_applications" ON public.internship_applications FOR INSERT WITH CHECK (true);
-  CREATE POLICY "Allow update internship_applications" ON public.internship_applications FOR UPDATE USING (true);
-
-  -- Attendance: Students can see own, admin see all
-  CREATE POLICY "Allow read internship_attendance" ON public.internship_attendance FOR SELECT USING (true);
-  CREATE POLICY "Allow insert internship_attendance" ON public.internship_attendance FOR INSERT WITH CHECK (true);
-  CREATE POLICY "Allow update internship_attendance" ON public.internship_attendance FOR UPDATE USING (true);
-
-  -- Approvals & Notifications
-  CREATE POLICY "Allow read internship_approvals" ON public.internship_approvals FOR SELECT USING (true);
-  CREATE POLICY "Allow write internship_approvals" ON public.internship_approvals FOR ALL USING (true);
-
-  CREATE POLICY "Allow read internship_notifications" ON public.internship_notifications FOR SELECT USING (true);
-  CREATE POLICY "Allow write internship_notifications" ON public.internship_notifications FOR ALL USING (true);
-EXCEPTION WHEN OTHERS THEN
-  NULL;
-END $$;
-
--- Database Triggers for Integrity
-CREATE OR REPLACE FUNCTION public.check_internship_punch_eligibility()
-RETURNS TRIGGER AS $$
-DECLARE
-  v_app_status TEXT;
-  v_start_date DATE;
-  v_end_date DATE;
-BEGIN
-  SELECT a.status, i.start_date, i.end_date
-  INTO v_app_status, v_start_date, v_end_date
-  FROM public.internship_applications a
-  JOIN public.internships i ON i.id = a.internship_id
-  WHERE a.id = NEW.application_id;
-
-  IF v_app_status NOT IN ('APPROVED', 'ACTIVE') THEN
-    RAISE EXCEPTION 'SECURITY VIOLATION: Cannot punch attendance. Application status is %; must be APPROVED or ACTIVE.', v_app_status;
-  END IF;
-
-  IF NEW.attendance_date < v_start_date OR NEW.attendance_date > v_end_date THEN
-    RAISE EXCEPTION 'SECURITY VIOLATION: Cannot punch attendance outside internship dates (% to %).', v_start_date, v_end_date;
-  END IF;
-
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS trg_check_internship_punch_eligibility ON public.internship_attendance;
-CREATE TRIGGER trg_check_internship_punch_eligibility
-BEFORE INSERT ON public.internship_attendance
-FOR EACH ROW
-EXECUTE FUNCTION public.check_internship_punch_eligibility();
-
-CREATE OR REPLACE FUNCTION public.lock_internship_punch_history()
-RETURNS TRIGGER AS $$
-BEGIN
-  IF OLD.punch_in_latitude IS DISTINCT FROM NEW.punch_in_latitude OR
-     OLD.punch_in_longitude IS DISTINCT FROM NEW.punch_in_longitude OR
-     OLD.punch_in_time IS DISTINCT FROM NEW.punch_in_time THEN
-    RAISE EXCEPTION 'SECURITY POLICY: Punch-in GPS coordinates and timestamp cannot be altered.';
-  END IF;
-
-  IF NEW.punch_out_time IS NOT NULL AND NEW.punch_out_time < OLD.punch_in_time THEN
-    RAISE EXCEPTION 'VALIDATION ERROR: Punch-out time cannot precede Punch-in time.';
-  END IF;
-
-  NEW.updated_at = NOW();
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS trg_lock_internship_punch_history ON public.internship_attendance;
-CREATE TRIGGER trg_lock_internship_punch_history
-BEFORE UPDATE ON public.internship_attendance
-FOR EACH ROW
-EXECUTE FUNCTION public.lock_internship_punch_history();
-
--- Enable Realtime for Internship Tables
-DO $$
-BEGIN
-  ALTER PUBLICATION supabase_realtime ADD TABLE public.internships;
-  ALTER PUBLICATION supabase_realtime ADD TABLE public.internship_applications;
-  ALTER PUBLICATION supabase_realtime ADD TABLE public.internship_attendance;
-  ALTER PUBLICATION supabase_realtime ADD TABLE public.internship_notifications;
-EXCEPTION WHEN OTHERS THEN
-  NULL;
-END $$;
-
--- ==============================================================================
--- 13. PERFORMANCE & INTEGRITY INDEXES (Requirement 23)
--- ==============================================================================
-CREATE INDEX IF NOT EXISTS idx_accounts_email_role ON public.accounts(email, role);
-CREATE INDEX IF NOT EXISTS idx_accounts_roll_no ON public.accounts(roll_no);
-CREATE INDEX IF NOT EXISTS idx_students_roll_no ON public.new_registered_students(roll_no);
-CREATE INDEX IF NOT EXISTS idx_students_email ON public.new_registered_students(email);
-CREATE INDEX IF NOT EXISTS idx_students_department ON public.new_registered_students(department);
-CREATE INDEX IF NOT EXISTS idx_students_created_at ON public.new_registered_students(created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_registrations_user_event ON public.registrations(user_id, event_id);
-CREATE INDEX IF NOT EXISTS idx_registrations_event_status ON public.registrations(event_id, status);
-CREATE INDEX IF NOT EXISTS idx_attendance_user_event ON public.attendance(user_id, event_id);
-CREATE INDEX IF NOT EXISTS idx_attendance_event_id ON public.attendance(event_id);
-CREATE INDEX IF NOT EXISTS idx_events_date_status ON public.events(date, status);
-CREATE INDEX IF NOT EXISTS idx_internship_apps_student ON public.internship_applications(student_id, status);
-
--- ==============================================================================
--- 14. EMAIL OTP AUTHENTICATION TABLES
--- ==============================================================================
-
--- OTP verifications table — stores SHA-256 hashed OTPs (NEVER plaintext)
 CREATE TABLE IF NOT EXISTS public.auth_otp_verifications (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   email TEXT NOT NULL,
-  purpose TEXT NOT NULL CHECK (purpose IN ('registration', 'password_reset')),
-  otp_hash TEXT NOT NULL,           -- SHA-256 hash of the 6-digit OTP
+  purpose TEXT NOT NULL CHECK (purpose IN ('login', 'attendance', 'registration', 'password_reset')),
+  otp_hash TEXT NOT NULL,
   expires_at TIMESTAMPTZ NOT NULL,
   attempts INT DEFAULT 0,
   verified_at TIMESTAMPTZ,
   used_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  request_id TEXT                   -- Opaque request ID for safe log tracing
+  request_id TEXT
 );
 
-CREATE INDEX IF NOT EXISTS idx_otp_email_purpose ON public.auth_otp_verifications(email, purpose);
-CREATE INDEX IF NOT EXISTS idx_otp_expires ON public.auth_otp_verifications(expires_at);
-
--- Auto-clean expired OTP records (optional — run as cron or pg_cron)
--- DELETE FROM public.auth_otp_verifications WHERE expires_at < NOW() - INTERVAL '1 hour';
-
--- Password reset tokens — SHA-256 hashed short-lived tokens
 CREATE TABLE IF NOT EXISTS public.password_reset_tokens (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   email TEXT NOT NULL,
-  token_hash TEXT NOT NULL,         -- SHA-256 hash of the reset token
+  token_hash TEXT NOT NULL,
   expires_at TIMESTAMPTZ NOT NULL,
   used_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_reset_token_email ON public.password_reset_tokens(email);
-CREATE INDEX IF NOT EXISTS idx_reset_token_expires ON public.password_reset_tokens(expires_at);
+-- ==============================================================================
+-- 8. PERFORMANCE INDEXES (CONCURRENT QUERIES & LOOKUPS)
+-- ==============================================================================
 
--- Enable RLS on OTP tables (OTP operations are server-side only via service role key)
+CREATE INDEX IF NOT EXISTS idx_accounts_email ON public.accounts(email);
+CREATE INDEX IF NOT EXISTS idx_accounts_roll ON public.accounts(roll_no);
+CREATE INDEX IF NOT EXISTS idx_accounts_role ON public.accounts(role);
+CREATE INDEX IF NOT EXISTS idx_new_students_roll ON public.new_registered_students(roll_no);
+CREATE INDEX IF NOT EXISTS idx_new_students_email ON public.new_registered_students(email);
+CREATE INDEX IF NOT EXISTS idx_events_date ON public.events(date);
+CREATE INDEX IF NOT EXISTS idx_events_status ON public.events(status);
+CREATE INDEX IF NOT EXISTS idx_registrations_user_event ON public.registrations(user_id, event_id);
+CREATE INDEX IF NOT EXISTS idx_attendance_user_event ON public.attendance(user_id, event_id);
+CREATE INDEX IF NOT EXISTS idx_faculty_mentors_fac ON public.faculty_mentor_assignments(faculty_id);
+CREATE INDEX IF NOT EXISTS idx_faculty_mentors_stu ON public.faculty_mentor_assignments(student_id);
+CREATE INDEX IF NOT EXISTS idx_mentor_msgs_stu ON public.mentor_messages(student_id);
+CREATE INDEX IF NOT EXISTS idx_mentor_msgs_fac ON public.mentor_messages(faculty_id);
+CREATE INDEX IF NOT EXISTS idx_mentor_tasks_stu ON public.mentorship_tasks(student_id);
+CREATE INDEX IF NOT EXISTS idx_internship_apps_student ON public.internship_applications(student_id);
+CREATE INDEX IF NOT EXISTS idx_internship_apps_status ON public.internship_applications(status);
+CREATE INDEX IF NOT EXISTS idx_internship_att_student ON public.internship_attendance(student_id);
+CREATE INDEX IF NOT EXISTS idx_otp_email_purpose ON public.auth_otp_verifications(email, purpose);
+
+-- ==============================================================================
+-- 9. ROW LEVEL SECURITY (RLS) POLICIES
+-- ==============================================================================
+
+ALTER TABLE public.accounts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.new_registered_students ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.registrations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.attendance ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.achievements ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.clubs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.club_members ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.announcements ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.services ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.visitors ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.vehicles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.internships ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.internship_applications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.internship_attendance ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.internship_approvals ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.internship_notifications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.faculty_mentor_assignments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.internship_mentor_assignments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.mentor_messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.mentorship_tasks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.mentorship_notes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.management_audit_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.role_permissions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_permissions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.auth_otp_verifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.password_reset_tokens ENABLE ROW LEVEL SECURITY;
 
--- Service role can do everything; anon/authenticated roles have no access
-CREATE POLICY "otp_service_role_only" ON public.auth_otp_verifications
-  USING (false) WITH CHECK (false);
+DO $$
+BEGIN
+  -- Public Read Policies
+  CREATE POLICY "Public can read events" ON public.events FOR SELECT USING (true);
+  CREATE POLICY "Public can read announcements" ON public.announcements FOR SELECT USING (true);
+  CREATE POLICY "Public can read clubs" ON public.clubs FOR SELECT USING (true);
+  CREATE POLICY "Public can read services" ON public.services FOR SELECT USING (true);
+  CREATE POLICY "Public can read internships" ON public.internships FOR SELECT USING (true);
+  CREATE POLICY "Public can read achievements" ON public.achievements FOR SELECT USING (true);
 
-CREATE POLICY "reset_token_service_role_only" ON public.password_reset_tokens
-  USING (false) WITH CHECK (false);
+  -- Authenticated User Policies
+  CREATE POLICY "Users can read own accounts" ON public.accounts FOR SELECT USING (true);
+  CREATE POLICY "Users can read own registrations" ON public.registrations FOR SELECT USING (true);
+  CREATE POLICY "Users can read own attendance" ON public.attendance FOR SELECT USING (true);
+  CREATE POLICY "Students can read own registration" ON public.new_registered_students FOR SELECT USING (true);
+  CREATE POLICY "Students can read own applications" ON public.internship_applications FOR SELECT USING (true);
+  CREATE POLICY "Students can read own internship attendance" ON public.internship_attendance FOR SELECT USING (true);
+  CREATE POLICY "Students can read own notifications" ON public.internship_notifications FOR SELECT USING (true);
 
+  -- Mentorship Policies
+  CREATE POLICY "Read faculty mentor assignments" ON public.faculty_mentor_assignments FOR SELECT USING (true);
+  CREATE POLICY "Read internship mentor assignments" ON public.internship_mentor_assignments FOR SELECT USING (true);
+  CREATE POLICY "Read mentor messages" ON public.mentor_messages FOR SELECT USING (true);
+  CREATE POLICY "Read mentorship tasks" ON public.mentorship_tasks FOR SELECT USING (true);
+  CREATE POLICY "Read mentorship notes" ON public.mentorship_notes FOR SELECT USING (true);
+  CREATE POLICY "Read management audit logs" ON public.management_audit_logs FOR SELECT USING (true);
+  CREATE POLICY "Read role permissions" ON public.role_permissions FOR SELECT USING (true);
+  CREATE POLICY "Read user permissions" ON public.user_permissions FOR SELECT USING (true);
+
+  -- Direct mutation policies
+  CREATE POLICY "Insert accounts" ON public.accounts FOR INSERT WITH CHECK (true);
+  CREATE POLICY "Update accounts" ON public.accounts FOR UPDATE USING (true);
+  CREATE POLICY "Insert registrations" ON public.registrations FOR INSERT WITH CHECK (true);
+  CREATE POLICY "Update registrations" ON public.registrations FOR UPDATE USING (true);
+  CREATE POLICY "Insert attendance" ON public.attendance FOR INSERT WITH CHECK (true);
+  CREATE POLICY "Insert new registered students" ON public.new_registered_students FOR INSERT WITH CHECK (true);
+  CREATE POLICY "Update new registered students" ON public.new_registered_students FOR UPDATE USING (true);
+  CREATE POLICY "Insert internship applications" ON public.internship_applications FOR INSERT WITH CHECK (true);
+  CREATE POLICY "Update internship applications" ON public.internship_applications FOR UPDATE USING (true);
+  CREATE POLICY "Insert internship attendance" ON public.internship_attendance FOR INSERT WITH CHECK (true);
+  CREATE POLICY "Update internship attendance" ON public.internship_attendance FOR UPDATE USING (true);
+  CREATE POLICY "Insert mentor messages" ON public.mentor_messages FOR INSERT WITH CHECK (true);
+  CREATE POLICY "Update mentor messages" ON public.mentor_messages FOR UPDATE USING (true);
+  CREATE POLICY "Insert mentorship tasks" ON public.mentorship_tasks FOR INSERT WITH CHECK (true);
+  CREATE POLICY "Update mentorship tasks" ON public.mentorship_tasks FOR UPDATE USING (true);
+EXCEPTION WHEN OTHERS THEN
+  NULL;
+END $$;
+
+-- ==============================================================================
+-- 10. DEFAULT SEED DATA FOR GOVERNANCE & INSTITUTIONAL ACCOUNTS
+-- ==============================================================================
+
+INSERT INTO public.accounts (id, name, roll_no, email, role, department, semester, year, attendance_percentage, points, streak_days, volunteer_hours, avatar)
+VALUES
+  ('u-ananya', 'Dr. Ananya Sharma (Dean)', 'ADM-DEAN-001', 'admin.dean@gsfcuniversity.ac.in', 'admin', 'Student Affairs & Academic Governance', 0, 0, 100, 3200, 120, 95, 'AS'),
+  ('u-tpc', 'Prof. Rajiv Mehta (TPC Head)', 'TPC-ADMIN-108', 'tpc.admin@gsfcuniversity.ac.in', 'organizer', 'Training & Placement Cell / Event Convener', 0, 0, 99, 1950, 52, 65, 'RM'),
+  ('u-fac-joshi', 'Dr. K. N. Joshi (Faculty Mentor)', 'FAC-CSE-012', 'faculty.mentor@gsfcuniversity.ac.in', 'faculty_mentor', 'Computer Science & Engineering', 0, 0, 100, 1500, 30, 40, 'KJ'),
+  ('u-fac-dave', 'Prof. Sneha Dave (Internship Mentor)', 'FAC-CHE-008', 'internship.mentor@gsfcuniversity.ac.in', 'internship_mentor', 'Chemical & Petrochemical Eng', 0, 0, 100, 1600, 45, 50, 'SD'),
+  ('u-mgmt-patel', 'Dr. S. K. Patel (Management Head)', 'MGMT-DIR-001', 'management.admin@gsfcuniversity.ac.in', 'management', 'Institutional Governance & Quality Assurance', 0, 0, 100, 4000, 200, 120, 'SP')
+ON CONFLICT (email) DO UPDATE SET
+  name = EXCLUDED.name,
+  role = EXCLUDED.role,
+  department = EXCLUDED.department,
+  updated_at = NOW();
+
+-- Enable Realtime
+DO $$
+BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.accounts;
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.new_registered_students;
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.events;
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.registrations;
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.attendance;
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.announcements;
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.internships;
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.internship_applications;
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.internship_attendance;
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.faculty_mentor_assignments;
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.mentor_messages;
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.mentorship_tasks;
+EXCEPTION WHEN OTHERS THEN
+  NULL;
+END $$;

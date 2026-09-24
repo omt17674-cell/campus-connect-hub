@@ -45,12 +45,18 @@ export function SystemDataDirectoryView() {
                 .select("*", { count: "exact", head: true });
               if (!error && count !== null && count !== undefined) {
                 return { ...item, recordCount: count, lastUpdated: "Live Supabase" };
+              } else if (error) {
+                console.warn(`[SystemDataDirectory] Live count error for ${rawTable}:`, error.message);
               }
-            } catch (e) {}
+            } catch (e) {
+              console.warn(`[SystemDataDirectory] Exception fetching count for ${rawTable}:`, e);
+            }
             return item;
           });
           list = await Promise.all(livePromises);
-        } catch (e) {}
+        } catch (e) {
+          console.warn("[SystemDataDirectory] Failed to batch load table counts:", e);
+        }
       }
 
       setDomains(list);

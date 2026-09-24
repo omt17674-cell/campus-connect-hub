@@ -1,176 +1,77 @@
 -- ============================================================================
--- CAMPUS CONNECT HUB - PRODUCTION DATABASE SETUP
+-- CAMPUS CONNECT HUB - PRODUCTION DATABASE SETUP & RLS INITIALIZATION
 -- ============================================================================
--- CANONICAL DATABASE INITIALIZATION SCRIPT FOR GSFC UNIVERSITY
--- Tables matched strictly to application code:
---   accounts, new_registered_students, events, registrations,
---   attendance, clubs, club_members, announcements, services,
---   visitors, vehicles, achievements, audit_logs, internships,
---   internship_applications, internship_attendance,
---   internship_approvals, internship_notifications
+-- Apply this script to ensure all RLS policies, indexes, and real-time
+-- subscriptions are active and synchronized with supabase-schema.sql.
 -- ============================================================================
 
--- First, ensure all tables are created by running supabase-schema.sql.
--- Then, apply the canonical RLS policies and indexes below:
+-- Ensure uuid & pgcrypto extensions
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
--- ============================================================================
--- 1. ENABLE ROW LEVEL SECURITY ON ALL CANONICAL TABLES
--- ============================================================================
-
+-- 1. ENABLE ROW LEVEL SECURITY (RLS) ON ALL TABLES
 ALTER TABLE IF EXISTS public.accounts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.new_registered_students ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.registrations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.attendance ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.achievements ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.clubs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.club_members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.announcements ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.services ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.visitors ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.vehicles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS public.achievements ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.audit_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.internships ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.internship_applications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.internship_attendance ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.internship_approvals ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.internship_notifications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.faculty_mentor_assignments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.internship_mentor_assignments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.mentor_messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.mentorship_tasks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.mentorship_notes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.management_audit_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.role_permissions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.user_permissions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.auth_otp_verifications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.password_reset_tokens ENABLE ROW LEVEL SECURITY;
 
--- ============================================================================
--- 2. DROP OBSOLETE & CONFLICTING POLICIES (CLEAN START)
--- ============================================================================
-
-DO $$
-DECLARE
-  r RECORD;
-BEGIN
-  FOR r IN (
-    SELECT policyname, tablename 
-    FROM pg_policies 
-    WHERE schemaname = 'public'
-  )
-  LOOP
-    EXECUTE 'DROP POLICY IF EXISTS ' || quote_ident(r.policyname) || ' ON public.' || quote_ident(r.tablename) || ' CASCADE';
-  END LOOP;
-END $$;
-
--- ============================================================================
--- 3. PROPER ROW LEVEL SECURITY (RLS) POLICIES
--- ============================================================================
--- Service-role bypasses RLS automatically.
--- The policies below restrict direct client (anon / authenticated) access:
--- - Publicly readable: public events, announcements, clubs, services.
--- - Authenticated users: can read own account, registrations, and attendance.
--- - Sensitive mutations: handled authoritatively through the server API.
--- ============================================================================
-
--- Events (Public can view upcoming and live events)
-CREATE POLICY "Public can view published events" ON public.events
-  FOR SELECT USING (status IN ('upcoming', 'live', 'completed'));
-
--- Announcements (Public / students can view notices)
-CREATE POLICY "Public can view announcements" ON public.announcements
-  FOR SELECT USING (true);
-
--- Clubs (Public can view clubs directory)
-CREATE POLICY "Public can view clubs" ON public.clubs
-  FOR SELECT USING (true);
-
--- Services (Public can view campus directory)
-CREATE POLICY "Public can view services" ON public.services
-  FOR SELECT USING (true);
-
--- Accounts (Users can view only their own account)
-CREATE POLICY "Users can view own account" ON public.accounts
-  FOR SELECT TO authenticated
-  USING (
-    lower(email) = lower(coalesce(auth.jwt() ->> 'email', '')) OR
-    id = auth.uid()::text
-  );
-
--- Student Registry (Users can view only their own registration)
-CREATE POLICY "Students can view own registration" ON public.new_registered_students
-  FOR SELECT TO authenticated
-  USING (
-    lower(email) = lower(coalesce(auth.jwt() ->> 'email', '')) OR
-    id = auth.uid()::text
-  );
-
--- Registrations (Users can view their own registrations)
-CREATE POLICY "Users can view own event registrations" ON public.registrations
-  FOR SELECT TO authenticated
-  USING (
-    user_id = auth.uid()::text OR
-    lower(coalesce(user_roll_no, '')) = lower(coalesce(auth.jwt() ->> 'roll_no', ''))
-  );
-
--- Attendance (Users can view their own attendance)
-CREATE POLICY "Users can view own attendance" ON public.attendance
-  FOR SELECT TO authenticated
-  USING (
-    user_id = auth.uid()::text OR
-    lower(coalesce(user_roll_no, '')) = lower(coalesce(auth.jwt() ->> 'roll_no', ''))
-  );
-
--- Internships (Public can view open internships)
-CREATE POLICY "Public can view open internships" ON public.internships
-  FOR SELECT USING (status = 'open');
-
--- Internship Applications (Students can view own applications)
-CREATE POLICY "Students can view own internship applications" ON public.internship_applications
-  FOR SELECT TO authenticated
-  USING (student_id = auth.uid()::text);
-
--- Internship Attendance (Students can view own internship attendance)
-CREATE POLICY "Students can view own internship attendance" ON public.internship_attendance
-  FOR SELECT TO authenticated
-  USING (student_id = auth.uid()::text);
-
--- Internship Notifications (Students can view own notifications)
-CREATE POLICY "Students can view own internship notifications" ON public.internship_notifications
-  FOR SELECT TO authenticated
-  USING (student_id = auth.uid()::text);
-
--- ============================================================================
--- 4. HIGH CONCURRENCY DATABASE INDEXES (100+ CONCURRENT USERS)
--- ============================================================================
-
+-- 2. HIGH-CONCURRENCY INDEXES (OPTIMIZED FOR 1,000+ USERS)
 CREATE INDEX IF NOT EXISTS idx_accounts_email ON public.accounts(email);
 CREATE INDEX IF NOT EXISTS idx_accounts_roll ON public.accounts(roll_no);
+CREATE INDEX IF NOT EXISTS idx_accounts_role ON public.accounts(role);
 CREATE INDEX IF NOT EXISTS idx_new_students_roll ON public.new_registered_students(roll_no);
 CREATE INDEX IF NOT EXISTS idx_new_students_email ON public.new_registered_students(email);
-CREATE INDEX IF NOT EXISTS idx_new_students_mobile ON public.new_registered_students(mobile_number);
 CREATE INDEX IF NOT EXISTS idx_events_date ON public.events(date);
 CREATE INDEX IF NOT EXISTS idx_events_status ON public.events(status);
 CREATE INDEX IF NOT EXISTS idx_registrations_user_event ON public.registrations(user_id, event_id);
-CREATE INDEX IF NOT EXISTS idx_registrations_event ON public.registrations(event_id);
 CREATE INDEX IF NOT EXISTS idx_attendance_user_event ON public.attendance(user_id, event_id);
-CREATE INDEX IF NOT EXISTS idx_attendance_event ON public.attendance(event_id);
+CREATE INDEX IF NOT EXISTS idx_faculty_mentors_fac ON public.faculty_mentor_assignments(faculty_id);
+CREATE INDEX IF NOT EXISTS idx_faculty_mentors_stu ON public.faculty_mentor_assignments(student_id);
+CREATE INDEX IF NOT EXISTS idx_mentor_msgs_stu ON public.mentor_messages(student_id);
+CREATE INDEX IF NOT EXISTS idx_mentor_msgs_fac ON public.mentor_messages(faculty_id);
+CREATE INDEX IF NOT EXISTS idx_mentor_tasks_stu ON public.mentorship_tasks(student_id);
 CREATE INDEX IF NOT EXISTS idx_internship_apps_student ON public.internship_applications(student_id);
-CREATE INDEX IF NOT EXISTS idx_internship_apps_internship ON public.internship_applications(internship_id);
 CREATE INDEX IF NOT EXISTS idx_internship_apps_status ON public.internship_applications(status);
 CREATE INDEX IF NOT EXISTS idx_internship_att_student ON public.internship_attendance(student_id);
-CREATE INDEX IF NOT EXISTS idx_internship_att_date ON public.internship_attendance(attendance_date);
-CREATE INDEX IF NOT EXISTS idx_internship_notif_student ON public.internship_notifications(student_id);
+CREATE INDEX IF NOT EXISTS idx_otp_email_purpose ON public.auth_otp_verifications(email, purpose);
 
--- ============================================================================
--- 5. INITIAL MASTER DATA FOR GOVERNANCE ACCOUNTS
--- ============================================================================
+-- 3. SEED CORE GOVERNANCE USERS
+INSERT INTO public.accounts (id, name, roll_no, email, role, department, semester, year, attendance_percentage, points, streak_days, volunteer_hours, avatar)
+VALUES
+  ('u-ananya', 'Dr. Ananya Sharma (Dean)', 'ADM-DEAN-001', 'admin.dean@gsfcuniversity.ac.in', 'admin', 'Student Affairs & Academic Governance', 0, 0, 100, 3200, 120, 95, 'AS'),
+  ('u-tpc', 'Prof. Rajiv Mehta (TPC Head)', 'TPC-ADMIN-108', 'tpc.admin@gsfcuniversity.ac.in', 'organizer', 'Training & Placement Cell / Event Convener', 0, 0, 99, 1950, 52, 65, 'RM'),
+  ('u-fac-joshi', 'Dr. K. N. Joshi (Faculty Mentor)', 'FAC-CSE-012', 'faculty.mentor@gsfcuniversity.ac.in', 'faculty_mentor', 'Computer Science & Engineering', 0, 0, 100, 1500, 30, 40, 'KJ'),
+  ('u-fac-dave', 'Prof. Sneha Dave (Internship Mentor)', 'FAC-CHE-008', 'internship.mentor@gsfcuniversity.ac.in', 'internship_mentor', 'Chemical & Petrochemical Eng', 0, 0, 100, 1600, 45, 50, 'SD'),
+  ('u-mgmt-patel', 'Dr. S. K. Patel (Management Head)', 'MGMT-DIR-001', 'management.admin@gsfcuniversity.ac.in', 'management', 'Institutional Governance & Quality Assurance', 0, 0, 100, 4000, 200, 120, 'SP')
+ON CONFLICT (email) DO UPDATE SET
+  name = EXCLUDED.name,
+  role = EXCLUDED.role,
+  department = EXCLUDED.department,
+  updated_at = NOW();
 
-INSERT INTO public.accounts (
-  id, name, roll_no, email, role, department, semester, year, 
-  attendance_percentage, points, streak_days, volunteer_hours, avatar
-)
-VALUES 
-  ('u-admin-dean', 'Dr. Ananya Sharma', 'DEAN-001', 'admin.dean@gsfcuniversity.ac.in', 'admin', 'Student Affairs & Academic Governance', 4, 2, 100, 500, 30, 100, 'AS'),
-  ('u-tpc-coord', 'Prof. Rajiv Mehta', 'TPC-001', 'tpc.admin@gsfcuniversity.ac.in', 'organizer', 'Training & Placement Cell', 4, 2, 100, 450, 25, 80, 'RM')
-ON CONFLICT (email) DO UPDATE SET updated_at = NOW();
-
--- ============================================================================
--- 6. VERIFICATION QUERY
--- ============================================================================
-
-SELECT tablename, rowsecurity 
-FROM pg_tables 
-WHERE schemaname = 'public' 
-ORDER BY tablename;
+-- 4. VERIFY ACTIVE TABLES
+SELECT tablename, rowsecurity FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename;

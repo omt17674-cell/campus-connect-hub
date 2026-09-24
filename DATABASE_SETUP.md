@@ -12,7 +12,7 @@ To set up the internship management system tables in your Supabase database:
 
 ### Step 2: Run the Schema Script
 
-1. Open the file: `database-schema-internships.sql`
+1. Open the file: `supabase-schema.sql`
 2. Copy the entire SQL content
 3. Paste it into the Supabase SQL Editor
 4. Click **Run** button

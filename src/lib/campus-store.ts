@@ -5711,9 +5711,13 @@ export const campusStore = {
         supabase
           .from("internships")
           .insert(serializeInternshipForDb(newInternship))
-          .then(() => {});
+          .then(({ error }) => {
+            if (error) console.error("[campusStore] Failed to insert internship into Supabase:", error);
+          });
       }
-    } catch (e) {}
+    } catch (e) {
+      console.error("[campusStore] Error syncing new internship to Supabase:", e);
+    }
 
     return { success: true, internship: newInternship };
   },
@@ -5731,9 +5735,13 @@ export const campusStore = {
           .from("internships")
           .update(updates)
           .eq("id", id)
-          .then(() => {});
+          .then(({ error }) => {
+            if (error) console.error(`[campusStore] Failed to update internship ${id} in Supabase:`, error);
+          });
       }
-    } catch (e) {}
+    } catch (e) {
+      console.error(`[campusStore] Error syncing internship ${id} update to Supabase:`, e);
+    }
 
     return { success: true };
   },

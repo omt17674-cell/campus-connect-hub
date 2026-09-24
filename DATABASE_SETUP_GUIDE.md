@@ -54,7 +54,7 @@ EMAIL_FROM_NAME="Campus Connect Hub"
 
 ## Step 2: Execute Database Schema
 
-The database schema is defined in `CORRECT_DATABASE_SETUP.sql`.
+The database schema is defined in `supabase-schema.sql`.
 
 ### Option A: Using Supabase Dashboard
 
@@ -62,7 +62,7 @@ The database schema is defined in `CORRECT_DATABASE_SETUP.sql`.
 2. Select your project
 3. Go to **SQL Editor**
 4. Create a **New Query**
-5. Copy the entire content of `CORRECT_DATABASE_SETUP.sql`
+5. Copy the entire content of `supabase-schema.sql`
 6. Paste it into the query editor
 7. Click **Run** or press `Ctrl+Enter`
 8. Wait for "Success: No rows returned" message
@@ -70,7 +70,7 @@ The database schema is defined in `CORRECT_DATABASE_SETUP.sql`.
 ### Option B: Using psql CLI
 
 ```bash
-psql $DATABASE_URL < CORRECT_DATABASE_SETUP.sql
+psql $DATABASE_URL < supabase-schema.sql
 ```
 
 ## Step 3: Verify Database Setup
@@ -159,7 +159,7 @@ Expected 21 tables:
 ### Error: "Unable to load student records from database"
 
 **Solution:**
-- Verify `CORRECT_DATABASE_SETUP.sql` was executed successfully
+- Verify `supabase-schema.sql` was executed successfully
 - Check that `new_registered_students` table exists
 - Verify credentials in `.env` are correct
 - Refresh the application
@@ -174,7 +174,7 @@ Expected 21 tables:
 ### Slow database queries
 
 **Solution:**
-- All indexes are created by default in `CORRECT_DATABASE_SETUP.sql`
+- All indexes are created by default in `supabase-schema.sql`
 - Check Supabase project is in active region
 - Consider adding more indexes if needed
 
@@ -199,7 +199,7 @@ Expected 21 tables:
 
 | File | Purpose |
 |------|---------|
-| `CORRECT_DATABASE_SETUP.sql` | Complete database schema |
+| `supabase-schema.sql` | Complete database schema |
 | `.env` | Local environment variables (not committed) |
 | `.env.example` | Template for environment variables |
 | `.gitignore` | Excludes `.env` and sensitive files |
@@ -207,8 +207,8 @@ Expected 21 tables:
 ## Next Steps
 
 1. ✅ Set up `.env` file with credentials
-2. ✅ Execute `CORRECT_DATABASE_SETUP.sql`
-3. ✅ Verify all 21 tables exist
+2. ✅ Execute `supabase-schema.sql`
+3. ✅ Verify all tables exist
 4. ✅ Start the application: `npm run dev`
 5. ✅ Test the features
 
