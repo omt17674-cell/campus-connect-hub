@@ -354,7 +354,11 @@ export const supabaseSync = {
           is_verified: true,
           updated_at: new Date().toISOString(),
         };
-        await supabaseAdmin.from("accounts").upsert(accPayload, { onConflict: "id" }).catch(() => {});
+        try {
+          await supabaseAdmin.from("accounts").upsert(accPayload, { onConflict: "id" });
+        } catch {
+          // Ignore background upsert error
+        }
       }
 
       const payload = {
@@ -444,7 +448,11 @@ export const supabaseSync = {
           is_verified: true,
           updated_at: new Date().toISOString(),
         };
-        await supabaseAdmin.from("accounts").upsert(accPayload, { onConflict: "id" }).catch(() => {});
+        try {
+          await supabaseAdmin.from("accounts").upsert(accPayload, { onConflict: "id" });
+        } catch {
+          // Ignore background upsert error
+        }
       }
 
       const payload = {
@@ -508,7 +516,10 @@ export const supabaseSync = {
           userRollNo: data.user_roll_no,
           department: data.department,
           timestamp: data.timestamp,
-          verifiedMethod: data.verified_method,
+          punchInTime: data.punch_in_time,
+          punchOutTime: data.punch_out_time,
+          verifiedMethod: data.verified_method || "qr_scan",
+          tokenUsed: data.token_used || "GSFC-TOKEN-VERIFIED",
           certificateId: data.certificate_id,
           synced: true,
         };

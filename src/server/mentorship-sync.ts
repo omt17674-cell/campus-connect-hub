@@ -17,6 +17,10 @@ import {
   UnifiedStudentHistory,
   UserProfile,
   NewRegisteredStudent,
+  RolePermissionDefinition,
+  UserPermissionOverride,
+  FacultyWorkloadItem,
+  SystemDataDomain,
 } from "../lib/types";
 
 export const mentorshipSync = {

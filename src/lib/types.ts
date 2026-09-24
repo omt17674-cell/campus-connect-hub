@@ -525,6 +525,15 @@ export interface InternshipAttendanceRecord {
   punchOutAccuracy?: number;
   punchOutAddress?: string;
   workingDuration?: string; // e.g. "8h 09m"
+  workingHours?: number;
+  breakMinutes?: number;
+  tasksSummary?: string;
+  notes?: string;
+  supervisorRating?: number;
+  supervisorFeedback?: string;
+  isValidated?: boolean;
+  validatedBy?: string;
+  validatedAt?: string;
   status: "present" | "half_day" | "auto_closed";
   createdAt: string;
   updatedAt?: string;
