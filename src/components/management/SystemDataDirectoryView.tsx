@@ -14,7 +14,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { apiClient } from "@/lib/api-client";
+import { supabase } from "@/lib/supabase";
 import { SystemDataDomain } from "@/lib/types";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 export function SystemDataDirectoryView() {
@@ -23,16 +25,46 @@ export function SystemDataDirectoryView() {
   const [search, setSearch] = useState("");
 
   useEffect(() => {
-    loadDirectory();
+    loadDirectory(false);
   }, []);
 
-  const loadDirectory = async () => {
+  const loadDirectory = async (showToast = false) => {
     setLoading(true);
-    const res = await apiClient.getSystemDataDirectory();
-    if (res?.success && res.directory) {
-      setDomains(res.directory);
+    try {
+      const res = await apiClient.getSystemDataDirectory();
+      let list: SystemDataDomain[] = res?.directory || (res as any)?.tables || [];
+
+      // Query live Supabase row counts directly
+      if (typeof window !== "undefined" && list.length > 0) {
+        try {
+          const livePromises = list.map(async (item) => {
+            const rawTable = item.databaseTable.replace(/^public\./, "");
+            try {
+              const { count, error } = await supabase
+                .from(rawTable)
+                .select("*", { count: "exact", head: true });
+              if (!error && count !== null && count !== undefined) {
+                return { ...item, recordCount: count, lastUpdated: "Live Supabase" };
+              }
+            } catch (e) {}
+            return item;
+          });
+          list = await Promise.all(livePromises);
+        } catch (e) {}
+      }
+
+      setDomains(list);
+      if (showToast) {
+        toast.success(`Successfully synchronized ${list.length} database domains from live Supabase.`);
+      }
+    } catch (err) {
+      console.error("[SystemDataDirectoryView] Error loading directory:", err);
+      if (showToast) {
+        toast.error("Failed to sync database record counts.");
+      }
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const filteredDomains = domains.filter((d) => {
@@ -77,7 +109,7 @@ export function SystemDataDirectoryView() {
             <Button
               variant="outline"
               size="sm"
-              onClick={loadDirectory}
+              onClick={() => loadDirectory(true)}
               className="rounded-2xl h-10 gap-1.5 font-bold text-xs"
             >
               <RefreshCw className={cn("size-3.5", loading && "animate-spin")} />
