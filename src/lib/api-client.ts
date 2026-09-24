@@ -1199,6 +1199,7 @@ export const apiClient = {
   },
 
   async getPeopleAndAccess(filters?: { role?: string; department?: string; search?: string }) {
+    let serverUsers: any[] = [];
     try {
       const params = new URLSearchParams();
       if (filters?.role) params.set("role", filters.role);
@@ -1206,8 +1207,8 @@ export const apiClient = {
       if (filters?.search) params.set("search", filters.search);
       const res = await fetch(`/api/management/people-access?${params.toString()}`);
       const data = await res.json();
-      if (data?.success && Array.isArray(data.users)) {
-        return data;
+      if (data?.success && Array.isArray(data.users) && data.users.length > 0) {
+        serverUsers = data.users;
       }
     } catch (e: any) {
       console.debug("[apiClient] getPeopleAndAccess fallback");
@@ -1220,10 +1221,11 @@ export const apiClient = {
       id: f.id,
       name: f.name,
       email: f.email,
-      role: f.id === "u-ananya" ? "admin" : f.id === "u-tpc" ? "organizer" : f.id === "fac-2" ? "internship_mentor" : "faculty_mentor",
-      department: f.department,
-      designation: f.designation,
-      school: f.school,
+      rollNo: f.id,
+      role: f.id === "u-ananya" ? "dean" : f.id === "u-tpc" ? "organizer" : f.id === "fac-2" ? "internship_mentor" : "faculty_mentor",
+      department: f.department || "Computer Science & Engineering",
+      designation: f.designation || "Faculty Guide",
+      school: f.school || "School of Technology (SOT)",
       status: "active",
       lastLogin: "Today, 08:30 AM",
       permissions: ["VIEW_STUDENTS", "ASSIGN_FACULTY_MENTOR", "VIEW_MENTORSHIP", "CREATE_MENTOR_TASK"],
@@ -1233,10 +1235,10 @@ export const apiClient = {
       id: s.id,
       name: s.fullName,
       email: s.email,
-      rollNo: s.rollNo,
+      rollNo: s.rollNo || s.id,
       role: "student",
-      department: s.department,
-      school: s.school,
+      department: s.department || "Computer Science & Engineering",
+      school: s.school || "School of Technology (SOT)",
       status: "active",
       lastLogin: "Yesterday, 04:15 PM",
       permissions: ["VIEW_STUDENTS", "VIEW_INTERNSHIPS", "VIEW_ATTENDANCE", "VIEW_MENTORSHIP"],
@@ -1247,6 +1249,7 @@ export const apiClient = {
         id: "u-management",
         name: "Dr. S. K. Patel (Management Head)",
         email: "management.admin@gsfcuniversity.ac.in",
+        rollNo: "MGT-001",
         role: "management",
         department: "Institutional Governance",
         designation: "Executive Director",
@@ -1254,23 +1257,68 @@ export const apiClient = {
         lastLogin: "Active Now",
         permissions: ["MANAGE_USERS", "MANAGE_ROLES", "MANAGE_PERMISSIONS", "MANAGE_MASTER_DATA", "VIEW_AUDIT_LOGS"],
       },
+      {
+        id: "u-dean-001",
+        name: "Dr. Ananya Sharma (Dean)",
+        email: "admin.dean@gsfcuniversity.ac.in",
+        rollNo: "ADM-DEAN-001",
+        role: "admin",
+        department: "Student Affairs & Academic Governance",
+        designation: "Dean of Academic Affairs",
+        status: "active",
+        lastLogin: "Today, 09:15 AM",
+        permissions: ["VIEW_STUDENTS", "EDIT_STUDENTS", "VIEW_FACULTY", "ASSIGN_FACULTY_MENTOR", "APPROVE_INTERNSHIP"],
+      },
     ];
 
-    let allUsers = [...adminUsers, ...facultyUsers, ...studentUsers];
+    const sourceUsers = serverUsers.length > 0 ? serverUsers : [...adminUsers, ...facultyUsers, ...studentUsers];
+    let allUsers = [...sourceUsers];
 
     if (filters?.role && filters.role !== "all") {
-      allUsers = allUsers.filter((u) => u.role === filters.role);
+      const r = filters.role.toLowerCase();
+      allUsers = allUsers.filter((u) => {
+        const uRole = (u.role || "").toLowerCase();
+        if (r === "student") return uRole === "student";
+        if (r === "faculty") return uRole.includes("faculty");
+        if (r === "faculty_mentor") return uRole === "faculty_mentor";
+        if (r === "internship_mentor") return uRole === "internship_mentor";
+        if (r === "dean") return uRole === "dean" || uRole === "admin";
+        if (r === "admin") return uRole === "admin" || uRole === "dean";
+        if (r === "management") return uRole === "management" || uRole === "super_admin";
+        if (r === "organizer") return uRole === "organizer" || uRole === "tpc";
+        if (r === "tpc") return uRole === "tpc" || uRole === "organizer";
+        return uRole === r;
+      });
     }
+
     if (filters?.department && filters.department !== "all") {
-      allUsers = allUsers.filter((u) => (u.department || "").includes(filters.department!));
+      const d = filters.department.toLowerCase();
+      allUsers = allUsers.filter((u) => {
+        const uDept = (u.department || "").toLowerCase();
+        if (d === "cse" || d.includes("computer")) {
+          return uDept.includes("computer") || uDept.includes("cse");
+        }
+        if (d === "chemical" || d.includes("chem")) {
+          return uDept.includes("chem");
+        }
+        if (d === "management" || d === "som") {
+          return uDept.includes("management") || uDept.includes("som");
+        }
+        if (d === "mechanical" || d.includes("mech")) {
+          return uDept.includes("mech");
+        }
+        return uDept.includes(d.slice(0, 4)) || uDept.includes(d);
+      });
     }
+
     if (filters?.search) {
       const q = filters.search.toLowerCase();
       allUsers = allUsers.filter(
         (u) =>
-          u.name.toLowerCase().includes(q) ||
-          u.email.toLowerCase().includes(q) ||
-          (u.rollNo || "").toLowerCase().includes(q)
+          (u.name || "").toLowerCase().includes(q) ||
+          (u.email || "").toLowerCase().includes(q) ||
+          (u.rollNo || "").toLowerCase().includes(q) ||
+          (u.department || "").toLowerCase().includes(q)
       );
     }
 

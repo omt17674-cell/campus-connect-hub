@@ -67,15 +67,59 @@ export function PeopleAccessView({ currentUser }: PeopleAccessViewProps) {
   };
 
   const filteredUsers = users.filter((u) => {
-    if (!search.trim()) return true;
-    const q = search.toLowerCase();
-    return (
-      (u.name || "").toLowerCase().includes(q) ||
-      (u.email || "").toLowerCase().includes(q) ||
-      (u.rollNo || "").toLowerCase().includes(q) ||
-      (u.department || "").toLowerCase().includes(q)
-    );
+    // 1. Search Query
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      const matchSearch =
+        (u.name || "").toLowerCase().includes(q) ||
+        (u.email || "").toLowerCase().includes(q) ||
+        (u.rollNo || "").toLowerCase().includes(q) ||
+        (u.department || "").toLowerCase().includes(q);
+      if (!matchSearch) return false;
+    }
+
+    // 2. Role Filter
+    if (roleFilter !== "all") {
+      const r = roleFilter.toLowerCase();
+      const userRole = (u.role || "").toLowerCase();
+      if (r === "student" && userRole !== "student") return false;
+      if (r === "faculty" && !userRole.includes("faculty")) return false;
+      if (r === "faculty_mentor" && userRole !== "faculty_mentor") return false;
+      if (r === "internship_mentor" && userRole !== "internship_mentor") return false;
+      if (r === "dean" && userRole !== "dean" && userRole !== "admin") return false;
+      if (r === "admin" && userRole !== "admin" && userRole !== "dean") return false;
+      if (r === "management" && userRole !== "management" && userRole !== "super_admin") return false;
+      if (r === "organizer" && userRole !== "organizer" && userRole !== "tpc") return false;
+      if (r === "tpc" && userRole !== "tpc" && userRole !== "organizer") return false;
+    }
+
+    // 3. Department Filter
+    if (deptFilter !== "all") {
+      const dept = deptFilter.toLowerCase();
+      const userDept = (u.department || "").toLowerCase();
+      if (dept === "cse" || dept.includes("computer")) {
+        if (!userDept.includes("computer") && !userDept.includes("cse")) return false;
+      } else if (dept === "chemical" || dept.includes("chem")) {
+        if (!userDept.includes("chem")) return false;
+      } else if (dept === "management" || dept === "som" || dept.includes("management")) {
+        if (!userDept.includes("management") && !userDept.includes("som")) return false;
+      } else if (dept === "mechanical" || dept.includes("mech")) {
+        if (!userDept.includes("mech")) return false;
+      } else if (!userDept.includes(dept.slice(0, 4)) && !userDept.includes(dept)) {
+        return false;
+      }
+    }
+
+    return true;
   });
+
+  const isFilterActive = roleFilter !== "all" || deptFilter !== "all" || search.trim() !== "";
+
+  const handleClearFilters = () => {
+    setRoleFilter("all");
+    setDeptFilter("all");
+    setSearch("");
+  };
 
   return (
     <div className="space-y-4">
@@ -97,7 +141,7 @@ export function PeopleAccessView({ currentUser }: PeopleAccessViewProps) {
             <select
               value={roleFilter}
               onChange={(e) => setRoleFilter(e.target.value)}
-              className="rounded-xl border border-border/80 bg-background px-2.5 py-1.5 text-xs font-bold text-foreground focus:ring-2 focus:ring-brand"
+              className="rounded-xl border border-border/80 bg-background px-2.5 py-1.5 text-xs font-bold text-foreground focus:ring-2 focus:ring-[#1A3C6E]"
             >
               <option value="all">All Roles</option>
               <option value="student">Students</option>
@@ -117,7 +161,7 @@ export function PeopleAccessView({ currentUser }: PeopleAccessViewProps) {
             <select
               value={deptFilter}
               onChange={(e) => setDeptFilter(e.target.value)}
-              className="rounded-xl border border-border/80 bg-background px-2.5 py-1.5 text-xs font-bold text-foreground focus:ring-2 focus:ring-brand"
+              className="rounded-xl border border-border/80 bg-background px-2.5 py-1.5 text-xs font-bold text-foreground focus:ring-2 focus:ring-[#1A3C6E]"
             >
               <option value="all">All Departments</option>
               <option value="Computer Science & Engineering">CSE</option>
@@ -126,6 +170,17 @@ export function PeopleAccessView({ currentUser }: PeopleAccessViewProps) {
               <option value="Mechanical & Automation Eng">Mechanical</option>
             </select>
           </div>
+
+          {isFilterActive && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleClearFilters}
+              className="rounded-xl h-8 text-xs font-bold text-destructive hover:bg-destructive/10"
+            >
+              Reset
+            </Button>
+          )}
 
           <Button
             variant="outline"
@@ -136,6 +191,16 @@ export function PeopleAccessView({ currentUser }: PeopleAccessViewProps) {
             <RefreshCw className={cn("size-3", loading && "animate-spin")} /> Refresh
           </Button>
         </div>
+      </div>
+
+      {/* Filter Status Badge */}
+      <div className="flex items-center justify-between px-1 text-xs">
+        <p className="text-muted-foreground font-medium text-[11px]">
+          Showing <strong className="text-foreground">{filteredUsers.length}</strong> of <strong className="text-foreground">{users.length}</strong> authorized users
+          {isFilterActive && (
+            <span className="ml-1 text-brand font-bold">(Filtered)</span>
+          )}
+        </p>
       </div>
 
       {/* Users Table */}
