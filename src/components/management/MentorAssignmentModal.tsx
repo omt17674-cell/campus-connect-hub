@@ -33,6 +33,37 @@ interface MentorAssignmentModalProps {
   initialFacultyId?: string;
 }
 
+const DEFAULT_ACADEMIC_YEARS: AcademicYearMaster[] = [
+  { id: "ay-2025-26", yearName: "2025-2026", isCurrent: true, startDate: "2025-07-01", endDate: "2026-06-30" },
+  { id: "ay-2024-25", yearName: "2024-2025", isCurrent: false, startDate: "2024-07-01", endDate: "2025-06-30" },
+];
+
+const DEFAULT_DEPARTMENTS: DepartmentMaster[] = [
+  { id: "dept-cse", code: "CSE", name: "Computer Science & Engineering", school: "School of Technology (SOT)" },
+  { id: "dept-chem", code: "CHE", name: "Chemical & Petrochemical Eng", school: "School of Technology (SOT)" },
+  { id: "dept-mech", code: "MECH", name: "Mechanical & Automation Eng", school: "School of Technology (SOT)" },
+  { id: "dept-som", code: "SOM", name: "School of Management", school: "School of Management (SOM)" },
+];
+
+const DEFAULT_FIELDS: FieldMaster[] = [
+  { id: "fld-ai-ds", name: "Artificial Intelligence & Data Science", departmentId: "dept-cse" },
+  { id: "fld-cyber-iot", name: "Cyber Security & IoT", departmentId: "dept-cse" },
+  { id: "fld-petro", name: "Petrochemical & Process Engineering", departmentId: "dept-chem" },
+  { id: "fld-fintech", name: "FinTech & Business Analytics", departmentId: "dept-som" },
+  { id: "fld-general", name: "Core Engineering & Science", departmentId: "dept-mech" },
+];
+
+const DEFAULT_FACULTY_LIST = [
+  { id: "fac-1", name: "Dr. K. N. Joshi", department: "Computer Science & Engineering", email: "kn.joshi@gsfcuniversity.ac.in", designation: "Associate Professor & Faculty Mentor" },
+  { id: "fac-2", name: "Prof. Sneha Dave", department: "Chemical & Petrochemical Eng", email: "sneha.dave@gsfcuniversity.ac.in", designation: "Assistant Professor & Internship Mentor" },
+  { id: "fac-3", name: "Dr. Amit Trivedi", department: "School of Management", email: "amit.trivedi@gsfcuniversity.ac.in", designation: "Professor & Academic Guide" },
+  { id: "u-tpc", name: "Prof. Rajiv Mehta", department: "Training & Placement Cell / Event Convener", email: "tpc.admin@gsfcuniversity.ac.in", designation: "TPC Head & Placement Convener" },
+  { id: "u-ananya", name: "Dr. Ananya Sharma", department: "Student Affairs & Academic Governance", email: "admin.dean@gsfcuniversity.ac.in", designation: "Dean & Academic Governance" },
+  { id: "fac-6", name: "Dr. Pratik Patel", department: "Mechanical & Automation Eng", email: "pratik.patel@gsfcuniversity.ac.in", designation: "Associate Professor" },
+  { id: "fac-7", name: "Dr. Meera Varma", department: "Computer Science & Engineering", email: "meera.varma@gsfcuniversity.ac.in", designation: "Assistant Professor" },
+  { id: "fac-8", name: "Prof. Rajesh Shah", department: "Chemical & Petrochemical Eng", email: "rajesh.shah@gsfcuniversity.ac.in", designation: "Professor" },
+];
+
 export function MentorAssignmentModal({
   isOpen,
   onClose,
@@ -44,10 +75,14 @@ export function MentorAssignmentModal({
 }: MentorAssignmentModalProps) {
   const [assignmentMode, setAssignmentMode] = useState<"single" | "bulk">("single");
 
+  // Effective Lists with Guaranteed Non-Empty Fallbacks
+  const effectiveFaculty = facultyList && facultyList.length > 0 ? facultyList : DEFAULT_FACULTY_LIST;
+  const effectiveStudents = students && students.length > 0 ? students : [];
+
   // Master Data
-  const [academicYears, setAcademicYears] = useState<AcademicYearMaster[]>([]);
-  const [departments, setDepartments] = useState<DepartmentMaster[]>([]);
-  const [fields, setFields] = useState<FieldMaster[]>([]);
+  const [academicYears, setAcademicYears] = useState<AcademicYearMaster[]>(DEFAULT_ACADEMIC_YEARS);
+  const [departments, setDepartments] = useState<DepartmentMaster[]>(DEFAULT_DEPARTMENTS);
+  const [fields, setFields] = useState<FieldMaster[]>(DEFAULT_FIELDS);
 
   // Form State
   const [selectedFaculty, setSelectedFaculty] = useState(initialFacultyId || "");
@@ -64,7 +99,7 @@ export function MentorAssignmentModal({
     if (!isOpen) return;
     if (initialStudentId) {
       setSelectedStudent(initialStudentId);
-      const stu = students.find((s) => s.id === initialStudentId || s.rollNo === initialStudentId);
+      const stu = effectiveStudents.find((s) => s.id === initialStudentId || s.rollNo === initialStudentId);
       if (stu) {
         if (stu.department) setSelectedDept(stu.department);
         if (stu.semester) setSelectedSemester(stu.semester);
@@ -75,9 +110,9 @@ export function MentorAssignmentModal({
     }
     apiClient.getMasterData().then((res) => {
       if (res?.success && res.data) {
-        setAcademicYears(res.data.academicYears || []);
-        setDepartments(res.data.departments || []);
-        setFields(res.data.fields || []);
+        if (res.data.academicYears?.length) setAcademicYears(res.data.academicYears);
+        if (res.data.departments?.length) setDepartments(res.data.departments);
+        if (res.data.fields?.length) setFields(res.data.fields);
         if (res.data.academicYears?.length > 0) {
           setSelectedYear(res.data.academicYears[0].yearName);
         }
@@ -87,7 +122,7 @@ export function MentorAssignmentModal({
 
   const handleStudentSelect = (stuId: string) => {
     setSelectedStudent(stuId);
-    const stu = students.find((s) => s.id === stuId || s.rollNo === stuId);
+    const stu = effectiveStudents.find((s) => s.id === stuId || s.rollNo === stuId);
     if (stu) {
       if (stu.department) setSelectedDept(stu.department);
       if (stu.semester) setSelectedSemester(stu.semester);
@@ -155,7 +190,7 @@ export function MentorAssignmentModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in">
       <div className="relative flex max-h-[90vh] w-full max-w-2xl flex-col rounded-3xl border border-border/80 bg-card p-6 shadow-2xl overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border/60 pb-4">
@@ -223,7 +258,7 @@ export function MentorAssignmentModal({
               required
             >
               <option value="">-- Choose Faculty Mentor --</option>
-              {facultyList.map((fac) => (
+              {effectiveFaculty.map((fac) => (
                 <option key={fac.id} value={fac.id}>
                   {fac.name} ({fac.department || "Faculty"}) · {fac.email}
                 </option>
@@ -305,8 +340,8 @@ export function MentorAssignmentModal({
                 required
               >
                 <option value="">-- Choose Student --</option>
-                {students.map((stu) => (
-                  <option key={stu.id} value={stu.id}>
+                {effectiveStudents.map((stu) => (
+                  <option key={stu.id || stu.rollNo} value={stu.id || stu.rollNo}>
                     {stu.fullName} ({stu.rollNo}) · {stu.department}
                   </option>
                 ))}
@@ -322,24 +357,25 @@ export function MentorAssignmentModal({
                 <button
                   type="button"
                   onClick={() => {
-                    if (selectedBulkStudents.length === students.length) {
+                    if (selectedBulkStudents.length === effectiveStudents.length) {
                       setSelectedBulkStudents([]);
                     } else {
-                      setSelectedBulkStudents(students.map((s) => s.id));
+                      setSelectedBulkStudents(effectiveStudents.map((s) => s.id || s.rollNo));
                     }
                   }}
                   className="text-[11px] font-bold text-brand hover:underline"
                 >
-                  {selectedBulkStudents.length === students.length ? "Deselect All" : "Select All"}
+                  {selectedBulkStudents.length === effectiveStudents.length ? "Deselect All" : "Select All"}
                 </button>
               </div>
 
               <div className="max-h-48 overflow-y-auto rounded-2xl border border-border/70 p-2 space-y-1 bg-background/50">
-                {students.map((stu) => {
-                  const isChecked = selectedBulkStudents.includes(stu.id);
+                {effectiveStudents.map((stu) => {
+                  const stuKey = stu.id || stu.rollNo;
+                  const isChecked = selectedBulkStudents.includes(stuKey);
                   return (
                     <label
-                      key={stu.id}
+                      key={stuKey}
                       className={cn(
                         "flex items-center gap-2.5 rounded-xl p-2 cursor-pointer transition-colors text-xs",
                         isChecked ? "bg-brand/10 text-brand font-bold" : "hover:bg-muted/40 text-foreground"
@@ -350,9 +386,9 @@ export function MentorAssignmentModal({
                         checked={isChecked}
                         onChange={(e) => {
                           if (e.target.checked) {
-                            setSelectedBulkStudents([...selectedBulkStudents, stu.id]);
+                            setSelectedBulkStudents([...selectedBulkStudents, stuKey]);
                           } else {
-                            setSelectedBulkStudents(selectedBulkStudents.filter((id) => id !== stu.id));
+                            setSelectedBulkStudents(selectedBulkStudents.filter((id) => id !== stuKey));
                           }
                         }}
                         className="rounded"

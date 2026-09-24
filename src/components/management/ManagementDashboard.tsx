@@ -234,181 +234,336 @@ export function ManagementDashboard({ state }: ManagementDashboardProps) {
         </div>
       )}
 
-      {/* Institutional Navigation Tab Strip */}
-      <div className="flex items-center gap-1.5 border-b border-border/60 pb-2 overflow-x-auto text-xs">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setActiveTab("overview")}
-          className={cn(
-            "rounded-xl text-xs font-bold whitespace-nowrap",
-            activeTab === "overview"
-              ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          <Layers className="mr-1.5 size-3.5" /> Institutional Overview
-        </Button>
+      {/* Main Governance Workspace: Professional Left Sidebar + Active Module Content */}
+      <div className="grid grid-cols-1 lg:grid-cols-[270px_1fr] gap-6 items-start">
+        {/* ========================================================================= */}
+        {/* PROFESSIONAL LEFT SIDEBAR MODULE NAVIGATION                               */}
+        {/* ========================================================================= */}
+        <aside className="space-y-4">
+          {/* Mobile Module Selector (Visible on < lg screens) */}
+          <div className="lg:hidden rounded-2xl border border-border/80 bg-card p-3 shadow-sm">
+            <label className="block text-[10px] font-black uppercase tracking-wider text-muted-foreground mb-1.5">
+              Select Governance Module
+            </label>
+            <select
+              value={activeTab}
+              onChange={(e) => setActiveTab(e.target.value as ManagementTab)}
+              className="w-full h-10 rounded-xl border border-border/80 bg-background px-3 text-xs font-bold text-foreground focus:ring-2 focus:ring-[#1A3C6E]"
+            >
+              <optgroup label="Governance & Core">
+                <option value="overview">📊 Institutional Overview</option>
+                <option value="directory">🗄️ System Data Directory</option>
+              </optgroup>
+              <optgroup label="Identity & Access Control">
+                <option value="people">👥 People & Access Control</option>
+                <option value="roles">🛡️ Roles & Permissions Matrix</option>
+              </optgroup>
+              <optgroup label="Academic & Mentorship">
+                <option value="faculty">🏛️ Faculty Master ({facultyList.length})</option>
+                <option value="students">🎓 Student Master ({registeredStudents.length})</option>
+                <option value="assignments">📖 Mentor Allocations ({assignments.length})</option>
+                <option value="workload">📈 Faculty Workload & Capacity</option>
+                <option value="tasks">📋 Task Control Center</option>
+              </optgroup>
+              <optgroup label="System & Audit">
+                <option value="reports">📑 Management Reports</option>
+                <option value="audit">⏱️ Audit Activity Trail</option>
+                <option value="masterdata">⚙️ Master Data Schema</option>
+              </optgroup>
+            </select>
+          </div>
 
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setActiveTab("people")}
-          className={cn(
-            "rounded-xl text-xs font-bold whitespace-nowrap",
-            activeTab === "people"
-              ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          <Users className="mr-1.5 size-3.5" /> People & Access Control
-        </Button>
+          {/* Desktop Left Sidebar Card (Visible on lg+ screens) */}
+          <div className="hidden lg:flex flex-col rounded-3xl border border-border/80 bg-card p-4 shadow-sm space-y-4 sticky top-6">
+            <div className="flex items-center justify-between border-b border-border/60 pb-3">
+              <div>
+                <h3 className="font-display text-xs font-black uppercase tracking-wider text-foreground">
+                  Governance Hub
+                </h3>
+                <p className="text-[10px] text-muted-foreground font-semibold">12 Core System Modules</p>
+              </div>
+              <span className="flex size-2 rounded-full bg-emerald-500 animate-pulse" title="Supabase Live" />
+            </div>
 
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setActiveTab("roles")}
-          className={cn(
-            "rounded-xl text-xs font-bold whitespace-nowrap",
-            activeTab === "roles"
-              ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          <Shield className="mr-1.5 size-3.5" /> Roles & Permissions
-        </Button>
+            {/* Sidebar Module Navigation List */}
+            <nav className="space-y-4 text-xs">
+              {/* Group 1: Governance & Core */}
+              <div className="space-y-1">
+                <p className="px-2 text-[9px] font-black uppercase tracking-widest text-muted-foreground/80">
+                  Core & Metrics
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("overview")}
+                  className={cn(
+                    "flex w-full items-center justify-between rounded-xl px-3 py-2 text-xs font-bold transition-all text-left",
+                    activeTab === "overview"
+                      ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
+                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                  )}
+                >
+                  <span className="flex items-center gap-2">
+                    <Layers className={cn("size-4", activeTab === "overview" ? "text-[#F2A93B]" : "text-slate-400")} />
+                    <span>Overview</span>
+                  </span>
+                  {activeTab === "overview" && (
+                    <span className="size-1.5 rounded-full bg-[#F2A93B]" />
+                  )}
+                </button>
 
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setActiveTab("faculty")}
-          className={cn(
-            "rounded-xl text-xs font-bold whitespace-nowrap",
-            activeTab === "faculty"
-              ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          <Building2 className="mr-1.5 size-3.5" /> Faculty Master ({facultyList.length})
-        </Button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("directory")}
+                  className={cn(
+                    "flex w-full items-center justify-between rounded-xl px-3 py-2 text-xs font-bold transition-all text-left",
+                    activeTab === "directory"
+                      ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
+                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                  )}
+                >
+                  <span className="flex items-center gap-2">
+                    <Database className={cn("size-4", activeTab === "directory" ? "text-blue-400" : "text-slate-400")} />
+                    <span>Data Directory</span>
+                  </span>
+                  <span className={cn(
+                    "rounded-md px-1.5 py-0.5 text-[9px] font-black",
+                    activeTab === "directory" ? "bg-white/20 text-white" : "bg-blue-500/10 text-blue-600 dark:text-blue-400"
+                  )}>
+                    Live DB
+                  </span>
+                </button>
+              </div>
 
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setActiveTab("students")}
-          className={cn(
-            "rounded-xl text-xs font-bold whitespace-nowrap",
-            activeTab === "students"
-              ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          <GraduationCap className="mr-1.5 size-3.5" /> Student Master ({registeredStudents.length})
-        </Button>
+              {/* Group 2: Access & RBAC */}
+              <div className="space-y-1">
+                <p className="px-2 text-[9px] font-black uppercase tracking-widest text-muted-foreground/80">
+                  Access & RBAC
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("people")}
+                  className={cn(
+                    "flex w-full items-center justify-between rounded-xl px-3 py-2 text-xs font-bold transition-all text-left",
+                    activeTab === "people"
+                      ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
+                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                  )}
+                >
+                  <span className="flex items-center gap-2">
+                    <Users className={cn("size-4", activeTab === "people" ? "text-[#F2A93B]" : "text-slate-400")} />
+                    <span>People & Access</span>
+                  </span>
+                  <span className={cn(
+                    "rounded-md px-1.5 py-0.5 text-[9px] font-black",
+                    activeTab === "people" ? "bg-white/20 text-white" : "bg-muted text-muted-foreground"
+                  )}>
+                    RBAC
+                  </span>
+                </button>
 
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setActiveTab("assignments")}
-          className={cn(
-            "rounded-xl text-xs font-bold whitespace-nowrap",
-            activeTab === "assignments"
-              ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          <BookOpen className="mr-1.5 size-3.5 text-[#F2A93B]" /> Mentor Allocations ({assignments.length})
-        </Button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("roles")}
+                  className={cn(
+                    "flex w-full items-center justify-between rounded-xl px-3 py-2 text-xs font-bold transition-all text-left",
+                    activeTab === "roles"
+                      ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
+                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                  )}
+                >
+                  <span className="flex items-center gap-2">
+                    <Shield className={cn("size-4", activeTab === "roles" ? "text-[#F2A93B]" : "text-slate-400")} />
+                    <span>Roles Matrix</span>
+                  </span>
+                </button>
+              </div>
 
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setActiveTab("tasks")}
-          className={cn(
-            "rounded-xl text-xs font-bold whitespace-nowrap",
-            activeTab === "tasks"
-              ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          <FileText className="mr-1.5 size-3.5" /> Task Control Center
-        </Button>
+              {/* Group 3: Academic & Mentorship */}
+              <div className="space-y-1">
+                <p className="px-2 text-[9px] font-black uppercase tracking-widest text-muted-foreground/80">
+                  Academic & Cohorts
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("faculty")}
+                  className={cn(
+                    "flex w-full items-center justify-between rounded-xl px-3 py-2 text-xs font-bold transition-all text-left",
+                    activeTab === "faculty"
+                      ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
+                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                  )}
+                >
+                  <span className="flex items-center gap-2">
+                    <Building2 className={cn("size-4", activeTab === "faculty" ? "text-[#F2A93B]" : "text-slate-400")} />
+                    <span>Faculty Master</span>
+                  </span>
+                  <span className={cn(
+                    "rounded-md px-1.5 py-0.5 text-[9px] font-black",
+                    activeTab === "faculty" ? "bg-white/20 text-white" : "bg-muted text-muted-foreground font-mono"
+                  )}>
+                    {facultyList.length}
+                  </span>
+                </button>
 
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setActiveTab("workload")}
-          className={cn(
-            "rounded-xl text-xs font-bold whitespace-nowrap",
-            activeTab === "workload"
-              ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          <TrendingUp className="mr-1.5 size-3.5" /> Faculty Workload
-        </Button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("students")}
+                  className={cn(
+                    "flex w-full items-center justify-between rounded-xl px-3 py-2 text-xs font-bold transition-all text-left",
+                    activeTab === "students"
+                      ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
+                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                  )}
+                >
+                  <span className="flex items-center gap-2">
+                    <GraduationCap className={cn("size-4", activeTab === "students" ? "text-[#F2A93B]" : "text-slate-400")} />
+                    <span>Student Master</span>
+                  </span>
+                  <span className={cn(
+                    "rounded-md px-1.5 py-0.5 text-[9px] font-black",
+                    activeTab === "students" ? "bg-white/20 text-white" : "bg-muted text-muted-foreground font-mono"
+                  )}>
+                    {registeredStudents.length}
+                  </span>
+                </button>
 
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setActiveTab("directory")}
-          className={cn(
-            "rounded-xl text-xs font-bold whitespace-nowrap",
-            activeTab === "directory"
-              ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          <Database className="mr-1.5 size-3.5 text-blue-500" /> Data Directory ("Where is My Data?")
-        </Button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("assignments")}
+                  className={cn(
+                    "flex w-full items-center justify-between rounded-xl px-3 py-2 text-xs font-bold transition-all text-left",
+                    activeTab === "assignments"
+                      ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
+                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                  )}
+                >
+                  <span className="flex items-center gap-2">
+                    <BookOpen className={cn("size-4", activeTab === "assignments" ? "text-[#F2A93B]" : "text-amber-500")} />
+                    <span>Mentor Allocations</span>
+                  </span>
+                  <span className={cn(
+                    "rounded-md px-1.5 py-0.5 text-[9px] font-black",
+                    activeTab === "assignments" ? "bg-white/20 text-white" : "bg-amber-500/10 text-amber-600 font-mono"
+                  )}>
+                    {assignments.length}
+                  </span>
+                </button>
 
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setActiveTab("reports")}
-          className={cn(
-            "rounded-xl text-xs font-bold whitespace-nowrap",
-            activeTab === "reports"
-              ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          <FileSpreadsheet className="mr-1.5 size-3.5 text-emerald-500" /> Reports
-        </Button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("workload")}
+                  className={cn(
+                    "flex w-full items-center justify-between rounded-xl px-3 py-2 text-xs font-bold transition-all text-left",
+                    activeTab === "workload"
+                      ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
+                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                  )}
+                >
+                  <span className="flex items-center gap-2">
+                    <TrendingUp className={cn("size-4", activeTab === "workload" ? "text-[#F2A93B]" : "text-slate-400")} />
+                    <span>Faculty Workload</span>
+                  </span>
+                </button>
 
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setActiveTab("audit")}
-          className={cn(
-            "rounded-xl text-xs font-bold whitespace-nowrap",
-            activeTab === "audit"
-              ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          <ShieldCheck className="mr-1.5 size-3.5 text-amber-500" /> Audit & Activity
-        </Button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("tasks")}
+                  className={cn(
+                    "flex w-full items-center justify-between rounded-xl px-3 py-2 text-xs font-bold transition-all text-left",
+                    activeTab === "tasks"
+                      ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
+                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                  )}
+                >
+                  <span className="flex items-center gap-2">
+                    <FileText className={cn("size-4", activeTab === "tasks" ? "text-[#F2A93B]" : "text-slate-400")} />
+                    <span>Task Control</span>
+                  </span>
+                </button>
+              </div>
 
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setActiveTab("masterdata")}
-          className={cn(
-            "rounded-xl text-xs font-bold whitespace-nowrap",
-            activeTab === "masterdata"
-              ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          <Database className="mr-1.5 size-3.5" /> Master Data Control
-        </Button>
-      </div>
+              {/* Group 4: Reports & Auditing */}
+              <div className="space-y-1">
+                <p className="px-2 text-[9px] font-black uppercase tracking-widest text-muted-foreground/80">
+                  Reports & Audits
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("reports")}
+                  className={cn(
+                    "flex w-full items-center justify-between rounded-xl px-3 py-2 text-xs font-bold transition-all text-left",
+                    activeTab === "reports"
+                      ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
+                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                  )}
+                >
+                  <span className="flex items-center gap-2">
+                    <FileSpreadsheet className={cn("size-4", activeTab === "reports" ? "text-emerald-400" : "text-slate-400")} />
+                    <span>System Reports</span>
+                  </span>
+                </button>
 
-      {/* ========================================================================= */}
-      {/* 1. OVERVIEW TAB: Live Database KPI Grid + Recent Activity                  */}
-      {/* ========================================================================= */}
-      {activeTab === "overview" && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("audit")}
+                  className={cn(
+                    "flex w-full items-center justify-between rounded-xl px-3 py-2 text-xs font-bold transition-all text-left",
+                    activeTab === "audit"
+                      ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
+                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                  )}
+                >
+                  <span className="flex items-center gap-2">
+                    <ShieldCheck className={cn("size-4", activeTab === "audit" ? "text-amber-400" : "text-slate-400")} />
+                    <span>Audit Trail</span>
+                  </span>
+                  <span className={cn(
+                    "rounded-md px-1.5 py-0.5 text-[9px] font-black",
+                    activeTab === "audit" ? "bg-white/20 text-white" : "bg-muted text-muted-foreground"
+                  )}>
+                    Logs
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("masterdata")}
+                  className={cn(
+                    "flex w-full items-center justify-between rounded-xl px-3 py-2 text-xs font-bold transition-all text-left",
+                    activeTab === "masterdata"
+                      ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
+                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                  )}
+                >
+                  <span className="flex items-center gap-2">
+                    <Sliders className={cn("size-4", activeTab === "masterdata" ? "text-[#F2A93B]" : "text-slate-400")} />
+                    <span>Master Data</span>
+                  </span>
+                </button>
+              </div>
+            </nav>
+
+            {/* Sidebar Bottom Action / Info */}
+            <div className="border-t border-border/60 pt-3 space-y-2">
+              <Button
+                size="sm"
+                onClick={() => handleOpenAssignModal()}
+                className="w-full h-8 rounded-xl bg-gradient-to-r from-[#F2A93B] to-amber-500 font-display text-[11px] font-black text-slate-950 shadow-sm hover:brightness-105 gap-1"
+              >
+                <UserPlus className="size-3.5" /> Allocate Mentors
+              </Button>
+            </div>
+          </div>
+        </aside>
+
+        {/* ========================================================================= */}
+        {/* ACTIVE MODULE MAIN CONTENT AREA                                           */}
+        {/* ========================================================================= */}
+        <div className="min-w-0 space-y-6">
+          {/* ========================================================================= */}
+          {/* 1. OVERVIEW TAB: Live Database KPI Grid + Recent Activity                  */}
+          {/* ========================================================================= */}
+          {activeTab === "overview" && (
         <div className="space-y-6">
           {/* Real Database KPI Metric Cards */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
@@ -1036,6 +1191,8 @@ export function ManagementDashboard({ state }: ManagementDashboardProps) {
       {activeTab === "masterdata" && (
         <MasterDataManager />
       )}
+        </div>
+      </div>
 
       {/* ========================================================================= */}
       {/* GLOBAL MODALS                                                             */}
