@@ -22,6 +22,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Header } from "@/components/navigation/Header";
 import { StudentBottomNav, StudentNavView } from "@/components/navigation/StudentBottomNav";
+import { StudentSidebarNav } from "@/components/navigation/StudentSidebarNav";
 import { HomeFeed } from "@/components/student/HomeFeed";
 import { AttendanceHub } from "@/components/student/AttendanceHub";
 import { MyEventsView } from "@/components/student/MyEventsView";
@@ -173,7 +174,7 @@ function CampusConnectApp() {
     <div className={cn("campus-app min-h-screen bg-background text-foreground transition-colors", isDark && "dark")}>
       <div className="campus-wash pointer-events-none fixed inset-0 opacity-40 dark:opacity-20" />
 
-      <div className="relative z-10 mx-auto flex min-h-screen max-w-[1280px] flex-col px-4 py-4 sm:px-6 lg:px-8">
+      <div className="relative z-10 mx-auto flex min-h-screen max-w-[1500px] flex-col px-4 py-4 sm:px-6 lg:px-8">
         {/* Top Header */}
         <Header
           state={state}
@@ -258,283 +259,95 @@ function CampusConnectApp() {
                 </Button>
               </div>
 
-              {/* Desktop Sub-Nav Pill Bar */}
-              <div className="hidden items-center justify-between gap-4 border-b border-border/70 pb-3 md:flex flex-wrap">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setStudentView("home")}
-                    className={cn(
-                      "rounded-xl text-xs font-bold",
-                      studentView === "home"
-                        ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
-                        : "text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    <CalendarDays className="mr-1.5 size-3.5" />
-                    {t.nav.home}
-                  </Button>
+              {/* Main Student Workspace: Professional Left Sidebar + Active Module Content */}
+              <div className="grid grid-cols-1 lg:grid-cols-[270px_1fr] gap-6 items-start">
+                {/* Left Side Navigation Sidebar */}
+                <aside className="space-y-4">
+                  <StudentSidebarNav
+                    state={state}
+                    activeView={studentView}
+                    onSelectView={setStudentView}
+                    onOpenScanner={() => setShowScanner(true)}
+                    onOpenGateModal={() => setShowGateModal(true)}
+                  />
+                </aside>
 
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setStudentView("events")}
-                    className={cn(
-                      "rounded-xl text-xs font-bold",
-                      studentView === "events"
-                        ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
-                        : "text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    <TicketCheck className="mr-1.5 size-3.5" />
-                    {t.nav.myEvents}
-                  </Button>
+                {/* Right Side / Main Dynamic Workspace Content */}
+                <div className="min-w-0">
+                  {studentView === "home" && (
+                    <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.3fr_0.8fr]">
+                      <HomeFeed
+                        state={state}
+                        onSelectEvent={setSelectedEvent}
+                        onOpenScanner={() => setShowScanner(true)}
+                        onOpenPunchModal={(evt) => setPunchModalEvent(evt)}
+                      />
+                      <AttendanceHub
+                        state={state}
+                        onOpenScanner={() => setShowScanner(true)}
+                        onSelectEvent={setSelectedEvent}
+                        onOpenUnifiedCheckIn={() => setShowGateModal(true)}
+                        onViewAllUpcoming={() => setStudentView("upcoming")}
+                      />
+                    </div>
+                  )}
 
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setStudentView("upcoming")}
-                    className={cn(
-                      "rounded-xl text-xs font-bold",
-                      studentView === "upcoming"
-                        ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
-                        : "text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    <Calendar className="mr-1.5 size-3.5 text-[#F2A93B]" />
-                    Upcoming Events
-                  </Button>
+                  {studentView === "events" && (
+                    <MyEventsView
+                      state={state}
+                      onSelectEvent={setSelectedEvent}
+                      onOpenPunchModal={(evt) => setPunchModalEvent(evt)}
+                    />
+                  )}
 
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setStudentView("past")}
-                    className={cn(
-                      "rounded-xl text-xs font-bold",
-                      studentView === "past"
-                        ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
-                        : "text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    <History className="mr-1.5 size-3.5" />
-                    Past Events
-                  </Button>
+                  {studentView === "upcoming" && (
+                    <UpcomingEventsView
+                      state={state}
+                      onSelectEvent={setSelectedEvent}
+                      onOpenPunchModal={(evt) => setPunchModalEvent(evt)}
+                    />
+                  )}
 
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setStudentView("passport")}
-                    className={cn(
-                      "rounded-xl text-xs font-bold",
-                      studentView === "passport"
-                        ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
-                        : "text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    <Award className="mr-1.5 size-3.5 text-[#F2A93B]" />
-                    360 Passport
-                  </Button>
+                  {studentView === "past" && (
+                    <PastEventsView
+                      state={state}
+                      onSelectEvent={setSelectedEvent}
+                    />
+                  )}
 
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setStudentView("clubs")}
-                    className={cn(
-                      "rounded-xl text-xs font-bold",
-                      studentView === "clubs"
-                        ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
-                        : "text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    <Users className="mr-1.5 size-3.5" />
-                    Clubs & Societies
-                  </Button>
+                  {studentView === "passport" && (
+                    <StudentPassportView />
+                  )}
 
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setStudentView("feed")}
-                    className={cn(
-                      "rounded-xl text-xs font-bold",
-                      studentView === "feed"
-                        ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
-                        : "text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    <Radio className="mr-1.5 size-3.5" />
-                    Campus Feed
-                  </Button>
+                  {studentView === "clubs" && (
+                    <ClubsHubView />
+                  )}
 
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setStudentView("services")}
-                    className={cn(
-                      "rounded-xl text-xs font-bold",
-                      studentView === "services"
-                        ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
-                        : "text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    <Building2 className="mr-1.5 size-3.5" />
-                    Services & TPC
-                  </Button>
+                  {studentView === "feed" && (
+                    <CampusFeedView />
+                  )}
 
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setStudentView("internships")}
-                    className={cn(
-                      "rounded-xl text-xs font-bold",
-                      studentView === "internships"
-                        ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
-                        : "text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    <Briefcase className="mr-1.5 size-3.5 text-[#F2A93B]" />
-                    Internships
-                  </Button>
+                  {studentView === "services" && (
+                    <CampusServicesView />
+                  )}
 
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setStudentView("mentorship")}
-                    className={cn(
-                      "rounded-xl text-xs font-bold",
-                      studentView === "mentorship"
-                        ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
-                        : "text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    <GraduationCap className="mr-1.5 size-3.5 text-emerald-500" />
-                    Mentorship
-                  </Button>
+                  {studentView === "internships" && (
+                    <StudentInternshipsHub state={state} />
+                  )}
 
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setStudentView("gamification")}
-                    className={cn(
-                      "rounded-xl text-xs font-bold",
-                      studentView === "gamification"
-                        ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
-                        : "text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    <Trophy className="mr-1.5 size-3.5 text-[#F2A93B]" />
-                    {t.nav.gamification}
-                  </Button>
+                  {studentView === "mentorship" && (
+                    <StudentMentorshipHub state={state} />
+                  )}
 
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setStudentView("profile")}
-                    className={cn(
-                      "rounded-xl text-xs font-bold",
-                      studentView === "profile"
-                        ? "bg-[#1A3C6E] text-white shadow-md shadow-[#1A3C6E]/20"
-                        : "text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    <UserRound className="mr-1.5 size-3.5" />
-                    {t.nav.profile}
-                  </Button>
-                </div>
+                  {studentView === "gamification" && (
+                    <GamificationView state={state} />
+                  )}
 
-                <div className="flex items-center gap-2">
-                  <Button
-                    onClick={() => setShowGateModal(true)}
-                    className="h-9 gap-1.5 rounded-2xl bg-gradient-to-r from-emerald-600 via-[#1A3C6E] to-[#0E2342] font-display text-xs font-black text-white shadow-md hover:opacity-95"
-                  >
-                    <ScanBarcode className="size-4 text-[#F2A93B]" />
-                    Multi-Factor Check-In (OTP + ID + GPS)
-                  </Button>
-
-                  <Button
-                    onClick={() => setShowScanner(true)}
-                    variant="outline"
-                    className="h-9 gap-1.5 rounded-2xl border-[#1A3C6E]/40 font-display text-xs font-black text-[#1A3C6E] dark:text-[#F2A93B]"
-                  >
-                    <ScanLine className="size-4" />
-                    Scan QR
-                  </Button>
+                  {studentView === "profile" && (
+                    <ProfileView state={state} />
+                  )}
                 </div>
               </div>
-
-              {/* Student View Router */}
-              {studentView === "home" && (
-                <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.3fr_0.8fr]">
-                  <HomeFeed
-                    state={state}
-                    onSelectEvent={setSelectedEvent}
-                    onOpenScanner={() => setShowScanner(true)}
-                    onOpenPunchModal={(evt) => setPunchModalEvent(evt)}
-                  />
-                  <AttendanceHub
-                    state={state}
-                    onOpenScanner={() => setShowScanner(true)}
-                    onSelectEvent={setSelectedEvent}
-                    onOpenUnifiedCheckIn={() => setShowGateModal(true)}
-                    onViewAllUpcoming={() => setStudentView("upcoming")}
-                  />
-                </div>
-              )}
-
-              {studentView === "events" && (
-                <MyEventsView
-                  state={state}
-                  onSelectEvent={setSelectedEvent}
-                  onOpenPunchModal={(evt) => setPunchModalEvent(evt)}
-                />
-              )}
-
-              {studentView === "upcoming" && (
-                <UpcomingEventsView
-                  state={state}
-                  onSelectEvent={setSelectedEvent}
-                  onOpenPunchModal={(evt) => setPunchModalEvent(evt)}
-                />
-              )}
-
-              {studentView === "past" && (
-                <PastEventsView
-                  state={state}
-                  onSelectEvent={setSelectedEvent}
-                />
-              )}
-
-              {studentView === "passport" && (
-                <StudentPassportView />
-              )}
-
-              {studentView === "clubs" && (
-                <ClubsHubView />
-              )}
-
-              {studentView === "feed" && (
-                <CampusFeedView />
-              )}
-
-              {studentView === "services" && (
-                <CampusServicesView />
-              )}
-
-              {studentView === "internships" && (
-                <StudentInternshipsHub state={state} />
-              )}
-
-              {studentView === "mentorship" && (
-                <StudentMentorshipHub state={state} />
-              )}
-
-              {studentView === "gamification" && (
-                <GamificationView state={state} />
-              )}
-
-              {studentView === "profile" && (
-                <ProfileView state={state} />
-              )}
             </div>
           )}
 
