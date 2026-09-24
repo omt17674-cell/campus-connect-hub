@@ -742,6 +742,23 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
     }
 
     if (!emailResult.sent) {
+      if (!emailResult.configured || process.env.NODE_ENV !== "production") {
+        console.info(`[Registration OTP] SMTP unconfigured in dev/preview. Generated OTP for ${cleanEmail}: ${generatedOtp}`);
+        return jsonResponse(
+          {
+            success: true,
+            message: `Verification code generated for ${cleanEmail}. Check inbox or use preview code below.`,
+            expiresAt,
+            email: cleanEmail,
+            emailSent: false,
+            emailProvider: emailResult.provider,
+            emailConfigured: false,
+            otpPreview: generatedOtp,
+            previewCode: generatedOtp,
+          },
+          200,
+        );
+      }
       return jsonResponse(
         {
           success: false,
@@ -910,6 +927,20 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
     }
 
     if (account) {
+      if (account.password_hash && account.password_hash !== "$2b$10$defaultHashPlaceholder") {
+        const submittedHash = await sha256(body.password);
+        const isMatch =
+          account.password_hash === body.password ||
+          account.password_hash === submittedHash ||
+          account.password_hash === `sha256:${submittedHash}`;
+        if (!isMatch && !isDeanDemo && !isTpcDemo) {
+          return jsonResponse(
+            { success: false, message: "Invalid password. Please check your credentials and try again." },
+            401,
+          );
+        }
+      }
+
       const serverRole = account.role;
       const sessionToken = createServerSession({
         id: account.id,
@@ -1900,13 +1931,14 @@ ${clubs.map((c) => `- ${c.name} (${c.category}): ${c.description || "Active stud
       );
     }
 
-    // 3. Also sync login account in Supabase accounts table
+    // 3. Also sync login account in Supabase accounts table with secure hashed password
     try {
+      const hashedPassword = body.password ? `sha256:${await sha256(body.password)}` : "$2b$10$defaultHashPlaceholder";
       const accountRes = await supabaseSync.saveAccount({
         id: `u-${cleanRoll.toLowerCase()}`,
         roll_no: cleanRoll,
         email: cleanEmail,
-        password_hash: body.password || "$2b$10$defaultHashPlaceholder",
+        password_hash: hashedPassword,
         mobile_number: cleanMobile,
         role: "student",
         department: newStudent.department,

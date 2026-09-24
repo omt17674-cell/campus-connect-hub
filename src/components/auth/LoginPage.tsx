@@ -534,9 +534,28 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
         return;
       }
 
-      // 7. Skip OTP verification and create account directly
-      setRegisteredEmail(cleanEmail);
-      await completeRegistrationAfterVerification(cleanRoll, cleanEmail, regPassword);
+      // 7. Dispatch Email OTP for verification before registration completes
+      const otpRes = await apiClient.sendRegistrationOtp(cleanEmail, cleanPhoneDigits, cleanRoll);
+      setRegSubmitting(false);
+
+      if (otpRes.success) {
+        setRegisteredEmail(cleanEmail);
+        setRegStep("otp");
+        setRegOtpTimer(60);
+        setRegEmailOtp("");
+        if (otpRes.otpPreview || otpRes.previewCode) {
+          setRegOtpPreview(otpRes.otpPreview || otpRes.previewCode);
+        }
+        setStatusMessage({
+          text: otpRes.message || `Verification code sent to ${cleanEmail}. Please enter the 6-digit code to complete registration.`,
+          type: "success",
+        });
+      } else {
+        setStatusMessage({
+          text: otpRes.message || "Failed to send verification code to your email. Please check your network and try again.",
+          type: "error",
+        });
+      }
     } catch (err: any) {
       console.warn("Registration initiation error:", err);
       setRegSubmitting(false);
@@ -739,16 +758,21 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
     setStatusMessage(null);
 
     const targetEmail = registeredEmail || (regEmail.includes("@") ? regEmail.trim().toLowerCase() : `${regEmail.trim().toLowerCase()}@gsfcuniversity.ac.in`);
+    const cleanPhoneDigits = regPhone.replace(/[^0-9]/g, "");
+    const cleanRoll = regRollNo.trim().toUpperCase();
 
     try {
-      const apiRes = await apiClient.sendRegistrationOtp(targetEmail);
+      const apiRes = await apiClient.sendRegistrationOtp(targetEmail, cleanPhoneDigits, cleanRoll);
       if (!apiRes?.success) throw new Error(apiRes?.message || "Email verification is temporarily unavailable.");
 
       setIsResendingRegOtp(false);
-      setRegOtpTimer(600); // 10 minutes
+      setRegOtpTimer(60); // 60 seconds cooldown
       setRegEmailOtp("");
+      if (apiRes.otpPreview || apiRes.previewCode) {
+        setRegOtpPreview(apiRes.otpPreview || apiRes.previewCode);
+      }
       setStatusMessage({
-        text: `A new 6-digit verification code has been sent to your email. Valid for 10 minutes.`,
+        text: apiRes.message || `A new 6-digit verification code has been sent to your email. Valid for 10 minutes.`,
         type: "success",
       });
     } catch (err: any) {

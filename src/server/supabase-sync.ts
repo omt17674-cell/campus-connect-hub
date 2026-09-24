@@ -543,6 +543,7 @@ export const supabaseSync = {
 
   async getAccountByIdentifier(identifier: string, role?: string): Promise<any | null> {
     try {
+      if (!identifier || identifier === "___NONE___") return null;
       const clean = identifier.trim().toLowerCase();
       let query = supabaseAdmin.from("accounts").select("*");
       if (role) query = query.eq("role", role);
@@ -551,10 +552,9 @@ export const supabaseSync = {
       if (!error && data && data.length > 0) {
         const found = data.find(
           (a: any) =>
-            a.email.toLowerCase() === clean ||
-            a.roll_no.toLowerCase() === clean ||
-            clean.includes(a.roll_no.toLowerCase()) ||
-            clean.includes(a.email.split("@")[0].toLowerCase()),
+            (a.email && a.email.toLowerCase() === clean) ||
+            (a.roll_no && a.roll_no.toLowerCase() === clean) ||
+            (a.id && a.id.toLowerCase() === clean),
         );
         return found || null;
       }
@@ -743,40 +743,42 @@ export const supabaseSync = {
   },
 
   async getStudentByRollOrEmail(
-    rollNo: string,
+    rollNo?: string,
     email?: string,
   ): Promise<NewRegisteredStudent | null> {
     try {
-      const cleanRoll = rollNo.trim().toUpperCase();
-      const query = supabaseAdmin
-        .from("new_registered_students")
-        .select("*")
-        .eq("roll_no", cleanRoll);
-      const { data, error } = await query;
-      if (!error && data && data.length > 0) {
-        const d = data[0];
-        return {
-          id: d.id,
-          fullName: d.full_name,
-          mobileNumber: d.mobile_number,
-          rollNo: d.roll_no,
-          email: d.email,
-          school: d.school,
-          department: d.department,
-          degree: d.degree,
-          semester: d.semester,
-          residenceType: d.residence_type,
-          hostelBlockOrBusRoute: d.hostel_block_or_bus_route,
-          clubsInterested: d.clubs_interested || [],
-          idCardUploaded: d.id_card_uploaded,
-          isLocked: d.is_locked,
-          verifiedByUniversity: d.verified_by_university,
-          isVerified: d.is_verified ?? true,
-          createdAt: d.created_at,
-        };
+      if (rollNo && rollNo.trim() && rollNo !== "___NONE___") {
+        const cleanRoll = rollNo.trim().toUpperCase();
+        const query = supabaseAdmin
+          .from("new_registered_students")
+          .select("*")
+          .eq("roll_no", cleanRoll);
+        const { data, error } = await query;
+        if (!error && data && data.length > 0) {
+          const d = data[0];
+          return {
+            id: d.id,
+            fullName: d.full_name,
+            mobileNumber: d.mobile_number,
+            rollNo: d.roll_no,
+            email: d.email,
+            school: d.school,
+            department: d.department,
+            degree: d.degree,
+            semester: d.semester,
+            residenceType: d.residence_type,
+            hostelBlockOrBusRoute: d.hostel_block_or_bus_route,
+            clubsInterested: d.clubs_interested || [],
+            idCardUploaded: d.id_card_uploaded,
+            isLocked: d.is_locked,
+            verifiedByUniversity: d.verified_by_university,
+            isVerified: d.is_verified ?? true,
+            createdAt: d.created_at,
+          };
+        }
       }
 
-      if (email) {
+      if (email && email.trim() && email !== "___NONE___") {
         const { data: emailData } = await supabaseAdmin
           .from("new_registered_students")
           .select("*")
