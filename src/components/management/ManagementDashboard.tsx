@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   Clock,
   Database,
+  Download,
   Eye,
   GraduationCap,
   Layers,
@@ -41,6 +42,10 @@ import {
   NewRegisteredStudent,
 } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import {
+  exportMentorAllocationsCSV,
+  exportMentorAllocationsPDF,
+} from "@/lib/mentor-allocations-export";
 import { MasterDataManager } from "./MasterDataManager";
 import { MentorAssignmentModal } from "./MentorAssignmentModal";
 import { Faculty360Modal } from "./Faculty360Modal";
@@ -90,6 +95,13 @@ export function ManagementDashboard({ state }: ManagementDashboardProps) {
   const [facultySearch, setFacultySearch] = useState("");
   const [studentDeptFilter, setStudentDeptFilter] = useState("all");
   const [facultyDeptFilter, setFacultyDeptFilter] = useState("all");
+
+  // Assignment Master filters
+  const [assignmentSearch, setAssignmentSearch] = useState("");
+  const [assignmentDeptFilter, setAssignmentDeptFilter] = useState("all");
+  const [assignmentFacultyFilter, setAssignmentFacultyFilter] = useState("all");
+  const [assignmentSemFilter, setAssignmentSemFilter] = useState("all");
+  const [assignmentStatusFilter, setAssignmentStatusFilter] = useState("all");
 
   // Modals
   const [showAssignModal, setShowAssignModal] = useState(false);
@@ -173,6 +185,73 @@ export function ManagementDashboard({ state }: ManagementDashboardProps) {
     const matchDept = facultyDeptFilter === "all" || f.department === facultyDeptFilter;
     return matchQuery && matchDept;
   });
+
+  const distinctFaculties = Array.from(
+    new Set([
+      ...assignments.map((a) => a.facultyName || a.facultyId),
+      ...facultyList.map((f) => f.name),
+    ])
+  ).filter(Boolean);
+
+  const filteredAssignments = assignments.filter((a) => {
+    const q = assignmentSearch.toLowerCase().trim();
+    const matchQuery =
+      !q ||
+      (a.facultyName || "").toLowerCase().includes(q) ||
+      (a.facultyEmail || "").toLowerCase().includes(q) ||
+      (a.studentName || "").toLowerCase().includes(q) ||
+      (a.studentRollNo || "").toLowerCase().includes(q) ||
+      (a.studentEmail || "").toLowerCase().includes(q) ||
+      (a.department || "").toLowerCase().includes(q) ||
+      (a.field || "").toLowerCase().includes(q);
+
+    let matchDept = true;
+    if (assignmentDeptFilter !== "all") {
+      const d = assignmentDeptFilter.toLowerCase();
+      const aDept = (a.department || "").toLowerCase();
+      if (d === "cse" || d.includes("computer")) {
+        matchDept = aDept.includes("computer") || aDept.includes("cse");
+      } else if (d === "chemical" || d.includes("chem")) {
+        matchDept = aDept.includes("chem");
+      } else if (d === "som" || d.includes("management")) {
+        matchDept = aDept.includes("management") || aDept.includes("som");
+      } else if (d === "mechanical" || d.includes("mech")) {
+        matchDept = aDept.includes("mech");
+      } else {
+        matchDept = aDept.includes(d);
+      }
+    }
+
+    const matchFaculty =
+      assignmentFacultyFilter === "all" ||
+      a.facultyId === assignmentFacultyFilter ||
+      a.facultyEmail === assignmentFacultyFilter ||
+      (a.facultyName || "").toLowerCase().includes(assignmentFacultyFilter.toLowerCase());
+
+    const matchSem =
+      assignmentSemFilter === "all" || String(a.semester) === String(assignmentSemFilter);
+
+    const matchStatus =
+      assignmentStatusFilter === "all" ||
+      (a.status || "active").toLowerCase() === assignmentStatusFilter.toLowerCase();
+
+    return matchQuery && matchDept && matchFaculty && matchSem && matchStatus;
+  });
+
+  const isAssignmentFilterActive =
+    Boolean(assignmentSearch) ||
+    assignmentDeptFilter !== "all" ||
+    assignmentFacultyFilter !== "all" ||
+    assignmentSemFilter !== "all" ||
+    assignmentStatusFilter !== "all";
+
+  const handleResetAssignmentFilters = () => {
+    setAssignmentSearch("");
+    setAssignmentDeptFilter("all");
+    setAssignmentFacultyFilter("all");
+    setAssignmentSemFilter("all");
+    setAssignmentStatusFilter("all");
+  };
 
   return (
     <div className="flex flex-col gap-5">
@@ -1085,19 +1164,151 @@ export function ManagementDashboard({ state }: ManagementDashboardProps) {
       {/* ========================================================================= */}
       {activeTab === "assignments" && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="font-display text-base font-black text-foreground">
-              Official Faculty Mentor Allocations ({assignments.length})
-            </h3>
-            <Button
-              size="sm"
-              onClick={() => handleOpenAssignModal()}
-              className="rounded-xl h-8 text-xs font-bold bg-gradient-to-r from-[#F2A93B] to-amber-500 text-slate-950"
-            >
-              <UserPlus className="mr-1 size-3.5" /> Allocate New Mentor
-            </Button>
+          {/* Header Banner with Title and Export Actions */}
+          <div className="rounded-3xl border border-border/80 bg-card p-4 sm:p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="flex items-center gap-1 rounded-full bg-brand/10 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-brand">
+                  <UserPlus className="size-3" /> Official Allocation Registry
+                </span>
+                <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-600">
+                  Live Synced Database
+                </span>
+              </div>
+              <h3 className="font-display text-base sm:text-lg font-black text-foreground mt-1">
+                Official Faculty Mentor Allocations ({assignments.length})
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                Institutional registry of assigned mentors, cohorts, departments, academic terms, and specialization focus
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() =>
+                  exportMentorAllocationsPDF(filteredAssignments, {
+                    department: assignmentDeptFilter,
+                    faculty: assignmentFacultyFilter,
+                    semester: assignmentSemFilter,
+                    search: assignmentSearch,
+                  })
+                }
+                className="rounded-xl h-8 text-xs font-bold gap-1.5 border-red-500/30 text-red-600 hover:bg-red-500/10 hover:text-red-700"
+              >
+                <Download className="size-3.5" /> Download PDF
+              </Button>
+
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => exportMentorAllocationsCSV(filteredAssignments)}
+                className="rounded-xl h-8 text-xs font-bold gap-1.5 border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/10 hover:text-emerald-700"
+              >
+                <FileSpreadsheet className="size-3.5" /> Download CSV
+              </Button>
+
+              <Button
+                size="sm"
+                onClick={() => handleOpenAssignModal()}
+                className="rounded-xl h-8 text-xs font-bold bg-gradient-to-r from-[#F2A93B] to-amber-500 text-slate-950 shadow-sm hover:brightness-110"
+              >
+                <UserPlus className="mr-1 size-3.5" /> Allocate New Mentor
+              </Button>
+            </div>
           </div>
 
+          {/* Interactive Multi-Filter Control Bar */}
+          <div className="rounded-3xl border border-border/80 bg-card p-3 sm:p-4 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+            <div className="relative flex-1 max-w-md">
+              <Search className="pointer-events-none absolute left-3 top-2.5 size-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by mentor name, student, roll ID, or field..."
+                value={assignmentSearch}
+                onChange={(e) => setAssignmentSearch(e.target.value)}
+                className="pl-9 rounded-2xl h-9 text-xs"
+              />
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              {/* Department Filter */}
+              <select
+                value={assignmentDeptFilter}
+                onChange={(e) => setAssignmentDeptFilter(e.target.value)}
+                className="rounded-xl border border-border/80 bg-background px-2.5 py-1.5 text-xs font-bold text-foreground focus:ring-2 focus:ring-[#1A3C6E]"
+              >
+                <option value="all">All Departments</option>
+                <option value="Computer Science & Engineering">CSE</option>
+                <option value="Chemical & Petrochemical Eng">Chemical Eng</option>
+                <option value="School of Management">School of Management</option>
+                <option value="Mechanical & Automation Eng">Mechanical</option>
+              </select>
+
+              {/* Faculty Mentor Filter */}
+              <select
+                value={assignmentFacultyFilter}
+                onChange={(e) => setAssignmentFacultyFilter(e.target.value)}
+                className="rounded-xl border border-border/80 bg-background px-2.5 py-1.5 text-xs font-bold text-foreground focus:ring-2 focus:ring-[#1A3C6E] max-w-[170px] truncate"
+              >
+                <option value="all">All Faculty Mentors</option>
+                {distinctFaculties.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+
+              {/* Semester Filter */}
+              <select
+                value={assignmentSemFilter}
+                onChange={(e) => setAssignmentSemFilter(e.target.value)}
+                className="rounded-xl border border-border/80 bg-background px-2.5 py-1.5 text-xs font-bold text-foreground focus:ring-2 focus:ring-[#1A3C6E]"
+              >
+                <option value="all">All Semesters</option>
+                {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
+                  <option key={s} value={s}>
+                    Sem {s}
+                  </option>
+                ))}
+              </select>
+
+              {/* Status Filter */}
+              <select
+                value={assignmentStatusFilter}
+                onChange={(e) => setAssignmentStatusFilter(e.target.value)}
+                className="rounded-xl border border-border/80 bg-background px-2.5 py-1.5 text-xs font-bold text-foreground focus:ring-2 focus:ring-[#1A3C6E]"
+              >
+                <option value="all">All Status</option>
+                <option value="active">Active</option>
+                <option value="reassigned">Reassigned</option>
+                <option value="completed">Completed</option>
+              </select>
+
+              {isAssignmentFilterActive && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleResetAssignmentFilters}
+                  className="rounded-xl h-8 text-xs font-bold text-destructive hover:bg-destructive/10"
+                >
+                  Reset
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {/* Filter Status Badge */}
+          <div className="flex items-center justify-between px-1 text-xs">
+            <p className="text-muted-foreground font-medium text-[11px]">
+              Showing <strong className="text-foreground">{filteredAssignments.length}</strong> of <strong className="text-foreground">{assignments.length}</strong> official allocations
+              {isAssignmentFilterActive && (
+                <span className="ml-1.5 text-brand font-bold">(Filtered)</span>
+              )}
+            </p>
+          </div>
+
+          {/* Allocations Table */}
           <div className="rounded-3xl border border-border/80 bg-card overflow-hidden shadow-sm">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
@@ -1112,40 +1323,64 @@ export function ManagementDashboard({ state }: ManagementDashboardProps) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/50 font-medium">
-                  {assignments.map((a) => (
-                    <tr key={a.id} className="hover:bg-muted/30 transition-colors">
-                      <td className="px-4 py-3">
-                        <p className="font-bold text-foreground">{a.facultyName || a.facultyId}</p>
-                        <p className="text-[10px] text-muted-foreground font-mono">{a.facultyEmail || a.facultyId}</p>
-                      </td>
-                      <td className="px-3 py-3">
-                        <p className="font-bold text-foreground">{a.studentName || a.studentRollNo || a.studentId}</p>
-                        <p className="text-[10px] text-brand font-mono font-bold">{a.studentRollNo || a.studentId}</p>
-                      </td>
-                      <td className="px-3 py-3">
-                        <p className="text-foreground">{a.department}</p>
-                        <p className="text-[10px] text-amber-600 font-semibold">{a.field || "General Focus"}</p>
-                      </td>
-                      <td className="px-3 py-3 font-mono text-muted-foreground">
-                        {a.academicYear} · Sem {a.semester}
-                      </td>
-                      <td className="px-3 py-3 text-center">
-                        <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-600">
-                          {a.status}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleOpenAssignModal(a.studentId, a.facultyId)}
-                          className="h-7 text-[10px] font-bold rounded-xl"
-                        >
-                          Modify / Reassign
-                        </Button>
+                  {filteredAssignments.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-12 text-center text-muted-foreground">
+                        <div className="flex flex-col items-center justify-center gap-2">
+                          <p>No mentor allocations match your current filter criteria.</p>
+                          {isAssignmentFilterActive && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={handleResetAssignmentFilters}
+                              className="rounded-xl text-xs font-bold mt-1"
+                            >
+                              Reset Filters
+                            </Button>
+                          )}
+                        </div>
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    filteredAssignments.map((a) => (
+                      <tr key={a.id} className="hover:bg-muted/30 transition-colors">
+                        <td className="px-4 py-3">
+                          <p className="font-bold text-foreground">{a.facultyName || a.facultyId}</p>
+                          <p className="text-[10px] text-muted-foreground font-mono">{a.facultyEmail || a.facultyId}</p>
+                        </td>
+                        <td className="px-3 py-3">
+                          <p className="font-bold text-foreground">{a.studentName || a.studentRollNo || a.studentId}</p>
+                          <p className="text-[10px] text-brand font-mono font-bold">{a.studentRollNo || a.studentId}</p>
+                        </td>
+                        <td className="px-3 py-3">
+                          <p className="text-foreground">{a.department}</p>
+                          <p className="text-[10px] text-amber-600 font-semibold">{a.field || "General Focus"}</p>
+                        </td>
+                        <td className="px-3 py-3 font-mono text-muted-foreground">
+                          {a.academicYear} · Sem {a.semester}
+                        </td>
+                        <td className="px-3 py-3 text-center">
+                          <span className={cn(
+                            "rounded-full px-2 py-0.5 text-[10px] font-bold capitalize",
+                            (a.status || "active") === "active" ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" :
+                            "bg-slate-200 dark:bg-slate-800 text-muted-foreground"
+                          )}>
+                            {a.status || "active"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleOpenAssignModal(a.studentId, a.facultyId)}
+                            className="h-7 text-[10px] font-bold rounded-xl"
+                          >
+                            Modify / Reassign
+                          </Button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
