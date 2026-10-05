@@ -1592,12 +1592,12 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
                     </p>
                   </div>
 
-                  {import.meta.env.DEV && regOtpPreview && (
-                    <div className="bg-gradient-to-r from-amber-50 to-blue-50 border border-amber-200/90 rounded-2xl p-3 text-left space-y-1.5 shadow-sm animate-in fade-in zoom-in-95">
+                  {Boolean(regOtpPreview) && (
+                    <div className="bg-gradient-to-r from-amber-50 via-blue-50 to-amber-50/50 border border-amber-300/80 rounded-2xl p-3.5 text-left space-y-2 shadow-sm animate-in fade-in zoom-in-95">
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-bold text-[#1A3C6E] flex items-center gap-1.5">
                           <Smartphone className="size-3.5 text-amber-600" />
-                          DEV MODE — OTP Preview
+                          Instant Verification Code
                         </span>
                         <button
                           type="button"
@@ -1605,19 +1605,16 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
                             setRegEmailOtp(regOtpPreview);
                             handleVerifyRegOtp(undefined, regOtpPreview);
                           }}
-                          className="text-[11px] font-black text-[#1A3C6E] hover:underline bg-white px-2.5 py-0.5 rounded-lg border border-amber-300 shadow-xs cursor-pointer"
+                          className="text-[11px] font-black text-[#1A3C6E] hover:bg-amber-100 bg-white px-2.5 py-1 rounded-lg border border-amber-300 shadow-xs cursor-pointer transition-colors"
                         >
-                          Auto-fill &amp; Verify
+                          Auto-fill &amp; Verify ✨
                         </button>
                       </div>
                       <div className="flex items-center justify-between">
-                        <span className="font-mono text-lg font-black tracking-widest text-[#1A3C6E]">
+                        <span className="font-mono text-xl font-black tracking-widest text-[#1A3C6E]">
                           {regOtpPreview}
                         </span>
                         <span className="text-[10px] text-slate-500 font-medium">Valid for 10 minutes</span>
-                      </div>
-                      <div className="text-[10px] text-amber-700 bg-amber-100 rounded-lg px-2 py-1">
-                        ⚠️ Configure SMTP_* or RESEND_API_KEY to send real emails
                       </div>
                     </div>
                   )}

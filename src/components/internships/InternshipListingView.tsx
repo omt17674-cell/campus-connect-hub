@@ -92,6 +92,61 @@ export function InternshipListingView({
         </div>
       </div>
 
+      {/* Off-Campus / Self-Secured Opportunity Banner */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-3xl border border-[#F2A93B]/40 bg-gradient-to-r from-amber-500/10 via-[#1A3C6E]/10 to-card p-5 backdrop-blur-xl shadow-sm">
+        <div className="flex items-start gap-3.5">
+          <div className="flex size-11 items-center justify-center rounded-2xl bg-[#F2A93B]/20 text-[#0E2342] dark:text-[#F2A93B] shrink-0 mt-0.5">
+            <Sparkles className="size-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-black text-foreground">
+                Self-Secured / Off-Campus Internship Offer?
+              </h3>
+              <span className="rounded-full bg-[#1A3C6E] px-2 py-0.5 text-[9px] font-black uppercase text-white">
+                Dean NOC & GPS
+              </span>
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground leading-relaxed max-w-xl">
+              Secured an industrial internship at an external company? Register your corporate offer letter / confirmation email, submit company mentor details, and request Dean approval & GPS attendance gate.
+            </p>
+          </div>
+        </div>
+
+        <Button
+          onClick={() =>
+            onApply({
+              id: "int-offcampus-custom",
+              title: "Off-Campus / Sponsoring Industrial Internship",
+              companyName: "Self-Secured Corporate Partner",
+              description:
+                "Formal academic registration for self-secured industrial internships with external sponsoring companies. Upload company offer letter, mentor coordinates, and request Dean NOC & GPS punch.",
+              department: currentUser.department || "Engineering & Technology",
+              skillsRequired: ["Practical Engineering", "Core Domain", "Professional Conduct"],
+              eligibility: "Enrolled GSFC University Student with Valid Company Offer Letter",
+              positions: 99,
+              location: "Corporate Workplace Facility",
+              mode: "On-site",
+              startDate: "2026-10-01",
+              endDate: "2027-03-31",
+              duration: "6 Months / Semester",
+              stipend: "As per offer letter",
+              workingHours: "Company General Shift",
+              contactPerson: "Dr. Ananya Sharma (Dean, SOT)",
+              contactEmail: "tpc@gsfcuniversity.ac.in",
+              applicationDeadline: "2026-12-31",
+              requiredDocuments: ["Company Offer Letter / Selection Mail", "Resume (PDF)", "College ID"],
+              status: "open",
+              createdAt: new Date().toISOString(),
+            })
+          }
+          className="shrink-0 gap-2 rounded-2xl bg-gradient-to-r from-[#F2A93B] to-amber-600 text-[#0E2342] font-black text-xs px-5 py-2.5 shadow-md hover:opacity-95"
+        >
+          <Send className="size-3.5" />
+          <span>Register Off-Campus Offer</span>
+        </Button>
+      </div>
+
       {/* Filter and Search Bar */}
       <div className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-card/60 p-4 backdrop-blur-xl md:flex-row md:items-center md:justify-between">
         <div className="relative flex-1">

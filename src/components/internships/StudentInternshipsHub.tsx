@@ -86,26 +86,7 @@ export function StudentInternshipsHub({ state }: StudentInternshipsHubProps) {
             )}
           >
             <Briefcase className="mr-1.5 size-3.5" />
-            Available Internships ({allInternships.length})
-          </Button>
-
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              if (allInternships.length > 0) {
-                setSelectedInternshipForApply(allInternships[0]);
-                setIsApplyModalOpen(true);
-              } else {
-                setActiveTab("available");
-              }
-            }}
-            className={cn(
-              "rounded-xl text-xs font-bold text-muted-foreground hover:text-foreground"
-            )}
-          >
-            <Send className="mr-1.5 size-3.5 text-[#F2A93B]" />
-            Apply for Internship
+            Available Postings ({allInternships.length})
           </Button>
 
           <Button
@@ -135,7 +116,7 @@ export function StudentInternshipsHub({ state }: StudentInternshipsHubProps) {
             )}
           >
             <MapPin className="mr-1.5 size-3.5 text-emerald-500" />
-            GPS Attendance / Punch
+            GPS Attendance & Punch
           </Button>
 
           <Button
@@ -150,7 +131,19 @@ export function StudentInternshipsHub({ state }: StudentInternshipsHubProps) {
             )}
           >
             <ShieldCheck className="mr-1.5 size-3.5 text-[#F2A93B]" />
-            Internship Status & Tenure
+            Status & Dean Clearance
+          </Button>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsNocModalOpen(true)}
+            className="rounded-xl text-xs font-bold border-[#F2A93B]/50 text-foreground hover:bg-[#F2A93B]/15"
+          >
+            <FileCheck2 className="mr-1.5 size-3.5 text-[#F2A93B]" />
+            Request Dean NOC Letter
           </Button>
         </div>
       </div>

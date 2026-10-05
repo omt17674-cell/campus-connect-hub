@@ -56,7 +56,8 @@ interface InternshipManagementHubProps {
 
 export type AdminInternshipTab =
   | "overview"
-  | "review_queue"
+  | "admin_queue"
+  | "dean_queue"
   | "attendance"
   | "post_new"
   | "reports";
@@ -69,7 +70,7 @@ export function InternshipManagementHub({ state }: InternshipManagementHubProps)
 
   // Review comment dialog
   const [reviewDialogMode, setReviewDialogMode] = useState<
-    "approve" | "reject" | "changes" | null
+    "admin_approve" | "admin_reject" | "admin_changes" | "dean_approve" | "dean_reject" | null
   >(null);
   const [reviewComment, setReviewComment] = useState("");
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
@@ -163,8 +164,11 @@ export function InternshipManagementHub({ state }: InternshipManagementHubProps)
 
   const queueFilteredApplications = useMemo(() => {
     return filteredApplications.filter((app) => {
-      if (activeTab === "review_queue") {
+      if (activeTab === "admin_queue") {
         return app.status === "ADMIN_REVIEW" || app.status === "SUBMITTED";
+      }
+      if (activeTab === "dean_queue") {
+        return app.status === "DEAN_REVIEW" || app.status === "ADMIN_APPROVED";
       }
       return true;
     });
